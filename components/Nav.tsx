@@ -41,8 +41,8 @@ export default function Nav() {
   ]
 
   return (
-    <nav className="absolute items-center flex px-7 py-5 border-b border-zinc-900/70 shadow-lg min-w-full">
-      <Link href="/" className="font-mono mr-5 font-bold tracking-wide">
+    <nav className="absolute z-10 flex min-w-full items-center border-b border-zinc-900/70 bg-[#0f0f0f] px-7 py-5 shadow-lg">
+      <Link href="/" className="mr-5 font-mono font-bold tracking-wide">
         Automize
       </Link>
 
@@ -50,13 +50,13 @@ export default function Nav() {
         {dropdowns.map((link, index) => {
           return (
             <li key={index} className="group relative">
-              <span className="group-hover:text-white transition-colors inline-block">
+              <span className="inline-block transition-colors group-hover:text-white">
                 {link.text}{' '}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 16 16"
                   fill="currentColor"
-                  className="size-4 inline-block"
+                  className="inline-block size-4"
                 >
                   <path
                     fillRule="evenodd"
@@ -65,7 +65,7 @@ export default function Nav() {
                   />
                 </svg>
               </span>
-              <div className="absolute w-48 bg-zinc-900 p-3 gap-3 rounded hidden duration-1000 transition-all group-hover:flex flex-col">
+              <div className="absolute hidden w-48 flex-col gap-3 rounded bg-zinc-900 p-3 transition-all duration-1000 group-hover:flex">
                 {link.content.map((inner, index) => (
                   <Link
                     key={index}
@@ -85,6 +85,9 @@ export default function Nav() {
             <Link href={link.href}>{link.text}</Link>
           </li>
         ))}
+
+        <Link href={'/dashboard'}>Login</Link>
+        <Link href={'/sign-up'}>Sign Up</Link>
       </ul>
     </nav>
   )
