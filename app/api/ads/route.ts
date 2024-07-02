@@ -10,38 +10,38 @@ import {
 } from '@/lib/insights'
 import { createClient } from '@/lib/db/server'
 
-// rate limiting
-const rateLimit: { times: number[]; limit: number; windowMs: number } = {
-  times: [],
-  limit: 3,
-  windowMs: 60 * 1000,
-}
+// // rate limiting
+// const rateLimit: { times: number[]; limit: number; windowMs: number } = {
+//   times: [],
+//   limit: 3,
+//   windowMs: 60 * 1000,
+// }
 
-function isRateLimited() {
-  const currentTime = Date.now()
-  rateLimit.times = rateLimit.times.filter(
-    (timestamp) => currentTime - timestamp < rateLimit.windowMs,
-  )
+// function isRateLimited() {
+//   const currentTime = Date.now()
+//   rateLimit.times = rateLimit.times.filter(
+//     (timestamp) => currentTime - timestamp < rateLimit.windowMs,
+//   )
 
-  if (rateLimit.times.length >= rateLimit.limit) {
-    return true
-  }
+//   if (rateLimit.times.length >= rateLimit.limit) {
+//     return true
+//   }
 
-  rateLimit.times.push(currentTime)
-  return false
-}
+//   rateLimit.times.push(currentTime)
+//   return false
+// }
 
 // MAIN GET
 export async function POST(request: NextRequest) {
-  if (isRateLimited()) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Try again later.' },
-      {
-        status: 429,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    )
-  }
+  // if (isRateLimited()) {
+  //   return NextResponse.json(
+  //     { error: 'Rate limit exceeded. Try again later.' },
+  //     {
+  //       status: 429,
+  //       headers: { 'Content-Type': 'application/json' },
+  //     },
+  //   )
+  // }
 
   const db = createClient()
   const { data: accounts } = await db
