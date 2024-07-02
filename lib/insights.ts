@@ -11,7 +11,7 @@ export function getActions(actions: any[] | null) {
   return result
 }
 
-export function getCPA(costs) {
+export function getCPA(costs: any[] | null) {
   if (costs === null) {
     return {}
   }

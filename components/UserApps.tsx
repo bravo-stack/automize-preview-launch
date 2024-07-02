@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect, useRef, SetStateAction } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
-export default function UserApps({ userApps }) {
+export default function UserApps({ userApps }: { userApps: any[] }) {
   const [openModalIndex, setOpenModalIndex] = useState<number | null>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
