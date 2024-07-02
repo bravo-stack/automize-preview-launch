@@ -1,38 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { arrow, cube } from '@/content/icons'
 
 export default function Solutions() {
-  const arrow = (colour?: string) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={`inline-block size-6 ${colour}`}
-    >
-      <path
-        fillRule="evenodd"
-        d="M15.22 6.268a.75.75 0 0 1 .968-.431l5.942 2.28a.75.75 0 0 1 .431.97l-2.28 5.94a.75.75 0 1 1-1.4-.537l1.63-4.251-1.086.484a11.2 11.2 0 0 0-5.45 5.173.75.75 0 0 1-1.199.19L9 12.312l-6.22 6.22a.75.75 0 0 1-1.06-1.061l6.75-6.75a.75.75 0 0 1 1.06 0l3.606 3.606a12.695 12.695 0 0 1 5.68-4.974l1.086-.483-4.251-1.632a.75.75 0 0 1-.432-.97Z"
-        clipRule="evenodd"
-      />
-    </svg>
-  )
-
-  const cube = (colour?: string) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={`inline-block size-6 ${colour}`}
-    >
-      <path
-        fillRule="evenodd"
-        d="M11.622 1.602a.75.75 0 0 1 .756 0l2.25 1.313a.75.75 0 0 1-.756 1.295L12 3.118 10.128 4.21a.75.75 0 1 1-.756-1.295l2.25-1.313ZM5.898 5.81a.75.75 0 0 1-.27 1.025l-1.14.665 1.14.665a.75.75 0 1 1-.756 1.295L3.75 8.806v.944a.75.75 0 0 1-1.5 0V7.5a.75.75 0 0 1 .372-.648l2.25-1.312a.75.75 0 0 1 1.026.27Zm12.204 0a.75.75 0 0 1 1.026-.27l2.25 1.312a.75.75 0 0 1 .372.648v2.25a.75.75 0 0 1-1.5 0v-.944l-1.122.654a.75.75 0 1 1-.756-1.295l1.14-.665-1.14-.665a.75.75 0 0 1-.27-1.025Zm-9 5.25a.75.75 0 0 1 1.026-.27L12 11.882l1.872-1.092a.75.75 0 1 1 .756 1.295l-1.878 1.096V15a.75.75 0 0 1-1.5 0v-1.82l-1.878-1.095a.75.75 0 0 1-.27-1.025ZM3 13.5a.75.75 0 0 1 .75.75v1.82l1.878 1.095a.75.75 0 1 1-.756 1.295l-2.25-1.312a.75.75 0 0 1-.372-.648v-2.25A.75.75 0 0 1 3 13.5Zm18 0a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-.372.648l-2.25 1.312a.75.75 0 1 1-.756-1.295l1.878-1.096V14.25a.75.75 0 0 1 .75-.75Zm-9 5.25a.75.75 0 0 1 .75.75v.944l1.122-.654a.75.75 0 1 1 .756 1.295l-2.25 1.313a.75.75 0 0 1-.756 0l-2.25-1.313a.75.75 0 1 1 .756-1.295l1.122.654V19.5a.75.75 0 0 1 .75-.75Z"
-        clipRule="evenodd"
-      />
-    </svg>
-  )
-
   const tabs = useMemo(
     () => [
       {
@@ -51,22 +22,7 @@ export default function Solutions() {
         },
       },
       {
-        label: 'InsightPro',
-        svg: cube(),
-        content: {
-          svg: {
-            code: cube('text-purple-500'),
-            border: 'border-purple-500',
-            bg: 'bg-purple-500/20',
-          },
-          label: { text: 'InsightPro', colour: 'text-purple-500' },
-          header: 'Unlock the Power of Data Analytics',
-          description:
-            'Gain deep insights into your business performance with our advanced analytics tools, designed to help you make informed decisions.',
-        },
-      },
-      {
-        label: 'StreamFlow',
+        label: 'InsightAI',
         svg: cube(),
         content: {
           svg: {
@@ -78,6 +34,21 @@ export default function Solutions() {
           header: 'Optimize Your Workflow Effortlessly',
           description:
             'Enhance productivity and streamline your operations with our state-of-the-art workflow management solution.',
+        },
+      },
+      {
+        label: 'StreamFlow',
+        svg: cube(),
+        content: {
+          svg: {
+            code: cube('text-purple-500'),
+            border: 'border-purple-500',
+            bg: 'bg-purple-500/20',
+          },
+          label: { text: 'StreamFlow', colour: 'text-purple-500' },
+          header: 'Unlock the Power of Data Analytics',
+          description:
+            'Gain deep insights into your business performance with our advanced analytics tools.',
         },
       },
       {
@@ -130,7 +101,7 @@ export default function Solutions() {
 
   return (
     <div className="flex flex-col items-center">
-      <nav className="relative grid w-full grid-cols-1 gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 p-1.5 md:w-4/5 md:grid-cols-4 md:rounded-full">
+      <nav className="relative grid w-full grid-cols-1 gap-2 rounded-2xl border border-zinc-800 bg-night-twilight p-1.5 md:w-4/5 md:grid-cols-4 md:rounded-full">
         {tabs.map((tab, index) => (
           <button
             key={index}
@@ -139,8 +110,10 @@ export default function Solutions() {
                 tabRefs.current[index] = el
               }
             }}
-            className={`z-10 flex-grow px-4 py-2 text-left transition-colors md:py-4 md:text-center ${
-              selectedTab === index ? 'text-white' : 'text-gray-400'
+            className={`z-10 flex-grow px-4 py-2 text-left transition-all md:py-4 md:text-center ${
+              selectedTab === index
+                ? 'font-semibold text-white'
+                : 'text-gray-400'
             }`}
             onClick={() => handleTabClick(index)}
           >

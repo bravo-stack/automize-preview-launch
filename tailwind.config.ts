@@ -14,6 +14,17 @@ const config: Config = {
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
 
+      colors: {
+        night: {
+          dusk: '#121313',
+          twilight: '#0a0a0a',
+          midnight: '#020202',
+          moonlit: '#040606',
+          starlit: '#0c0c0c',
+          witchingHour: '#080808',
+        },
+      },
+
       keyframes: {
         cycle: {
           '10%': { transform: 'translateY(-118%)' },

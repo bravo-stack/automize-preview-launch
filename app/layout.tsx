@@ -4,6 +4,7 @@ import './globals.css'
 import Nav from '@/components/Nav'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
+import Footer from '@/components/Footer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body className={GeistSans.className}>
         <Nav />
         {children}
+        <Footer />
       </body>
     </html>
   )

@@ -11,8 +11,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --background-start-rgb: 10, 10, 10;
+    --background-end-rgb: 10, 10, 10;
   }
 }
 
@@ -30,4 +30,27 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+@layer components {
+  .insane {
+    @apply scale-105 border-zinc-800 bg-gradient-to-tr from-night-midnight to-night-dusk text-white;
+  }
+  .btn {
+    @apply rounded-full border border-white/50 bg-gradient-to-tr from-white/60 via-white to-white/60 px-10 py-5 text-xl font-semibold tracking-wide text-black transition-all duration-700;
+  }
+  .bt {
+    @apply hover:insane rounded-xl border border-gray-400 bg-white px-10 py-4 text-center text-xl font-semibold text-black transition-all duration-500 hover:border-zinc-700 hover:bg-zinc-900 hover:text-white hover:shadow hover:shadow-white/15;
+  }
+}
+
+::-moz-selection {
+  /* Code for Firefox */
+  color: black;
+  background: white;
+}
+
+::selection {
+  color: black;
+  background: white;
 }
