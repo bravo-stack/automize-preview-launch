@@ -88,10 +88,6 @@ export default function Login() {
           A New Beginning
         </h2>
         <h1 className="mb-3 text-4xl font-semibold tracking-wide">Sign Up</h1>
-        <h3 className="text-lg">
-          Get access to our <span className="text-xps-orange">XPS</span>
-          Dashboard with a free, secure account
-        </h3>
       </header>
 
       <>

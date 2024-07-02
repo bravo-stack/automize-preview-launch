@@ -73,16 +73,14 @@ export default function Login() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 pb-24 pt-10 md:px-24">
       <header className="mb-20 text-center">
-        <h2 className="text-xps-orange text-lg font-semibold tracking-wide">
-          Get In Touch
-        </h2>
+        {/* <h2 className="text-xps-orange text-lg font-semibold tracking-wide"></h2> */}
         <h1 className="mb-3 text-4xl font-semibold tracking-wide">Login</h1>
         <h3 className="text-lg">
           Don&apos;t have an account? Create a new one{' '}
           <Link href="/sign-up" className="text-xps-orange underline">
             here
-          </Link>{' '}
-          and view our rates.
+          </Link>
+          .
         </h3>
       </header>
 
