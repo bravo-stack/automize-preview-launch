@@ -321,8 +321,7 @@ export const accounts = [
   },
 ]
 
-export const blank = {
-  name: '',
+export const emptyInsights = {
   actions: [],
   cost_per_action_type: [],
   spend: '',

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { blank } from '@/content/accounts'
+import { emptyInsights } from '@/content/accounts'
 import { appendDataToSheet } from '@/lib/api'
 import {
   getActions,
@@ -10,39 +10,8 @@ import {
 } from '@/lib/insights'
 import { createClient } from '@/lib/db/server'
 
-// // rate limiting
-// const rateLimit: { times: number[]; limit: number; windowMs: number } = {
-//   times: [],
-//   limit: 3,
-//   windowMs: 60 * 1000,
-// }
-
-// function isRateLimited() {
-//   const currentTime = Date.now()
-//   rateLimit.times = rateLimit.times.filter(
-//     (timestamp) => currentTime - timestamp < rateLimit.windowMs,
-//   )
-
-//   if (rateLimit.times.length >= rateLimit.limit) {
-//     return true
-//   }
-
-//   rateLimit.times.push(currentTime)
-//   return false
-// }
-
 // MAIN GET
 export async function POST(request: NextRequest) {
-  // if (isRateLimited()) {
-  //   return NextResponse.json(
-  //     { error: 'Rate limit exceeded. Try again later.' },
-  //     {
-  //       status: 429,
-  //       headers: { 'Content-Type': 'application/json' },
-  //     },
-  //   )
-  // }
-
   const db = createClient()
   const { data: accounts } = await db
     .from('account')
@@ -66,21 +35,34 @@ export async function POST(request: NextRequest) {
   const actions = `'omni_add_to_cart','omni_initiated_checkout','link_click','purchase','landing_page_view','video_view'`
 
   async function fetchInsights(accountId: string, name: string, pod: string) {
-    const url = `https://graph.facebook.com/v11.0/${accountId}/insights?access_token=${FACEBOOK_ACCESS_TOKEN}&fields=${fields}&date_preset=${datePreset}&filtering=[{field:"action_type","operator":"IN","value":[${actions}]}]`
+    const url = `https://graph.facebook.com/v11.0/${accountId}/insights?access_token=${FACEBOOK_ACCESS_TOKEN}&fields=${fields}&date_preset=${datePreset}&filtering=[{"field":"action_type","operator":"IN","value":[${actions}]}]`
 
     try {
       const response = await fetch(url)
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`)
+        // console.error(`HTTP error! Status for "${name}": ${response.status}`)
+        return {
+          name,
+          pod: 'Missing Permissions or Incorrect ID',
+          insights: emptyInsights,
+        }
       }
 
       const data = await response.json()
-      const insights = data.data.length > 0 ? data.data[0] : blank
+      if (!data.data || data.data.length === 0) {
+        // console.error('No insights for ', name)
+        return {
+          name,
+          pod: `No data for ${datePreset}`,
+          insights: emptyInsights,
+        }
+      }
 
+      const insights = data.data[0]
       return { name, pod, insights }
     } catch (error) {
       console.error('Error fetching insights:', error)
-      return { name, error: error }
+      return { name, pod: 'Missing Permissions', insights: emptyInsights }
     }
   }
 
@@ -132,13 +114,13 @@ export async function POST(request: NextRequest) {
       await appendDataToSheet(sheetID, sheetData)
 
       return NextResponse.json({
-        adInsights,
+        ok: true,
       })
     }
   } catch (error) {
     console.log(error)
     return NextResponse.json(
-      { error },
+      { error, ok: false },
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },

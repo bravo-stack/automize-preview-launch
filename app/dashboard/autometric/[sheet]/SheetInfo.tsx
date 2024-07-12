@@ -3,6 +3,7 @@
 import { deleteSheet } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import NotificationModal from '@/components/NotificationModal'
 
 interface SheetInfoProps {
   links: string[]
@@ -13,6 +14,11 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
   const { sheet, lastRefresh } = data
   const [activeSection, setActiveSection] = useState(0)
   const [confirm, setConfirm] = useState(false)
+  const [notificationState, setNotificationState] = useState<{
+    state: string
+    message: string
+  } | null>(null)
+
   const router = useRouter()
 
   const handleDelete = async () => {
@@ -23,6 +29,8 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
   const handleDataRefresh: () => Promise<void> = async () => {
     const sheetID = sheet.sheet_id
     const datePreset = sheet.refresh
+
+    setNotificationState({ state: 'loading', message: 'Refreshing data...' })
 
     try {
       const response = await fetch('/api/ads', {
@@ -35,10 +43,25 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
           datePreset,
         }),
       })
+      if (!response.ok) {
+        throw new Error('Failed to refresh data')
+      }
       const data = await response.json()
-      // console.log(data)
+      console.log(data)
+      setNotificationState({
+        state: 'success',
+        message: 'Data refreshed successfully!',
+      })
     } catch (error) {
-      console.error(error)
+      console.error('Error fetching ad data:', error)
+      setNotificationState({
+        state: 'error',
+        message: 'Failed to refresh data',
+      })
+    } finally {
+      setTimeout(() => {
+        setNotificationState(null)
+      }, 5000)
     }
   }
 
@@ -136,6 +159,14 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
           </div>
         )}
       </div>
+
+      {notificationState && (
+        <NotificationModal
+          state={notificationState.state}
+          onClose={() => setNotificationState(null)}
+          message={notificationState.message}
+        />
+      )}
     </div>
   )
 }
