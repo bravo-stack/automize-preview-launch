@@ -30,6 +30,8 @@ const NotificationModal = ({
         final = 'Incorrect login details. Please try again.'
         break
     }
+  } else {
+    final = message
   }
 
   return (
