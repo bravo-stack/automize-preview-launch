@@ -1,5 +1,5 @@
 export function getActions(actions: any[] | null) {
-  if (actions === null) {
+  if (!actions) {
     return {}
   }
 
@@ -12,7 +12,7 @@ export function getActions(actions: any[] | null) {
 }
 
 export function getCPA(costs: any[] | null) {
-  if (costs === null) {
+  if (!costs) {
     return {}
   }
 

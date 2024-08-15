@@ -78,6 +78,7 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
       </div>
 
       <div className="overflow-x-auto">
+        Total accounts: {accounts?.length}
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
