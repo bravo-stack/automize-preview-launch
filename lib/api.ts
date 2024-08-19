@@ -1,6 +1,22 @@
 import { authorizeSheets } from './google'
 import { google } from 'googleapis'
 
+export async function appendFinancials(id: string, data: any) {
+  const auth = await authorizeSheets()
+  const sheets = google.sheets({ version: 'v4', auth })
+
+  const requestBody = {
+    values: data,
+  }
+
+  sheets.spreadsheets.values.update({
+    spreadsheetId: id,
+    range: 'Sheet1!A2',
+    valueInputOption: 'RAW',
+    requestBody,
+  })
+}
+
 export async function appendDataToSheet(sheetId: string, data: any) {
   const auth = await authorizeSheets()
   const sheets = google.sheets({ version: 'v4', auth })

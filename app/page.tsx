@@ -2,7 +2,7 @@ import Cycle from '@/components/Cycle'
 import Solutions from '@/components/Solutions'
 import Link from 'next/link'
 
-export default function Home() {
+export default async function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-between scroll-smooth">
       <header className="mb-20 flex min-h-[65vh] w-full flex-col gap-5 border-b-2 border-night-dusk bg-gradient-to-b from-night-twilight via-night-dusk/80 to-night-twilight px-6 pt-10 md:px-20">

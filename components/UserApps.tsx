@@ -30,7 +30,7 @@ export default function UserApps({ userApps }: { userApps: any[] }) {
         return (
           <li
             key={app.name}
-            className="relative rounded-md border border-zinc-800 px-3 py-2 transition-colors hover:border-zinc-700"
+            className="relative rounded-md border border-zinc-800 px-3 py-2 transition-colors hover:border-zinc-700 lg:px-5 lg:py-3"
           >
             <h4 className="flex justify-between">
               <Link href={app.link} className="group hover:underline">

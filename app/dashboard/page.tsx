@@ -17,8 +17,7 @@ export default async function Dashboard() {
 
   const userApps = [
     { name: 'Auto-Metric', link: '/dashboard/autometric' },
-    { name: 'AI Consultant', link: '' },
-    { name: 'Triple Whale', link: '' },
+    { name: 'FinancialX', link: '/dashboard/financialx' },
   ]
 
   return (
