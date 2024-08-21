@@ -13,6 +13,29 @@ import {
 import { getTemplateById } from '@/content/templates'
 import { decrypt, encrypt } from './crypto'
 
+interface RevenueData {
+  name: string
+  revenue: number
+  lastRebill: string
+}
+
+interface FbData {
+  name: string
+  roas: number
+  spend: number
+}
+
+interface CombinedData {
+  name: string
+  revenueLast30?: number
+  revenueSinceRebill?: number
+  lastRebill?: string
+  fbLast30Roas?: number
+  fbLast30Spend?: number
+  fbSinceRebillRoas?: number
+  fbSinceRebillSpend?: number
+}
+
 export async function createUser(
   email: string,
   password: string,
@@ -274,7 +297,7 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
         const revenue =
           totalOrders > 0 ? totalOrders * AOV : 'Could not retrieve'
 
-        return { name, revenue }
+        return { name, revenue, lastRebill: store.last_rebill }
       }),
     )
 
@@ -355,7 +378,6 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
 }
 
 export async function financialize(stores: any[]) {
-  // console.time('check')
   const [revenueLast30, revenueSinceRebill, fbLast30, fbSinceRebill] =
     await Promise.all([
       fetchShopify(stores),
@@ -363,54 +385,38 @@ export async function financialize(stores: any[]) {
       fetchFacebook(stores),
       fetchFacebook(stores, true),
     ])
-  // console.timeEnd('check')
+
+  const data = combineData(
+    revenueLast30 as RevenueData[],
+    revenueSinceRebill as RevenueData[],
+    fbLast30 as FbData[],
+    fbSinceRebill as FbData[],
+  )
 
   const id = '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY'
 
-  function isRebillable(revenue: string | number, spend: string, roas: string) {
-    const ROAS = typeof roas === 'string' ? parseFloat(roas) : roas
-    const SPEND = typeof spend === 'string' ? parseFloat(spend) : spend
-    const REVENUE = typeof revenue === 'string' ? parseFloat(revenue) : revenue
-
-    if (
-      isNaN(REVENUE) ||
-      isNaN(ROAS) ||
-      isNaN(SPEND) ||
-      REVENUE === 0 ||
-      SPEND === 0 ||
-      ROAS === 0
-    ) {
-      return 'N/A'
-    }
-
-    if (REVENUE > 10000 && ROAS > 2.7 && SPEND > 3000) {
-      return 'rebillable'
-    }
-
-    if (REVENUE > 6600) {
-      return 'soon to be'
-    }
-
-    return 'not rebillable'
-  }
-
   if (revenueLast30 && fbLast30 && fbSinceRebill && revenueSinceRebill) {
-    const sheetData = fbLast30.map(({ name, roas, spend }, index) => {
-      const check = isRebillable(
-        revenueSinceRebill[index].revenue,
-        fbSinceRebill[index].spend,
-        fbSinceRebill[index].roas,
+    const sheetData = data.map((s: any, index) => {
+      const rebillStatus = isRebillable(
+        s.revenueSinceRebill,
+        s.fbSinceRebillSpend,
+        s.fbSinceRebillRoas,
+        s.lastRebill,
       )
 
       return [
-        name,
-        revenueLast30[index].revenue,
-        spend,
-        revenueSinceRebill[index].revenue,
-        fbSinceRebill[index].spend,
-        roas,
-        fbSinceRebill[index].roas,
-        check,
+        s.name,
+        s.revenueLast30,
+        s.fbLast30Spend,
+        s.revenueSinceRebill,
+        s.fbSinceRebillSpend,
+        s.fbLast30Roas,
+        s.fbSinceRebillRoas,
+        rebillStatus,
+        s.lastRebill,
+        rebillStatus === 'rebillable next date'
+          ? addDaysToDate(s.lastRebill)
+          : '',
       ]
     })
 
@@ -418,54 +424,104 @@ export async function financialize(stores: any[]) {
   }
 }
 
-{
-  /*
-    const query = `
-    query {
-      orders(first: 10) {
-        edges {
-          node {
-            totalPriceSet {
-              shopMoney {
-                amount
-              }
-            }
-          }
-        }
+function isRebillable(
+  revenue: string | number,
+  spend: string,
+  roas: string,
+  lastRebill: string,
+) {
+  const ROAS = typeof roas === 'string' ? parseFloat(roas) : roas
+  const SPEND = typeof spend === 'string' ? parseFloat(spend) : spend
+  const REVENUE = typeof revenue === 'string' ? parseFloat(revenue) : revenue
+
+  if (
+    isNaN(REVENUE) ||
+    isNaN(ROAS) ||
+    isNaN(SPEND) ||
+    REVENUE === 0 ||
+    SPEND === 0 ||
+    ROAS === 0
+  ) {
+    return 'N/A'
+  }
+
+  if (
+    (REVENUE >= 10000 && ROAS >= 2.7 && SPEND > 3000) ||
+    (REVENUE >= 20000 && ROAS >= 2.3 && SPEND > 3000)
+  ) {
+    const currentDate = new Date()
+    const rebillDate = new Date(lastRebill)
+    const nextRebillDate = addDaysToDate(lastRebill, 31, true)
+
+    if (currentDate < nextRebillDate) {
+      return 'rebillable next date'
+    } else if (currentDate === rebillDate) {
+      return 'rebillable'
+    } else if (currentDate > nextRebillDate) {
+      return 'overdue'
+    }
+  }
+
+  if (REVENUE > 6600) {
+    return 'soon to be'
+  }
+
+  return 'not rebillable'
+}
+
+function addDaysToDate(dateString: string, days = 31, notString = false) {
+  const date = new Date(dateString)
+  date.setDate(date.getDate() + days)
+
+  if (notString) {
+    return date
+  }
+
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0') // Months are 0-based
+  const dd = String(date.getDate()).padStart(2, '0')
+
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function combineData(
+  revenueLast30: RevenueData[],
+  revenueSinceRebill: RevenueData[],
+  fbLast30: FbData[],
+  fbSinceRebill: FbData[],
+): CombinedData[] {
+  const combinedData: Record<string, CombinedData> = {}
+
+  const addRevenueData = (
+    data: RevenueData[],
+    key: 'revenueLast30' | 'revenueSinceRebill',
+  ) => {
+    data.forEach(({ name, revenue, lastRebill }) => {
+      if (!combinedData[name]) {
+        combinedData[name] = { name }
       }
-    }
-  `
+      combinedData[name][key] = revenue
+      combinedData[name]['lastRebill'] = lastRebill
+    })
+  }
 
-  for (const store of stores) {
-    const { store_id, key } = store
-    const endpoint = `https://${store_id}.myshopify.com/admin/api/2024-07/graphql.json`
+  const addFbData = (
+    data: FbData[],
+    keyRoas: 'fbLast30Roas' | 'fbSinceRebillRoas',
+    keySpend: 'fbLast30Spend' | 'fbSinceRebillSpend',
+  ) => {
+    data.forEach(({ name, roas, spend }) => {
+      if (!combinedData[name]) {
+        combinedData[name] = { name }
+      }
+      combinedData[name][keyRoas] = roas
+      combinedData[name][keySpend] = spend
+    })
+  }
+  addRevenueData(revenueLast30, 'revenueLast30')
+  addRevenueData(revenueSinceRebill, 'revenueSinceRebill')
+  addFbData(fbLast30, 'fbLast30Roas', 'fbLast30Spend')
+  addFbData(fbSinceRebill, 'fbSinceRebillRoas', 'fbSinceRebillSpend')
 
-    console.log(store_id, key)
-    try {
-      const result = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': key,
-        } as HeadersInit,
-        body: { query } && JSON.stringify({ query }),
-      })
-
-      const data = await result.json()
-
-      // Extract and calculate AOV
-      const orders = data.data.orders.edges
-      const totalAmount = orders.reduce((acc: number, order: any) => {
-        return acc + parseFloat(order.node.totalPriceSet.shopMoney.amount)
-      }, 0)
-
-      const averageOrderValue = totalAmount / orders.length
-
-      console.log(`AOV for store ${store_id}:`, averageOrderValue)
-    } catch (error) {
-      console.log(`Error fetching data for store ${store_id}`)
-      console.error('Error:', error)
-      return false
-    }
-  */
+  return Object.values(combinedData)
 }
