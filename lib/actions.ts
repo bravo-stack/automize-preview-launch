@@ -261,14 +261,13 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
           return sum + parseFloat(order.node.totalPriceSet.shopMoney.amount)
         }, 0)
 
-        // Check if there's another page
         hasNextPage = data.data.orders.pageInfo.hasNextPage
         if (hasNextPage) {
           cursor = orders[orders.length - 1].cursor
         }
       } catch (error) {
         console.error(`Error fetching data for store ${store_id}:`, error)
-        hasNextPage = false // Stop in case of an error
+        hasNextPage = false
       }
     }
 
@@ -278,26 +277,35 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
   const calculateRevenue = async () => {
     const results = await Promise.all(
       stores.map(async (store) => {
-        const { store_id, key, name } = store
-        const decryptedKey = decrypt(key)
+        try {
+          const { store_id, key, name } = store
+          const decryptedKey = decrypt(key)
 
-        console.log(`Fetching data for store: ${store_id}`)
+          console.log(`Fetching data for store: ${store_id}`)
 
-        let res
-        if (rebill) {
-          res = await fetchOrders(store_id, decryptedKey, store.last_rebill)
-        } else {
-          res = await fetchOrders(store_id, decryptedKey)
+          let res
+          if (rebill) {
+            res = await fetchOrders(store_id, decryptedKey, store.last_rebill)
+          } else {
+            res = await fetchOrders(store_id, decryptedKey)
+          }
+
+          const totalOrders = res.totalOrders
+          const totalAmount = res.totalAmount
+
+          const AOV = totalOrders > 0 ? totalAmount / totalOrders : 0
+          const revenue =
+            totalOrders > 0 ? totalOrders * AOV : 'Could not retrieve'
+
+          return { name, revenue, lastRebill: store.last_rebill }
+        } catch (error) {
+          console.error(`Error processing store ${store.store_id}:`, error)
+          return {
+            name: store.name,
+            revenue: 'Error fetching data',
+            lastRebill: store.last_rebill,
+          }
         }
-
-        const totalOrders = res.totalOrders
-        const totalAmount = res.totalAmount
-
-        const AOV = totalOrders > 0 ? totalAmount / totalOrders : 0
-        const revenue =
-          totalOrders > 0 ? totalOrders * AOV : 'Could not retrieve'
-
-        return { name, revenue, lastRebill: store.last_rebill }
       }),
     )
 
@@ -421,6 +429,16 @@ export async function financialize(stores: any[]) {
     })
 
     await appendDataToSheet(id, sheetData)
+  }
+}
+
+export async function revenue(stores: any[]) {
+  const revenueLast30 = await fetchShopify(stores)
+
+  const id = '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY'
+
+  if (revenueLast30) {
+    console.log(revenueLast30)
   }
 }
 
