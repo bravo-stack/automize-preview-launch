@@ -3,6 +3,8 @@ import FinancialX from '@/components/FinancialX'
 import StoreList from '@/components/StoreList'
 import { createClient } from '@/lib/db/server'
 
+export const maxDuration = 30
+
 export default async function FinancialXPage() {
   const db = createClient()
   const { data: allStores } = await db.from('store').select('*').order('name')
