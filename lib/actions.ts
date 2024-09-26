@@ -394,6 +394,10 @@ export async function financialize(stores: any[]) {
       fetchFacebook(stores, true),
     ])
 
+  if (!revenueLast30 || !revenueSinceRebill || !fbLast30 || !fbSinceRebill) {
+    return false
+  }
+
   const data = combineData(
     revenueLast30 as RevenueData[],
     revenueSinceRebill as RevenueData[],
@@ -430,6 +434,8 @@ export async function financialize(stores: any[]) {
 
     await appendDataToSheet(id, sheetData)
   }
+
+  return true
 }
 
 export async function revenue(stores: any[]) {
