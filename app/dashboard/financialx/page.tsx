@@ -4,7 +4,7 @@ import StoreList from '@/components/StoreList'
 import { createClient } from '@/lib/db/server'
 
 export const maxDuration = 30
-
+// act_795755889058820/insights?fields=cpc,cpm,ctr,quality_ranking,engagement_rate_ranking,conversion_rate_ranking,purchase_roas
 export default async function FinancialXPage() {
   const db = createClient()
   const { data: allStores } = await db.from('store').select('*').order('name')

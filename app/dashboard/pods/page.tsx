@@ -1,13 +1,18 @@
-import CreateSheet from '@/components/CreateSheet'
 import { createClient } from '@/lib/db/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import CreatePodSheet from './CreatePodSheet'
 
-export default async function Autometric() {
+export default async function Pods() {
   const db = createClient()
 
   const id = '38817360-608e-438f-93b2-a208c35a8da7'
-  const { data: sheets } = await db.from('sheets').select('*').eq('user_id', id).eq('pod', '')
+  const { data: sheets } = await db
+    .from('sheets')
+    .select('*')
+    .eq('user_id', id)
+    .neq('pod', '')
+
   const {
     data: { user },
   } = await db.auth.getUser()
@@ -48,10 +53,10 @@ export default async function Autometric() {
             />
           </search>
 
-          <CreateSheet user={user} />
+          <CreatePodSheet user={user} />
 
           <Link
-            href="/dashboard/autometric/manage-accounts"
+            href="/dashboard/pods/manage-accounts"
             className="rounded-md border border-white px-3 py-1.5 font-medium"
           >
             Manage&nbsp;Accounts
@@ -60,7 +65,7 @@ export default async function Autometric() {
 
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {sheets?.map((sheet, index) => {
-            const href = `/dashboard/autometric/${sheet.sheet_id}`
+            const href = `/dashboard/pods/${sheet.sheet_id}`
 
             return (
               <li

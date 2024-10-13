@@ -87,6 +87,7 @@ export async function createSheet(
   title: string,
   email: string,
   sheetData: any,
+  pod?: string,
 ) {
   const sheets = google.sheets({ version: 'v4', auth: await authorizeSheets() })
   const drive = google.drive({ version: 'v3', auth: await authorizeDrive() })
@@ -99,7 +100,7 @@ export async function createSheet(
   const { user_id, frequency, templateId } = sheetData
   const { data, error } = await db
     .from('sheets')
-    .insert({ title, user_id, refresh: frequency, sheet_id })
+    .insert({ title, user_id, refresh: frequency, sheet_id, pod: pod || '' })
     .select()
 
   if (templateId) {
@@ -266,7 +267,7 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
           cursor = orders[orders.length - 1].cursor
         }
       } catch (error) {
-        console.error(`Error fetching data for store ${store_id}:`, error)
+        console.error(`Error fetching data for store ${store_id}.`)
         hasNextPage = false
       }
     }
@@ -280,8 +281,7 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
         try {
           const { store_id, key, name } = store
           const decryptedKey = decrypt(key)
-
-          console.log(`Fetching data for store: ${store_id}`)
+          // console.log(`Fetching data for store: ${store_id}`)
 
           let res
           if (rebill) {
@@ -299,7 +299,7 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
 
           return { name, revenue, lastRebill: store.last_rebill }
         } catch (error) {
-          console.error(`Error processing store ${store.store_id}:`, error)
+          console.error(`Error processing store ${store.store_id}.`)
           return {
             name: store.name,
             revenue: 'Error fetching data',
