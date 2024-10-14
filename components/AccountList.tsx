@@ -224,7 +224,7 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
                   onChange={(e) =>
                     setEditAccount({
                       ...editAccount,
-                      pod: e.target.value,
+                      pod: e.target.value.toLowerCase(),
                     })
                   }
                   required
