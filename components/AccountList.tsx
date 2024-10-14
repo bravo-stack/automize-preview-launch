@@ -109,8 +109,8 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {filteredAccounts.map((account) => (
-              <tr key={account.account_id}>
+            {filteredAccounts.map((account, index) => (
+              <tr key={index}>
                 <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
                   {account.name}
                 </td>
