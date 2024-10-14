@@ -217,20 +217,20 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
               </div>
               <div>
                 <label className="block text-sm font-medium">Pod</label>
-                <select
+
+                <input
+                  type="text"
                   value={editAccount.pod}
                   onChange={(e) =>
-                    setEditAccount({ ...editAccount, pod: e.target.value })
+                    setEditAccount({
+                      ...editAccount,
+                      pod: e.target.value,
+                    })
                   }
+                  required
+                  placeholder="E.g. maps"
                   className="w-full rounded border px-3 py-2"
-                >
-                  <option value="none">None</option>
-                  <option value="maps">Maps</option>
-                  <option value="justin">Justin</option>
-                  <option value="ray">Ray</option>
-                  <option value="socrates">Socrates</option>
-                  <option value="zain">Zain</option>
-                </select>
+                />
               </div>
 
               <div className="flex justify-end space-x-2">
