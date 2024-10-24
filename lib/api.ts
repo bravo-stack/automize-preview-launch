@@ -51,33 +51,37 @@ export async function appendDataToSheet(
     })
 
     // Step 3: If the sheet name is "ROAS" and it's newly created, add the header row
-    if (name === 'ROAS') {
-      const headerRow = [
-        [
-          'Name',
-          'Spend 1',
-          'ROAS 1',
-          'Spend 3',
-          'ROAS 3',
-          'Spend 7',
-          'ROAS 7',
-          'Spend 14',
-          'ROAS 14',
-          'Spend 30',
-          'ROAS 30',
-        ],
-      ]
-
-      // Insert the header row at the first row (A1)
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: sheetId,
-        range: `${name}!A1`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: headerRow,
-        },
-      })
+    let headerRow = [['']]
+    switch (name) {
+      case 'ROAS':
+        headerRow = [
+          [
+            'Name',
+            'Spend 1',
+            'ROAS 1',
+            'Spend 3',
+            'ROAS 3',
+            'Spend 7',
+            'ROAS 7',
+            'Spend 14',
+            'ROAS 14',
+            'Spend 30',
+            'ROAS 30',
+          ],
+        ]
+        break
+      case 'ROAS Low':
+        headerRow = [['Name', 'Spend 7', 'ROAS 7', 'Spend 30', 'ROAS 30']]
     }
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: `${name}!A1`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: headerRow,
+      },
+    })
   }
 
   // Step 3: Append the data to the correct sheet

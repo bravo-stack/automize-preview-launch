@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { appendDataToSheet } from '@/lib/api'
 import { createClient } from '@/lib/db/server'
 
-const datePresets = ['yesterday', 'last_3d', 'last_7d', 'last_14d', 'last_30d']
+const datePresets = ['last_7d', 'last_30d']
 
 // MAIN GET
 export async function POST(request: NextRequest) {
@@ -83,7 +83,16 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      return { name, data: formattedResults }
+      const roasValues = formattedResults.map((r) => r.roas)
+      const allRoasValid = roasValues.every(
+        (roas) => roas !== '--' && parseFloat(roas) < 2.0,
+      )
+
+      if (allRoasValid) {
+        return { name, data: formattedResults }
+      } else {
+        return { name }
+      }
     } catch (error) {
       console.error('Error fetching insights:', error)
       return { name }
@@ -109,11 +118,9 @@ export async function POST(request: NextRequest) {
         if (result) {
           return [name, ...result]
         }
-
-        return [name, 'No data']
       })
 
-      await appendDataToSheet(sheetID, sheetData, 'ROAS')
+      await appendDataToSheet(sheetID, sheetData, 'ROAS Low')
 
       return NextResponse.json({
         ok: true,

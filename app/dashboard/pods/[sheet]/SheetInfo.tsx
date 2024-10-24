@@ -69,8 +69,6 @@ export default function SheetInfo({ links, data, pod }: SheetInfoProps) {
 
   const handleROASRefresh: () => Promise<void> = async () => {
     const sheetID = sheet.sheet_id
-    const datePreset = sheet.refresh
-
     setNotificationState({ state: 'loading', message: 'Refreshing data...' })
 
     try {
@@ -81,7 +79,43 @@ export default function SheetInfo({ links, data, pod }: SheetInfoProps) {
         },
         body: JSON.stringify({
           sheetID,
-          datePreset,
+          pod,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to refresh data')
+      }
+      const data = await response.json()
+      console.log(data)
+      setNotificationState({
+        state: 'success',
+        message: 'Data refreshed successfully!',
+      })
+    } catch (error) {
+      console.error('Error fetching ad data:', error)
+      setNotificationState({
+        state: 'error',
+        message: 'Failed to refresh data',
+      })
+    } finally {
+      setTimeout(() => {
+        setNotificationState(null)
+      }, 5000)
+    }
+  }
+
+  const handleLowRefresh: () => Promise<void> = async () => {
+    const sheetID = sheet.sheet_id
+    setNotificationState({ state: 'loading', message: 'Refreshing data...' })
+
+    try {
+      const response = await fetch('/api/roas/low', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sheetID,
           pod,
         }),
       })
@@ -151,9 +185,16 @@ export default function SheetInfo({ links, data, pod }: SheetInfoProps) {
 
             <button
               onClick={handleROASRefresh}
-              className="rounded bg-white px-3 py-2 font-medium text-black"
+              className="mr-3 rounded bg-white px-3 py-2 font-medium text-black"
             >
               Refresh ROAS
+            </button>
+
+            <button
+              onClick={handleLowRefresh}
+              className="rounded bg-rose-950 px-3 py-2 font-medium text-white"
+            >
+              Refresh Low ROAS
             </button>
           </div>
         )}
