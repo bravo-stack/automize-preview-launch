@@ -83,9 +83,11 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      const roasValues = formattedResults.map((r) => r.roas)
-      const allRoasValid = roasValues.every(
-        (roas) => roas === '--' || (!isNaN(roas) && parseFloat(roas) < 2.0),
+      //   const roasValues = formattedResults.map((r) => r.roas)
+      const allRoasValid = formattedResults.some(
+        (result) =>
+          (result.roas === '--' && result.spend !== '--') ||
+          (!isNaN(result.roas) && parseFloat(result.roas) < 2.0),
       )
 
       if (allRoasValid) {
