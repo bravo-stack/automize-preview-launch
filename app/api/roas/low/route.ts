@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
       const roasValues = formattedResults.map((r) => r.roas)
       const allRoasValid = roasValues.every(
-        (roas) => roas !== '--' && parseFloat(roas) < 2.0,
+        (roas) => roas === '--' || (!isNaN(roas) && parseFloat(roas) < 2.0),
       )
 
       if (allRoasValid) {
