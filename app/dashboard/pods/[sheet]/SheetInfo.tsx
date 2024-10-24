@@ -67,6 +67,46 @@ export default function SheetInfo({ links, data, pod }: SheetInfoProps) {
     }
   }
 
+  const handleROASRefresh: () => Promise<void> = async () => {
+    const sheetID = sheet.sheet_id
+    const datePreset = sheet.refresh
+
+    setNotificationState({ state: 'loading', message: 'Refreshing data...' })
+
+    try {
+      const response = await fetch('/api/roas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sheetID,
+          datePreset,
+          pod,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to refresh data')
+      }
+      const data = await response.json()
+      console.log(data)
+      setNotificationState({
+        state: 'success',
+        message: 'Data refreshed successfully!',
+      })
+    } catch (error) {
+      console.error('Error fetching ad data:', error)
+      setNotificationState({
+        state: 'error',
+        message: 'Failed to refresh data',
+      })
+    } finally {
+      setTimeout(() => {
+        setNotificationState(null)
+      }, 5000)
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <nav className="grid grid-cols-2 gap-3">
@@ -104,9 +144,16 @@ export default function SheetInfo({ links, data, pod }: SheetInfoProps) {
 
             <button
               onClick={handleDataRefresh}
+              className="mr-3 rounded bg-white px-3 py-2 font-medium text-black"
+            >
+              Refresh General
+            </button>
+
+            <button
+              onClick={handleROASRefresh}
               className="rounded bg-white px-3 py-2 font-medium text-black"
             >
-              Refresh Data
+              Refresh ROAS
             </button>
           </div>
         )}

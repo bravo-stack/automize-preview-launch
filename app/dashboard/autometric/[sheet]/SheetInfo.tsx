@@ -33,14 +33,14 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
     setNotificationState({ state: 'loading', message: 'Refreshing data...' })
 
     try {
-      const response = await fetch('/api/ads', {
+      const response = await fetch('/api/roas', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           sheetID,
-          datePreset,
+          // datePreset,
         }),
       })
       if (!response.ok) {

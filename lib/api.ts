@@ -17,17 +17,77 @@ export async function appendFinancials(id: string, data: any) {
   })
 }
 
-export async function appendDataToSheet(sheetId: string, data: any) {
+export async function appendDataToSheet(
+  sheetId: string,
+  data: any,
+  name?: string,
+) {
   const auth = await authorizeSheets()
   const sheets = google.sheets({ version: 'v4', auth })
 
+  const spreadsheet = await sheets.spreadsheets.get({
+    spreadsheetId: sheetId,
+  })
+
+  const sheetExists = spreadsheet.data.sheets?.some(
+    (sheet) => sheet.properties?.title === name,
+  )
+
+  // Step 2: If the sheet doesn't exist, create it
+  if (!sheetExists && name) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: sheetId,
+      requestBody: {
+        requests: [
+          {
+            addSheet: {
+              properties: {
+                title: name,
+              },
+            },
+          },
+        ],
+      },
+    })
+
+    // Step 3: If the sheet name is "ROAS" and it's newly created, add the header row
+    if (name === 'ROAS') {
+      const headerRow = [
+        [
+          'Name',
+          'Spend 1',
+          'ROAS 1',
+          'Spend 3',
+          'ROAS 3',
+          'Spend 7',
+          'ROAS 7',
+          'Spend 14',
+          'ROAS 14',
+          'Spend 30',
+          'ROAS 30',
+        ],
+      ]
+
+      // Insert the header row at the first row (A1)
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `${name}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: headerRow,
+        },
+      })
+    }
+  }
+
+  // Step 3: Append the data to the correct sheet
   const requestBody = {
     values: data,
   }
 
-  sheets.spreadsheets.values.update({
+  await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
-    range: 'Sheet1!A2',
+    range: name ? `${name}!A2` : 'Sheet1!A2',
     valueInputOption: 'RAW',
     requestBody,
   })

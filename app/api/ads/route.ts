@@ -42,12 +42,13 @@ export async function POST(request: NextRequest) {
   const actions = `'omni_add_to_cart','omni_initiated_checkout','link_click','purchase','landing_page_view','video_view'`
 
   async function fetchInsights(accountId: string, name: string, pod: string) {
-    const url = `https://graph.facebook.com/v11.0/${accountId}/insights?access_token=${FACEBOOK_ACCESS_TOKEN}&fields=${fields}&date_preset=${datePreset}&filtering=[{"field":"action_type","operator":"IN","value":[${actions}]}]`
+    const url = `https://graph.facebook.com/v20.0/${accountId}/insights?access_token=${FACEBOOK_ACCESS_TOKEN}&fields=${fields}&date_preset=${datePreset}&filtering=[{"field":"action_type","operator":"IN","value":[${actions}]}]`
 
     try {
       const response = await fetch(url)
+      // console.log(response)
       if (!response.ok) {
-        // console.error(`HTTP error! Status for "${name}": ${response.status}`)
+        console.error(`Status for "${name}": ${response.status}`)
         return {
           name,
           pod: 'Missing Permissions or Incorrect ID',
