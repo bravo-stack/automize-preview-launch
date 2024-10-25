@@ -551,6 +551,7 @@ function combineData(
 }
 
 export async function changePassword() {
+  return
   const db = createClient()
 
   await db.auth.updateUser({
