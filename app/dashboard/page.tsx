@@ -21,7 +21,7 @@ export default async function Dashboard() {
   ]
 
   return (
-    <main className="px-24 pb-24 pt-10">
+    <main className="min-h-screen px-24 pb-24 pt-10">
       <section>
         <hgroup className="mb-10">
           <h1 className="w-fit bg-gradient-to-b from-white via-zinc-500/90 to-white/70 bg-clip-text text-4xl tracking-wide text-transparent">
