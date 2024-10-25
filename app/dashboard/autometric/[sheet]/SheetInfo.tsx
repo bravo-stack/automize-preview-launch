@@ -40,7 +40,7 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
         },
         body: JSON.stringify({
           sheetID,
-          // datePreset,
+          datePreset,
         }),
       })
       if (!response.ok) {

@@ -30,23 +30,16 @@ export async function POST(request: NextRequest) {
   }
 
   const { sheetID, datePreset } = await request.json()
-  // let allStores
-
-  // if (datePreset === 'last_7d' || datePreset === 'last_30d') {
-  //   const { data } = await db.from('store').select('*').order('name')
-  //   allStores = data ?? []
-  // }
 
   const FACEBOOK_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN
   const fields = `actions,cost_per_action_type,impressions,spend,cpc,cpm,ctr,quality_ranking,engagement_rate_ranking,conversion_rate_ranking,purchase_roas`
   const actions = `'omni_add_to_cart','omni_initiated_checkout','link_click','purchase','landing_page_view','video_view'`
 
   async function fetchInsights(accountId: string, name: string, pod: string) {
-    const url = `https://graph.facebook.com/v20.0/${accountId}/insights?access_token=${FACEBOOK_ACCESS_TOKEN}&fields=${fields}&date_preset=${datePreset}&filtering=[{"field":"action_type","operator":"IN","value":[${actions}]}]`
+    const url = `https://graph.facebook.com/v11.0/${accountId}/insights?access_token=${FACEBOOK_ACCESS_TOKEN}&fields=${fields}&date_preset=${datePreset}&filtering=[{"field":"action_type","operator":"IN","value":[${actions}]}]`
 
     try {
       const response = await fetch(url)
-      // console.log(response)
       if (!response.ok) {
         console.error(`Status for "${name}": ${response.status}`)
         return {
