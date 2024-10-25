@@ -549,3 +549,11 @@ function combineData(
 
   return Object.values(combinedData)
 }
+
+export async function changePassword() {
+  const db = createClient()
+
+  await db.auth.updateUser({
+    password: '',
+  })
+}
