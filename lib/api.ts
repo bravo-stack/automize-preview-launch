@@ -72,6 +72,22 @@ export async function appendDataToSheet(
         break
       case 'ROAS Low':
         headerRow = [['Name', 'Spend 7', 'ROAS 7', 'Spend 30', 'ROAS 30']]
+        break
+      case 'Revenue':
+        headerRow = [
+          [
+            'Name',
+            'Revenue last 30',
+            'Ad spend last 30',
+            'Revenue since rebill',
+            'Ad spend since rebill',
+            'ROAS last 30',
+            'ROAS since rebill',
+            'Is Rebillable',
+            'Last Rebill Date',
+          ],
+        ]
+        break
     }
 
     await sheets.spreadsheets.values.update({

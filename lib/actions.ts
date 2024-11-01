@@ -12,6 +12,7 @@ import {
 } from './api'
 import { getTemplateById } from '@/content/templates'
 import { decrypt, encrypt } from './crypto'
+import { toNumber } from './utils'
 
 interface RevenueData {
   name: string
@@ -385,7 +386,11 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
   return await fetchAllInsights()
 }
 
-export async function financialize(stores: any[]) {
+export async function financialize(
+  stores: any[],
+  sheetId?: string,
+  subsheet = false,
+) {
   const [revenueLast30, revenueSinceRebill, fbLast30, fbSinceRebill] =
     await Promise.all([
       fetchShopify(stores),
@@ -405,7 +410,16 @@ export async function financialize(stores: any[]) {
     fbSinceRebill as FbData[],
   )
 
-  const id = '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY'
+  const id = sheetId ?? '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY'
+
+  let totalRevenueLast30 = 0
+  let totalFbLast30Spend = 0
+  let totalRevenueSinceRebill = 0
+  let totalFbSinceRebillSpend = 0
+  let fbLast30RoasSum = 0
+  let fbSinceRebillRoasSum = 0
+  let fbLast30RoasCount = 0
+  let fbSinceRebillRoasCount = 0
 
   if (revenueLast30 && fbLast30 && fbSinceRebill && revenueSinceRebill) {
     const sheetData = data.map((s: any, index) => {
@@ -415,6 +429,30 @@ export async function financialize(stores: any[]) {
         s.fbSinceRebillRoas,
         s.lastRebill,
       )
+
+      const revenueLast30 = toNumber(s.revenueLast30)
+      const fbLast30Spend = toNumber(s.fbLast30Spend)
+      const revenueSinceRebill = toNumber(s.revenueSinceRebill)
+      const fbSinceRebillSpend = toNumber(s.fbSinceRebillSpend)
+      const fbLast30Roas = toNumber(s.fbLast30Roas)
+      const fbSinceRebillRoas = toNumber(s.fbSinceRebillRoas)
+
+      if (revenueLast30 !== null) totalRevenueLast30 += revenueLast30
+      if (fbLast30Spend !== null) totalFbLast30Spend += fbLast30Spend
+      if (revenueSinceRebill !== null)
+        totalRevenueSinceRebill += revenueSinceRebill
+      if (fbSinceRebillSpend !== null)
+        totalFbSinceRebillSpend += fbSinceRebillSpend
+
+      if (fbLast30Roas !== null) {
+        fbLast30RoasSum += fbLast30Roas
+        fbLast30RoasCount++
+      }
+
+      if (fbSinceRebillRoas !== null) {
+        fbSinceRebillRoasSum += fbSinceRebillRoas
+        fbSinceRebillRoasCount++
+      }
 
       return [
         s.name,
@@ -432,7 +470,29 @@ export async function financialize(stores: any[]) {
       ]
     })
 
-    await appendDataToSheet(id, sheetData)
+    const averageFbLast30Roas =
+      fbLast30RoasCount > 0 ? fbLast30RoasSum / fbLast30RoasCount : 0
+    const averageFbSinceRebillRoas =
+      fbSinceRebillRoasCount > 0
+        ? fbSinceRebillRoasSum / fbSinceRebillRoasCount
+        : 0
+
+    sheetData.push([
+      'TOTAL/AVG',
+      totalRevenueLast30.toLocaleString(),
+      totalFbLast30Spend.toLocaleString(),
+      totalRevenueSinceRebill.toLocaleString(),
+      totalFbSinceRebillSpend.toLocaleString(),
+      averageFbLast30Roas.toLocaleString(),
+      averageFbSinceRebillRoas.toLocaleString(),
+      '',
+      '',
+      '',
+    ])
+
+    subsheet
+      ? await appendDataToSheet(id, sheetData, 'Revenue')
+      : await appendDataToSheet(id, sheetData)
   }
 
   return true

@@ -4,7 +4,13 @@ import { useState } from 'react'
 import { financialize } from '@/lib/actions'
 import NotificationModal from './NotificationModal'
 
-export default function FinancialX({ stores }: { stores: any[] }) {
+export default function FinancialX({
+  stores,
+  sheetId,
+}: {
+  stores: any[]
+  sheetId?: string
+}) {
   const [notificationState, setNotificationState] = useState<{
     state: string
     message: string
@@ -12,7 +18,7 @@ export default function FinancialX({ stores }: { stores: any[] }) {
 
   const handleRefresh = async () => {
     setNotificationState({ state: 'loading', message: 'Refreshing data...' })
-    const data = await financialize(stores)
+    const data = await financialize(stores, sheetId, sheetId ? true : false)
 
     if (data) {
       setNotificationState({
@@ -34,7 +40,7 @@ export default function FinancialX({ stores }: { stores: any[] }) {
   return (
     <>
       <button onClick={handleRefresh} className="rounded border px-2 py-1.5">
-        Refresh Data
+        Refresh FinanceX
       </button>
 
       {notificationState && (

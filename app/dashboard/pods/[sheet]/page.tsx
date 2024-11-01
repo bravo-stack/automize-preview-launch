@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/db/server'
 import SheetInfo from './SheetInfo'
+import FinancialX from '@/components/FinancialX'
 
 export default async function Sheet({ params }: { params: { sheet: string } }) {
   const db = createClient()
@@ -9,6 +10,11 @@ export default async function Sheet({ params }: { params: { sheet: string } }) {
     .select('*')
     .eq('sheet_id', params.sheet)
     .single()
+
+  // const { data: store } = await db.from('account').select(`*`)
+  const { data: stores } = await db.rpc('stores_by_pod', {
+    pod_value: sheet.pod,
+  })
 
   const links = ['Sheet', 'Automations', 'History', 'Settings']
   const lastRefresh = new Date(sheet.last_refresh).toLocaleString()
@@ -22,14 +28,18 @@ export default async function Sheet({ params }: { params: { sheet: string } }) {
             {sheet.title}
           </h2>
 
-          <a
-            href={`https://docs.google.com/spreadsheets/d/${sheet.sheet_id}/edit`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-md bg-white px-3 py-2 font-medium text-black"
-          >
-            Visit
-          </a>
+          <div className="space-x-3">
+            <FinancialX stores={stores || []} sheetId={sheet.sheet_id} />
+
+            <a
+              href={`https://docs.google.com/spreadsheets/d/${sheet.sheet_id}/edit`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md bg-white px-3 py-2 font-medium text-black"
+            >
+              Visit
+            </a>
+          </div>
         </header>
 
         <SheetInfo links={links} data={{ sheet, lastRefresh }} pod={pod} />
