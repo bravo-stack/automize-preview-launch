@@ -79,43 +79,66 @@ export async function POST(request: NextRequest) {
   try {
     const adInsights = await fetchAllInsights()
 
-    // if (datePreset === 'last_7d' && allStores) {
-    //   console.log(allStores)
-    //   await revenue(allStores)
-    // }
+    adInsights?.sort((a, b) => {
+      // Try to parse the purchase_roas for both a and b, default to 0 if invalid
+      const roasA = parseFloat(
+        a.insights.purchase_roas ? a.insights.purchase_roas[0].value : '0',
+      )
+      const roasB = parseFloat(
+        b.insights.purchase_roas ? b.insights.purchase_roas[0].value : '0',
+      )
 
+      // If parsing fails, both parseFloat will return NaN, so treat them as 0
+      const validROASA = isNaN(roasA) ? 0 : roasA
+      const validROASB = isNaN(roasB) ? 0 : roasB
+
+      return validROASB - validROASA
+    })
     if (adInsights) {
-      const sheetData = adInsights.map(({ name, pod, insights: i }) => {
-        const {
-          purchase,
-          link_click,
-          omni_add_to_cart,
-          omni_initiated_checkout,
-          landing_page_view,
-          video_view,
-        } = getActions(i.actions)
+      const sheetData = adInsights
+        .map(({ name, pod, insights: i }) => {
+          const roas = parseFloat(
+            i.purchase_roas ? i.purchase_roas[0].value : '0',
+          )
+          const validROAS = isNaN(roas) ? 0 : roas
 
-        const CPA = getCPA(i.cost_per_action_type)
+          const {
+            purchase,
+            link_click,
+            omni_add_to_cart,
+            omni_initiated_checkout,
+            landing_page_view,
+            video_view,
+          } = getActions(i.actions)
 
-        return [
-          name,
-          pod,
-          CPA.purchase ?? '',
-          i.spend,
-          i.cpc,
-          i.cpm,
-          i.ctr,
-          i.quality_ranking,
-          i.engagement_rate_ranking,
-          i.conversion_rate_ranking,
-          i.purchase_roas ? i.purchase_roas[0].value : '',
-          getHookRate(video_view, i.impressions),
-          getPercentage(omni_add_to_cart, link_click),
-          getPercentage(omni_initiated_checkout, omni_add_to_cart),
-          getPercentage(purchase, omni_initiated_checkout),
-          getBounceRate(landing_page_view, link_click),
-        ]
-      })
+          const CPA = getCPA(i.cost_per_action_type)
+
+          return {
+            name,
+            pod,
+            roas: validROAS,
+            data: [
+              name,
+              pod,
+              CPA.purchase ?? '',
+              i.spend,
+              i.cpc,
+              i.cpm,
+              i.ctr,
+              i.quality_ranking,
+              i.engagement_rate_ranking,
+              i.conversion_rate_ranking,
+              i.purchase_roas ? i.purchase_roas[0].value : '',
+              getHookRate(video_view, i.impressions),
+              getPercentage(omni_add_to_cart, link_click),
+              getPercentage(omni_initiated_checkout, omni_add_to_cart),
+              getPercentage(purchase, omni_initiated_checkout),
+              getBounceRate(landing_page_view, link_click),
+            ],
+          }
+        })
+        .sort((a, b) => b.roas - a.roas)
+        .map((item) => item.data)
 
       await appendDataToSheet(sheetID, sheetData)
 

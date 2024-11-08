@@ -9,7 +9,6 @@ import {
   getPercentage,
 } from '@/lib/insights'
 import { createClient } from '@/lib/db/server'
-// import { revenue } from '@/lib/actions'
 
 // MAIN GET
 export async function POST(request: NextRequest) {
@@ -32,13 +31,6 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // let allStores
-
-  // if (datePreset === 'last_7d' || datePreset === 'last_30d') {
-  //   const { data } = await db.from('store').select('*').order('name')
-  //   allStores = data ?? []
-  // }
-
   const FACEBOOK_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN
   const fields = `actions,cost_per_action_type,impressions,spend,cpc,cpm,ctr,quality_ranking,engagement_rate_ranking,conversion_rate_ranking,purchase_roas`
   const actions = `'omni_add_to_cart','omni_initiated_checkout','link_click','purchase','landing_page_view','video_view'`
@@ -49,7 +41,6 @@ export async function POST(request: NextRequest) {
     try {
       const response = await fetch(url)
       if (!response.ok) {
-        // console.error(`HTTP error! Status for "${name}": ${response.status}`)
         return {
           name,
           pod: 'Missing Permissions or Incorrect ID',
@@ -59,7 +50,6 @@ export async function POST(request: NextRequest) {
 
       const data = await response.json()
       if (!data.data || data.data.length === 0) {
-        // console.error('No insights for ', name)
         return {
           name,
           pod: `No data for ${datePreset}`,
@@ -87,43 +77,51 @@ export async function POST(request: NextRequest) {
   try {
     const adInsights = await fetchAllInsights()
 
-    // if (datePreset === 'last_7d' && allStores) {
-    //   console.log(allStores)
-    //   await revenue(allStores)
-    // }
-
     if (adInsights) {
-      const sheetData = adInsights.map(({ name, pod, insights: i }) => {
-        const {
-          purchase,
-          link_click,
-          omni_add_to_cart,
-          omni_initiated_checkout,
-          landing_page_view,
-          video_view,
-        } = getActions(i.actions)
+      const sheetData = adInsights
+        .map(({ name, pod, insights: i }) => {
+          const roas = parseFloat(
+            i.purchase_roas ? i.purchase_roas[0].value : '0',
+          )
+          const validROAS = isNaN(roas) ? 0 : roas
 
-        const CPA = getCPA(i.cost_per_action_type)
+          const {
+            purchase,
+            link_click,
+            omni_add_to_cart,
+            omni_initiated_checkout,
+            landing_page_view,
+            video_view,
+          } = getActions(i.actions)
 
-        return [
-          name,
-          pod,
-          CPA.purchase ?? '',
-          i.spend,
-          i.cpc,
-          i.cpm,
-          i.ctr,
-          i.quality_ranking,
-          i.engagement_rate_ranking,
-          i.conversion_rate_ranking,
-          i.purchase_roas ? i.purchase_roas[0].value : '',
-          getHookRate(video_view, i.impressions),
-          getPercentage(omni_add_to_cart, link_click),
-          getPercentage(omni_initiated_checkout, omni_add_to_cart),
-          getPercentage(purchase, omni_initiated_checkout),
-          getBounceRate(landing_page_view, link_click),
-        ]
-      })
+          const CPA = getCPA(i.cost_per_action_type)
+
+          return {
+            name,
+            pod,
+            roas: validROAS,
+            data: [
+              name,
+              pod,
+              CPA.purchase ?? '',
+              i.spend,
+              i.cpc,
+              i.cpm,
+              i.ctr,
+              i.quality_ranking,
+              i.engagement_rate_ranking,
+              i.conversion_rate_ranking,
+              i.purchase_roas ? i.purchase_roas[0].value : '',
+              getHookRate(video_view, i.impressions),
+              getPercentage(omni_add_to_cart, link_click),
+              getPercentage(omni_initiated_checkout, omni_add_to_cart),
+              getPercentage(purchase, omni_initiated_checkout),
+              getBounceRate(landing_page_view, link_click),
+            ],
+          }
+        })
+        .sort((a, b) => b.roas - a.roas)
+        .map((item) => item.data)
 
       await appendDataToSheet(sheetID, sheetData)
 

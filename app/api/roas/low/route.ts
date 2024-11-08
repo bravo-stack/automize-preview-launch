@@ -83,18 +83,7 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      //   const roasValues = formattedResults.map((r) => r.roas)
-      const allRoasValid = formattedResults.some(
-        (result) =>
-          (result.roas === '--' && result.spend !== '--') ||
-          (!isNaN(result.roas) && parseFloat(result.roas) < 2.0),
-      )
-
-      if (allRoasValid) {
-        return { name, data: formattedResults }
-      } else {
-        return { name }
-      }
+      return { name, data: formattedResults }
     } catch (error) {
       console.error('Error fetching insights:', error)
       return { name }
@@ -114,13 +103,26 @@ export async function POST(request: NextRequest) {
     const adInsights = await fetchAllInsights()
 
     if (adInsights) {
-      const sheetData = adInsights.map(({ name, data }) => {
-        const result = data?.flatMap((d) => [d.spend, d.roas])
+      const sheetData = adInsights
+        .map(({ name, data }) => {
+          // Extract spend for the last 30 days (last_30d)
+          const spend30d = data?.find(
+            (d) => d.date_preset === 'last_30d',
+          )?.spend
+          const validSpend30d =
+            spend30d === '--' ? 0 : parseFloat(spend30d) || 0
 
-        if (result) {
-          return [name, ...result]
-        }
-      })
+          const result = data?.flatMap((d) => [d.spend, d.roas])
+
+          if (result) {
+            return { name, spend30d: validSpend30d, data: [name, ...result] }
+          }
+
+          return { name, spend30d: validSpend30d, data: [name, 'No data'] }
+        })
+        // Sort by spend for last_30d in descending order
+        .sort((a, b) => b.spend30d - a.spend30d)
+        .map((item) => item.data) // Extract the data array after sorting
 
       await appendDataToSheet(sheetID, sheetData, 'ROAS Low')
 

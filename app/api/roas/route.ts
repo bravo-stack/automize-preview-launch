@@ -103,15 +103,23 @@ export async function POST(request: NextRequest) {
     const adInsights = await fetchAllInsights()
 
     if (adInsights) {
-      const sheetData = adInsights.map(({ name, data }) => {
-        const result = data?.flatMap((d) => [d.spend, d.roas])
+      const sheetData = adInsights
+        .map(({ name, data }) => {
+          // Get the ROAS for the last 30 days (last_30d)
+          const roas30d = data?.find((d) => d.date_preset === 'last_30d')?.roas
+          const validROAS30d = roas30d === '--' ? 0 : parseFloat(roas30d) || 0
 
-        if (result) {
-          return [name, ...result]
-        }
+          const result = data?.flatMap((d) => [d.spend, d.roas])
 
-        return [name, 'No data']
-      })
+          if (result) {
+            return { name, roas30d: validROAS30d, data: [name, ...result] }
+          }
+
+          return { name, roas30d: validROAS30d, data: [name, 'No data'] }
+        })
+        // Now, sort by ROAS for last_30d in descending order
+        .sort((a, b) => b.roas30d - a.roas30d)
+        .map((item) => item.data) // Extract the data array after sorting
 
       await appendDataToSheet(sheetID, sheetData, 'ROAS')
 
