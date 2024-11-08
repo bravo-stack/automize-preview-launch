@@ -410,7 +410,7 @@ export async function financialize(
     fbSinceRebill as FbData[],
   )
 
-  const id = sheetId ?? '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY'
+  const id = sheetId ?? '19xIfkTLIQpuY4V00502VijpAIo_UOPLxYron2oFK1Q8'
 
   let totalRevenueLast30 = 0
   let totalFbLast30Spend = 0
@@ -470,6 +470,12 @@ export async function financialize(
       ]
     })
 
+    const sortedSheetData = sheetData.sort((a, b) => {
+      const fbLast30RoasA = parseFloat(a[5]) || 0
+      const fbLast30RoasB = parseFloat(b[5]) || 0
+      return fbLast30RoasB - fbLast30RoasA
+    })
+
     const averageFbLast30Roas =
       fbLast30RoasCount > 0 ? fbLast30RoasSum / fbLast30RoasCount : 0
     const averageFbSinceRebillRoas =
@@ -477,7 +483,7 @@ export async function financialize(
         ? fbSinceRebillRoasSum / fbSinceRebillRoasCount
         : 0
 
-    sheetData.push([
+    sortedSheetData.push([
       'TOTAL/AVG',
       totalRevenueLast30.toLocaleString(),
       totalFbLast30Spend.toLocaleString(),
@@ -491,8 +497,8 @@ export async function financialize(
     ])
 
     subsheet
-      ? await appendDataToSheet(id, sheetData, 'Revenue')
-      : await appendDataToSheet(id, sheetData)
+      ? await appendDataToSheet(id, sortedSheetData, 'Revenue')
+      : await appendDataToSheet(id, sortedSheetData)
   }
 
   return true
