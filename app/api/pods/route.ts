@@ -77,6 +77,27 @@ export async function POST(request: NextRequest) {
   try {
     const adInsights = await fetchAllInsights()
 
+    adInsights?.sort((a, b) => {
+      const roasA = parseFloat(
+        a.insights.purchase_roas ? a.insights.purchase_roas[0].value : '0',
+      )
+      const roasB = parseFloat(
+        b.insights.purchase_roas ? b.insights.purchase_roas[0].value : '0',
+      )
+      const validROASA = isNaN(roasA) ? 0 : roasA
+      const validROASB = isNaN(roasB) ? 0 : roasB
+
+      // Primary sorting by ROAS if both have non-zero ROAS
+      if (validROASB !== validROASA) {
+        return validROASB - validROASA
+      }
+
+      // Secondary sorting by spend when ROAS values are equal or zero
+      const spendA = parseFloat(a.insights.spend || '0')
+      const spendB = parseFloat(b.insights.spend || '0')
+      return spendB - spendA
+    })
+
     if (adInsights) {
       const sheetData = adInsights
         .map(({ name, pod, insights: i }) => {
