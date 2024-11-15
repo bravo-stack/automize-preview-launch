@@ -1,13 +1,8 @@
 'use client'
 
-import { createAccount, createSheet } from '@/lib/actions'
-import { User } from '@supabase/supabase-js'
+import { createAccount } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-
-interface CreateJobProps {
-  user: User
-}
 
 export default function CreateAccount() {
   const [name, setName] = useState('')
@@ -89,8 +84,13 @@ export default function CreateAccount() {
                   <option value="maps">Maps</option>
                   <option value="justin">Justin</option>
                   <option value="ray">Ray</option>
-                  <option value="socrates">Socrates</option>
                   <option value="zain">Zain</option>
+                  <option value="kelsey">Kelsey</option>
+                  <option value="shalin">Shalin</option>
+                  <option value="kyrillos">Kyrillos</option>
+                  <option value="gabe">Gabe</option>
+                  <option value="inti">Inti</option>
+                  <option value="aun">Aun</option>
                 </select>
               </div>
 

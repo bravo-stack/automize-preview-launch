@@ -10,10 +10,11 @@ export async function POST(request: NextRequest) {
   const { sheetID, pod } = await request.json()
 
   const { data: accounts } = await db
-    .from('account')
+    .from('accounts')
     .select('name, account_id, pod')
     .eq('pod', pod)
     .order('name', { ascending: true })
+    .eq('status', 'active')
 
   if (accounts === null) {
     return NextResponse.json(

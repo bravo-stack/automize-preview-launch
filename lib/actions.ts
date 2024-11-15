@@ -3,16 +3,15 @@
 import { google } from 'googleapis'
 import { createClient } from './db/server'
 import { authorizeDrive, authorizeSheets } from './google'
+import { getTemplateById } from '@/content/templates'
+import { decrypt, encrypt } from './crypto'
+import { toNumber } from './utils'
 import {
   appendDataToSheet,
-  appendFinancials,
   createSpreadsheet,
   getPermissionId,
   updatePermission,
 } from './api'
-import { getTemplateById } from '@/content/templates'
-import { decrypt, encrypt } from './crypto'
-import { toNumber } from './utils'
 
 interface RevenueData {
   name: string
@@ -131,7 +130,10 @@ export async function deleteSheet(sheetId: string) {
 
 export async function deleteAccount(accountId: string) {
   const db = createClient()
-  const response = await db.from('account').delete().eq('account_id', accountId)
+  const response = await db
+    .from('accounts')
+    .delete()
+    .eq('account_id', accountId)
 
   if (!response.error) {
     return true
@@ -143,7 +145,7 @@ export async function createAccount(accountData: any) {
   const db = createClient()
   const { name, account_id, pod } = accountData
   const { data, error } = await db
-    .from('account')
+    .from('accounts')
     .insert({ name, account_id, pod })
     .select()
 
@@ -157,11 +159,16 @@ export async function createAccount(accountData: any) {
 
 export async function updateAccount(accountData: any) {
   const db = createClient()
-  const { name, account_id, pod } = accountData
+  const { name, account_id, pod, status } = accountData
 
   const { data, error } = await db
-    .from('account')
-    .update({ name, pod })
+    .from('accounts')
+    .update({
+      name,
+      pod,
+      status,
+      churn_date: status === 'left' ? new Date() : null,
+    })
     .eq('account_id', account_id)
 
   if (data && !error) {
@@ -176,7 +183,7 @@ export async function saveStore(storeData: any) {
   const db = createClient()
 
   const { data, error } = await db
-    .from('store')
+    .from('accounts')
     .insert({ ...storeData, key: encrypt(storeData.key) })
     .select()
 
@@ -192,7 +199,7 @@ export async function updateStore(storeData: any) {
   const db = createClient()
 
   const { error } = await db
-    .from('store')
+    .from('accounts')
     .update(storeData)
     .eq('id', storeData.id)
 
@@ -410,7 +417,7 @@ export async function financialize(
     fbSinceRebill as FbData[],
   )
 
-  const id = sheetId ?? '19xIfkTLIQpuY4V00502VijpAIo_UOPLxYron2oFK1Q8'
+  const id = sheetId ?? '19xIfkTLIQpuY4V00502VijpAIo_UOPLxYron2oFK1Q8' // '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY' //
 
   let totalRevenueLast30 = 0
   let totalFbLast30Spend = 0

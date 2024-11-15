@@ -17,10 +17,10 @@ export default function AddStore() {
   const handleSave = async () => {
     const response = await saveStore({
       name,
+      account_id: `act_${account_id}`,
       store_id,
       key,
       last_rebill,
-      account_id: `act_${account_id}`,
     })
 
     if (!response) {

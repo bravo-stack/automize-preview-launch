@@ -11,10 +11,11 @@ export default async function Sheet({ params }: { params: { sheet: string } }) {
     .eq('sheet_id', params.sheet)
     .single()
 
-  // const { data: store } = await db.from('account').select(`*`)
-  const { data: stores } = await db.rpc('stores_by_pod', {
-    pod_value: sheet.pod,
-  })
+  const { data: stores } = await db
+    .from('accounts')
+    .select('name, account_id, store_id, key, last_rebill')
+    .neq('store_id', null)
+    .eq('pod', sheet.pod)
 
   const links = ['Sheet', 'Automations', 'History', 'Settings']
   const lastRefresh = new Date(sheet.last_refresh).toLocaleString()

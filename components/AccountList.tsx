@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
-import CreateAccount from './CreateAccount'
 import { deleteAccount, updateAccount } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import CreateAccount from './CreateAccount'
+import Link from 'next/link'
 
 interface Account {
   name: string
   account_id: string
   pod: string
+  status: string
 }
 
 export default function AccountList({ accounts }: { accounts: Account[] }) {
@@ -16,7 +18,6 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
   const [filteredAccounts, setFilteredAccounts] = useState(accounts)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [editAccount, setEditAccount] = useState<Account | null>(null)
-
   const router = useRouter()
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,6 +76,13 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
         </search>
 
         <CreateAccount />
+
+        {/* <Link
+          className="whitespace-nowrap rounded-md border px-3 py-1.5 font-medium text-white"
+          href="/dashboard/autometric/manage-accounts/churned"
+        >
+          View Churned
+        </Link> */}
       </div>
 
       <div className="overflow-x-auto">
@@ -231,6 +239,25 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
                   placeholder="E.g. maps"
                   className="w-full rounded border px-3 py-2"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">
+                  Client Status
+                </label>
+                <select
+                  value={editAccount.status}
+                  onChange={(e) =>
+                    setEditAccount({
+                      ...editAccount,
+                      status: e.target.value,
+                    })
+                  }
+                  className="w-full rounded border px-3 py-2"
+                >
+                  <option value="active">Active</option>
+                  <option value="left">Left</option>
+                </select>
               </div>
 
               <div className="flex justify-end space-x-2">

@@ -13,10 +13,13 @@ import { createClient } from '@/lib/db/server'
 // MAIN GET
 export async function POST(request: NextRequest) {
   const db = createClient()
+  const { sheetID, datePreset, status } = await request.json()
+
   const { data: accounts } = await db
-    .from('account')
+    .from('accounts')
     .select('name, account_id, pod')
     .order('name', { ascending: true })
+    .eq('status', status)
 
   if (accounts === null) {
     return NextResponse.json(
@@ -27,8 +30,6 @@ export async function POST(request: NextRequest) {
       },
     )
   }
-
-  const { sheetID, datePreset } = await request.json()
 
   const FACEBOOK_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN
   const fields = `actions,cost_per_action_type,impressions,spend,cpc,cpm,ctr,quality_ranking,engagement_rate_ranking,conversion_rate_ranking,purchase_roas`

@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import UserApps from '@/components/UserApps'
 import { createClient } from '@/lib/db/server'
 import { redirect } from 'next/navigation'

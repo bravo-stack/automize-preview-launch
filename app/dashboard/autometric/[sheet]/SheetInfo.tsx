@@ -12,14 +12,15 @@ interface SheetInfoProps {
 
 export default function SheetInfo({ links, data }: SheetInfoProps) {
   const { sheet, lastRefresh } = data
+  const status = sheet.title === 'Churned' ? 'left' : 'active'
+  const router = useRouter()
+
   const [activeSection, setActiveSection] = useState(0)
   const [confirm, setConfirm] = useState(false)
   const [notificationState, setNotificationState] = useState<{
     state: string
     message: string
   } | null>(null)
-
-  const router = useRouter()
 
   const handleDelete = async () => {
     await deleteSheet(sheet.sheet_id)
@@ -41,6 +42,7 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
         body: JSON.stringify({
           sheetID,
           datePreset,
+          status,
         }),
       })
       if (!response.ok) {

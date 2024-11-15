@@ -7,7 +7,13 @@ export const maxDuration = 30
 
 export default async function FinancialXPage() {
   const db = createClient()
-  const { data: allStores } = await db.from('store').select('*').order('name')
+
+  const { data: stores } = await db
+    .from('accounts')
+    .select('*')
+    .order('name')
+    .neq('store_id', null)
+    .eq('status', 'active')
 
   return (
     <main className="gap-10 px-6 py-28 lg:px-12 lg:py-12">
@@ -24,12 +30,12 @@ export default async function FinancialXPage() {
             >
               Visit Financials Sheet
             </a>
-            <FinancialX stores={allStores ?? []} />
+            <FinancialX stores={stores ?? []} />
             <AddStore />
           </div>
         </div>
 
-        <StoreList stores={allStores ?? []} />
+        <StoreList stores={stores ?? []} />
       </div>
     </main>
   )
