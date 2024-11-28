@@ -7,7 +7,7 @@ import { createClient } from '@/lib/db/server'
 export default async function JobForm() {
   const res = await fetch('https://api.cron-job.org/jobs', {
     headers: {
-      Authorization: `Bearer ${process.env.CRONJOB_API_KEY}`,
+      Authorization: `Bearer n4mS6HyELzWXFtyR5qIAqCUuaL4PHvVaA/HUQ44Jz90=`,
       'Content-Type': 'application/json',
     },
   })

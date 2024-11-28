@@ -435,6 +435,7 @@ export async function financialize(
 
   if (revenueLast30 && fbLast30 && fbSinceRebill && revenueSinceRebill) {
     const sheetData = data.map((s: any, index) => {
+      console.log(data)
       const rebillStatus = isRebillable(
         s.revenueSinceRebill,
         s.fbSinceRebillSpend,

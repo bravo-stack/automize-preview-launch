@@ -11,7 +11,7 @@ export async function createJob(jobData) {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.CRONJOB_API_KEY}`,
+        Authorization: `Bearer n4mS6HyELzWXFtyR5qIAqCUuaL4PHvVaA/HUQ44Jz90=`,
       },
       body: JSON.stringify(jobData),
     })
@@ -38,7 +38,7 @@ export async function updateJob(jobData, id) {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.CRONJOB_API_KEY}`,
+        Authorization: `Bearer n4mS6HyELzWXFtyR5qIAqCUuaL4PHvVaA/HUQ44Jz90=`,
       },
       body: JSON.stringify(jobData),
     })
@@ -64,7 +64,7 @@ export async function deleteJob(id) {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.CRONJOB_API_KEY}`,
+        Authorization: `Bearer n4mS6HyELzWXFtyR5qIAqCUuaL4PHvVaA/HUQ44Jz90=`,
       },
     })
 
