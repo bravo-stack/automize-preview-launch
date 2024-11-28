@@ -2,8 +2,10 @@ import UserApps from '@/components/UserApps'
 import { createClient } from '@/lib/db/server'
 import { redirect } from 'next/navigation'
 
-export default async function Dashboard() {
+export default async function DashboardPage() {
   const db = createClient()
+
+  redirect('/dashboard/autometric')
 
   const {
     data: { user },

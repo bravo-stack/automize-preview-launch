@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import Nav from '@/components/Nav'
 import { GeistSans } from 'geist/font/sans'
-import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: 'Automize',
@@ -16,11 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={GeistSans.className}>
-        <Nav />
-        {children}
-        <Footer />
-      </body>
+      <body className={GeistSans.className}>{children}</body>
     </html>
   )
 }

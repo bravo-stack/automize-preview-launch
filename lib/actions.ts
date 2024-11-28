@@ -12,6 +12,7 @@ import {
   getPermissionId,
   updatePermission,
 } from './api'
+import { revalidatePath } from 'next/cache'
 
 interface RevenueData {
   name: string
@@ -34,6 +35,10 @@ interface CombinedData {
   fbLast30Spend?: number
   fbSinceRebillRoas?: number
   fbSinceRebillSpend?: number
+}
+
+export async function refresh(path: string) {
+  revalidatePath(path, 'page')
 }
 
 export async function createUser(
