@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
 
     // Send a message for each pod
     for (const pod in pods) {
-      const channel = `${pod}-test-7861`
+      const channel = `${pod}-to-do-list`
       const podAccounts = pods[pod]
       const message = [
         `DAILY LOW ROAS CHECK\n`,
