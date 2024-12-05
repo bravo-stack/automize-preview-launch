@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
           (acc) =>
             `**${acc.name}**: ROAS ${acc.roas} - SPEND ${acc.spend} - CPA ${acc.cpa}`,
         ),
-        `\n<@1138860445579620473>`,
+        // `\n<@1138860445579620473>`,
       ].join('\n')
 
       await sendDiscordMessage(channel, message)
