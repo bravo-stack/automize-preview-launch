@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/db/server'
+import { createAdminClient } from '@/lib/db/admin'
 
 // MAIN GET
 export async function GET(req: NextRequest) {
-  const db = createClient()
+  const query = req.nextUrl.searchParams
+  const key = query.get('key')
 
-  const { data: accounts } = await db
+  if (!key || key !== process.env.IXMBOT_CRON) {
+    return NextResponse.json({ error: 'Unauthorized' })
+  }
+
+  const db = createAdminClient()
+
+  const { data: accounts } = (await db
     .from('accounts')
     .select('name, account_id, pod')
-    .order('name', { ascending: true })
+    .order('name', { ascending: true })) as unknown as { data: any[] }
 
-  if (accounts === null) {
+  if (!accounts || accounts.length === 0) {
     return NextResponse.json(
       { error: 'No accounts found.' },
       {
