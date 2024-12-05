@@ -10,6 +10,16 @@ export async function GET(req: NextRequest) {
     .select('name, account_id, pod')
     .order('name', { ascending: true })
 
+  if (accounts === null) {
+    return NextResponse.json(
+      { error: 'No accounts found.' },
+      {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    )
+  }
+
   const FACEBOOK_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN
   const DISCORD_API_URL = 'https://ixm-bot.onrender.com/api/sendMessage'
   const fields = `cost_per_action_type,spend,purchase_roas`
