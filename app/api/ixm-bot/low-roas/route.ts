@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/db/admin'
+import { cookies } from 'next/headers'
 
 // MAIN GET
 export async function GET(req: NextRequest) {
+  const _cookies = cookies()
+
   const query = req.nextUrl.searchParams
   const key = query.get('key')
 
