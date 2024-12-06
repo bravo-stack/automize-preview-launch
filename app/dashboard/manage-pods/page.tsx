@@ -12,7 +12,7 @@ export default async function ManagePodsPage({ searchParams }) {
 
   if (pod) {
     const { data } = await db
-      .from('accounts_backup')
+      .from('accounts')
       .select('name')
       .eq('pod', pod)
       .order('name')
@@ -21,7 +21,7 @@ export default async function ManagePodsPage({ searchParams }) {
 
   const { data: pods } = await db
     .from('pod')
-    .select('id, discord_user, name')
+    .select('id, name, discord_id')
     .order('name')
 
   return (
@@ -43,10 +43,10 @@ export default async function ManagePodsPage({ searchParams }) {
                 placeholder: 'Enter Pod Name',
               },
               {
-                name: 'discord_user',
-                label: 'Discord Username',
+                name: 'discord_id',
+                label: 'Discord ID',
                 type: 'text',
-                placeholder: 'Enter Discord Username',
+                placeholder: 'Enter Discord ID',
               },
             ]}
           />
@@ -67,9 +67,6 @@ export default async function ManagePodsPage({ searchParams }) {
                       <h3 className="inline-flex items-center font-semibold">
                         {p.name}
                       </h3>
-                      <p className="text-sm text-neutral-400">
-                        {p.discord_user}
-                      </p>
                     </hgroup>
                   </Link>
 
@@ -77,7 +74,7 @@ export default async function ManagePodsPage({ searchParams }) {
                     <DeleteItem table="pod" id={p.id} column="id" />
                     <UpdateItem
                       id={p.id}
-                      data={{ name: p.name, discord_user: p.discord_user }}
+                      data={{ name: p.name, discord_id: p.discord_id }}
                       inputs={[
                         {
                           name: 'name',
@@ -86,10 +83,10 @@ export default async function ManagePodsPage({ searchParams }) {
                           placeholder: 'Enter Pod Name',
                         },
                         {
-                          name: 'discord_user',
-                          label: 'Discord Username',
+                          name: 'discord_id',
+                          label: 'Discord ID',
                           type: 'text',
-                          placeholder: 'Enter Discord Username',
+                          placeholder: 'Enter Discord ID',
                         },
                       ]}
                     />
