@@ -15,7 +15,7 @@ export default function CreateAccount() {
     const response = await createAccount({
       name,
       account_id: `act_${account_id}`,
-      pod,
+      pod: pod === 'none' ? null : pod,
     })
 
     if (!response) {
