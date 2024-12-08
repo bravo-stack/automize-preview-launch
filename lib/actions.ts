@@ -422,7 +422,7 @@ export async function financialize(
     fbSinceRebill as FbData[],
   )
 
-  const id = sheetId ?? '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY' // '19xIfkTLIQpuY4V00502VijpAIo_UOPLxYron2oFK1Q8' // '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY' //
+  const id = sheetId ?? '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY' // '19xIfkTLIQpuY4V00502VijpAIo_UOPLxYron2oFK1Q8'
 
   let totalRevenueLast30 = 0
   let totalFbLast30Spend = 0
@@ -435,7 +435,6 @@ export async function financialize(
 
   if (revenueLast30 && fbLast30 && fbSinceRebill && revenueSinceRebill) {
     const sheetData = data.map((s: any, index) => {
-      console.log(data)
       const rebillStatus = isRebillable(
         s.revenueSinceRebill,
         s.fbSinceRebillSpend,
@@ -484,9 +483,13 @@ export async function financialize(
     })
 
     const sortedSheetData = sheetData.sort((a, b) => {
-      const fbLast30RoasA = parseFloat(a[5]) || 0
-      const fbLast30RoasB = parseFloat(b[5]) || 0
-      return fbLast30RoasB - fbLast30RoasA
+      const revenueA = parseFloat(a[1]) || 0 // Revenue is in column 1
+      const revenueB = parseFloat(b[1]) || 0
+      const fbSpendA = parseFloat(a[2]) || 0 // Spend is in column 2
+      const fbSpendB = parseFloat(b[2]) || 0
+
+      // Sort by revenue, then by spend
+      return revenueB - revenueA || fbSpendB - fbSpendA
     })
 
     const averageFbLast30Roas =
