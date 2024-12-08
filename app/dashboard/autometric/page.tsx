@@ -7,7 +7,11 @@ export default async function Autometric() {
   const db = createClient()
 
   const id = '38817360-608e-438f-93b2-a208c35a8da7'
-  const { data: sheets } = await db.from('sheets').select('*').eq('user_id', id).eq('pod', '')
+  const { data: sheets } = await db
+    .from('sheets')
+    .select('*')
+    .eq('user_id', id)
+    .eq('pod', '')
   const {
     data: { user },
   } = await db.auth.getUser()

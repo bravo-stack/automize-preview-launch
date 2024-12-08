@@ -4,7 +4,6 @@ import { deleteAccount, updateAccount } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import CreateAccount from './CreateAccount'
-import Link from 'next/link'
 
 interface Account {
   name: string
@@ -49,7 +48,7 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
   }
 
   return (
-    <main className="flex flex-col justify-center px-6 pb-24 pt-10 md:px-24">
+    <main className="mx-auto flex max-w-6xl flex-col justify-center">
       <div className="mb-10 flex gap-2">
         <search className="flex w-full items-center gap-2 rounded-md border border-zinc-800 bg-night-starlit px-2 outline-none transition-colors hover:border-zinc-700 focus:ring focus:ring-zinc-800">
           <svg
@@ -86,7 +85,7 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
       </div>
 
       <div className="overflow-x-auto">
-        Total accounts: {accounts?.length}
+        {/* Total accounts: {accounts?.length} */}
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
