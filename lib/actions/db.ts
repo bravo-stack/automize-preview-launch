@@ -10,7 +10,7 @@ export async function createItem(table, data): Promise<any> {
     .select('id')
     .single()
 
-  return { data: item, error: error ? false : true }
+  return { data: item, error: error ? true : false }
 }
 
 export async function deleteItem(table: string, id, column = 'id') {

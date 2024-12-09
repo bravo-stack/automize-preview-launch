@@ -12,7 +12,13 @@ interface Account {
   status: string
 }
 
-export default function AccountList({ accounts }: { accounts: Account[] }) {
+export default function AccountList({
+  accounts,
+  pods,
+}: {
+  accounts: Account[]
+  pods: string[]
+}) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filteredAccounts, setFilteredAccounts] = useState(accounts)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -74,7 +80,7 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
           />
         </search>
 
-        <CreateAccount />
+        <CreateAccount pods={pods} />
 
         {/* <Link
           className="whitespace-nowrap rounded-md border px-3 py-1.5 font-medium text-white"
@@ -222,6 +228,7 @@ export default function AccountList({ accounts }: { accounts: Account[] }) {
                   />
                 </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium">Pod</label>
 

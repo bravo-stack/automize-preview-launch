@@ -3,7 +3,7 @@
 import AccountList from '@/components/AccountList'
 import { useState } from 'react'
 
-export default function ListTabs({ active, left }) {
+export default function ListTabs({ active, left, pods }) {
   const [list, setList] = useState('active')
 
   const toggleList = () => setList(list === 'active' ? 'churned' : 'active')
@@ -23,8 +23,8 @@ export default function ListTabs({ active, left }) {
         </h2>
       </header>
 
-      {list === 'active' && <AccountList accounts={active} />}
-      {list === 'churned' && <AccountList accounts={left} />}
+      {list === 'active' && <AccountList accounts={active} pods={pods} />}
+      {list === 'churned' && <AccountList accounts={left} pods={pods} />}
     </div>
   )
 }

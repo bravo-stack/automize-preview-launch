@@ -34,7 +34,6 @@ export default async function ManagePodsPage({ searchParams }) {
 
           <AddButton
             buttonText="Add Pod +"
-            styles={{ button: 'custom-button-class' }}
             inputs={[
               {
                 name: 'name',

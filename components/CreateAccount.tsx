@@ -4,7 +4,7 @@ import { createAccount } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-export default function CreateAccount() {
+export default function CreateAccount({ pods }) {
   const [name, setName] = useState('')
   const [account_id, setAccount_Id] = useState('')
   const [pod, setPod] = useState('none')
@@ -73,6 +73,7 @@ export default function CreateAccount() {
                   />
                 </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium">Pod</label>
                 <select
@@ -81,16 +82,11 @@ export default function CreateAccount() {
                   className="w-full rounded border px-3 py-2"
                 >
                   <option value="none">None</option>
-                  <option value="maps">Maps</option>
-                  <option value="justin">Justin</option>
-                  <option value="ray">Ray</option>
-                  <option value="zain">Zain</option>
-                  <option value="kelsey">Kelsey</option>
-                  <option value="shalin">Shalin</option>
-                  <option value="kyrillos">Kyrillos</option>
-                  <option value="gabe">Gabe</option>
-                  <option value="inti">Inti</option>
-                  <option value="aun">Aun</option>
+                  {pods.map((pod, index) => (
+                    <option key={index} value={pod.name}>
+                      {pod.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
