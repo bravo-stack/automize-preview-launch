@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
   const { data: accounts } = (await db
     .from('accounts')
     .select('name, account_id, pod (discord_id, name)')
+    .eq('status', 'active')
     .order('name', { ascending: true })) as unknown as { data: any[] }
 
   // console.log(accounts)
@@ -111,7 +112,8 @@ export async function GET(req: NextRequest) {
         (account) =>
           account && // Exclude null results
           account.roas < 2.4 && // Only include ROAS below 2.4
-          account.roas > 0, // Exclude ROAS of 0
+          account.roas > 0 && // Exclude ROAS of 0
+          account.pod, // Only where pod exists
       )
       .forEach((account) => {
         if (!pods[account.pod.name]) {
@@ -130,7 +132,7 @@ export async function GET(req: NextRequest) {
 
     // Send a message for each pod
     for (const pod in pods) {
-      const channel = `${pod}-to-do-list`
+      const channel = `${pod}-to-do-list` // `${pod}-test-7861` //
       const { accounts, discord_id } = pods[pod]
       const message = [
         `**DAILY LOW ROAS CHECK**\n`,
@@ -148,9 +150,8 @@ export async function GET(req: NextRequest) {
       message: 'Messages sent successfully.',
     })
   } catch (error) {
-    console.error(error)
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Internal Server Error', details: error },
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
