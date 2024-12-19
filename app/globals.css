@@ -52,3 +52,11 @@ body {
   color: black;
   background: white;
 }
+
+input {
+  outline: none;
+}
+
+textarea {
+  outline: none;
+}

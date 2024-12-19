@@ -13,6 +13,7 @@ import {
   updatePermission,
 } from './api'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 
 interface RevenueData {
   name: string
@@ -82,10 +83,8 @@ export async function signInUser(email: string, password: string) {
 
 export async function signOutUser() {
   const db = createClient()
-
-  const { error } = await db.auth.signOut()
-
-  return error ? true : false
+  await db.auth.signOut()
+  redirect('/login')
 }
 
 export async function createSheet(
@@ -633,7 +632,6 @@ function combineData(
 }
 
 export async function changePassword() {
-  return
   const db = createClient()
 
   await db.auth.updateUser({

@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { signOutUser } from '@/lib/actions'
 
 export default function NavLinks({
   links,
@@ -43,5 +44,20 @@ export default function NavLinks({
         )
       })}
     </ul>
+  )
+}
+
+export function NavbarSignOut() {
+  const handleClick = async () => {
+    await signOutUser()
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className="rounded-md bg-neutral-800/50 py-1.5 text-neutral-400 transition-all hover:bg-neutral-800"
+    >
+      Sign Out
+    </button>
   )
 }
