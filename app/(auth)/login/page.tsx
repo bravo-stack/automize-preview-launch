@@ -1,10 +1,11 @@
 'use client'
 
-import Link from 'next/link'
 import NotificationModal from '@/components/NotificationModal'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signInUser } from '@/lib/actions'
+import { StarsBackground } from '@/components/ui/stars-background'
+import { ShootingStars } from '@/components/ui/shooting-stars'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -72,28 +73,27 @@ export default function Login() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 pb-24 pt-10 md:px-24">
-      <header className="mb-20 text-center">
-        {/* <h2 className="text-xps-orange text-lg font-semibold tracking-wide"></h2> */}
-        <h1 className="mb-3 text-4xl font-semibold tracking-wide">Login</h1>
-        <h3 className="text-lg">
+      <>
+        <form
+          onSubmit={handleSignUp}
+          className="z-50 w-full rounded-xl border border-zinc-800 bg-night-starlit px-7 py-7 md:w-96"
+        >
+          <header className="mb-12 text-center">
+            {/* <h2 className="text-xps-orange text-lg font-semibold tracking-wide"></h2> */}
+            <h1 className="mb-3 text-3xl font-bold tracking-tighter">
+              Automize Login
+            </h1>
+            {/* <h3 className="text-lg">
           Don&apos;t have an account? Create a new one{' '}
           <Link href="/sign-up" className="text-xps-orange underline">
             here
           </Link>
           .
-        </h3>
-      </header>
+        </h3> */}
+          </header>
 
-      <>
-        <form
-          onSubmit={handleSignUp}
-          className="border-xps-deepBlue bg- w-full rounded-xl border px-7 py-7 md:w-96"
-        >
           {formFields.map((field) => (
-            <div
-              className="text-xps-deepBlue caret-xps-deepBlue mb-3"
-              key={field.id}
-            >
+            <div className="mb-3" key={field.id}>
               <label
                 htmlFor={field.id}
                 className="mb-1.5 block font-semibold tracking-wide text-white"
@@ -105,7 +105,7 @@ export default function Login() {
                 type={field.type}
                 id={field.id}
                 name={field.name}
-                className="focus:ring-xps-blue w-full rounded-md border border-gray-300 bg-night-twilight px-1.5 py-1.5 focus:outline-none focus:ring-2"
+                className="w-full rounded-md border border-zinc-800 bg-night-starlit px-1.5 py-1.5 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-zinc-700"
                 placeholder={field.placeholder}
                 onChange={field.onChange}
                 value={field.value}
@@ -116,7 +116,7 @@ export default function Login() {
 
           <button
             type="submit"
-            className="border-xps-orange bg-xps-orange/10 text-xps-orange hover:border-xps-accentBlue hover:bg-xps-deepBlue/60 mt-3 w-full rounded-md border px-3 py-1.5 font-semibold tracking-wide shadow-md transition-all hover:text-white"
+            className="mt-3 w-full rounded-md border bg-white px-3 py-1.5 font-semibold tracking-wide text-black shadow-md transition-all hover:font-bold"
           >
             Sign In
           </button>
@@ -147,6 +147,9 @@ export default function Login() {
           </div>
         )}
       </>
+
+      <ShootingStars />
+      <StarsBackground />
     </main>
   )
 }

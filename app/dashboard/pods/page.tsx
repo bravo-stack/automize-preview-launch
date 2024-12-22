@@ -89,8 +89,6 @@ export default async function Pods() {
           })}
         </ul>
       </section>
-
-      {/* <Sheet /> */}
     </main>
   )
 }

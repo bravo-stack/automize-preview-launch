@@ -1,28 +1,65 @@
-import DeleteItem from '@/components/actions/delete-item'
-import AddButton from '@/components/actions/add-button'
 import { createClient } from '@/lib/db/server'
 import Link from 'next/link'
 import UpdateItem from '@/components/actions/update-item'
+import CreateAccount from './create-user'
+import DeleteUser from './delete-user'
+import { createAdminClient } from '@/lib/db/admin'
+import { generateRandomString } from '@/lib/utils'
 
 export default async function ManagePodsPage({ searchParams }) {
   const db = createClient()
   const { pod } = searchParams
 
-  let accounts
+  // async function createAccounts() {
+  //   const { data: pods } = await db
+  //     .from('pod')
+  //     .select('id, name, discord_id, user_id')
+  //     .order('name')
 
+  //   const accounts = []
+
+  //   for (const pod of pods) {
+  //     const { name } = pod
+  //     const email = `${name}@automize.com`
+  //     const password = generateRandomString(14)
+
+  //     await db.auth.admin.createUser({
+  //       email: email,
+  //       password: password,
+  //       user_metadata: { role: 'pod' }, // role can be adjusted based on your needs
+  //       email_confirm: true,
+  //     })
+
+  //     accounts.push({
+  //       email: email,
+  //       password: password,
+  //     })
+  //   }
+
+  //   console.log('Account Creation Summary:')
+  //   console.table(accounts)
+  // }
+
+  // await createAccounts()
+
+  // return
+
+  let clients
   if (pod) {
     const { data } = await db
       .from('accounts')
       .select('name')
       .eq('pod', pod)
       .order('name')
-    accounts = data
+    clients = data
   }
 
   const { data: pods } = await db
     .from('pod')
-    .select('id, name, discord_id')
+    .select('id, name, discord_id, user_id')
     .order('name')
+
+  const accounts = pods?.filter((pod) => pod.user_id !== null)
 
   return (
     <main className="space-y-7 p-7">
@@ -32,7 +69,9 @@ export default async function ManagePodsPage({ searchParams }) {
             Full Pod List
           </h2>
 
-          <AddButton
+          <CreateAccount />
+
+          {/* <AddButton
             buttonText="Add Pod +"
             inputs={[
               {
@@ -48,7 +87,7 @@ export default async function ManagePodsPage({ searchParams }) {
                 placeholder: 'Enter Discord ID',
               },
             ]}
-          />
+          /> */}
         </div>
 
         <div className="p-5 shadow">
@@ -70,7 +109,7 @@ export default async function ManagePodsPage({ searchParams }) {
                   </Link>
 
                   <div className="flex flex-col">
-                    <DeleteItem table="pod" id={p.id} column="id" />
+                    <DeleteUser user_id={p.user_id} />
                     <UpdateItem
                       id={p.id}
                       data={{ name: p.name, discord_id: p.discord_id }}
@@ -104,20 +143,29 @@ export default async function ManagePodsPage({ searchParams }) {
               Accounts for {pod}
             </h2>
 
-            <Link
-              href={'/dashboard/autometric/manage-accounts'}
-              className="rounded bg-white px-3 py-2 font-medium text-black"
-            >
-              Manage Accounts
-            </Link>
+            <div className="space-x-2.5">
+              <Link
+                href={'/dashboard/manage-pods'}
+                className="rounded bg-white px-3 py-2 font-medium text-black"
+              >
+                Close &times;
+              </Link>
+
+              <Link
+                href={'/dashboard/autometric/manage-accounts'}
+                className="rounded bg-white px-3 py-2 font-medium text-black"
+              >
+                Manage Accounts
+              </Link>
+            </div>
           </div>
 
           <div className="p-5 shadow">
-            {accounts?.length === 0 ? (
-              <p>No existing pods. Please add your first pod.</p>
+            {clients?.length === 0 ? (
+              <p>No existing accounts. Please add your first accounts.</p>
             ) : (
               <ul className="grid grid-cols-3 gap-2.5">
-                {accounts?.map((p, index) => (
+                {clients?.map((p, index) => (
                   <li
                     key={index}
                     className="flex items-center justify-between gap-0.5 rounded border border-zinc-800 bg-night-starlit p-3"

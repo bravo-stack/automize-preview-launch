@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { signOutUser } from '@/lib/actions'
 
 export default function NavLinks({
   links,
@@ -12,11 +13,32 @@ export default function NavLinks({
 
   return (
     <ul className="flex select-none flex-col gap-2">
-      {links.map(({ text, url, svg }, index) => {
+      {links.map(({ text, url, svg, target }, index) => {
         const isActive =
           path.startsWith(`/${prefix}/${url}`) ||
           (url === '/' && path === `/${prefix}`)
-        return (
+        return target ? (
+          <li key={index}>
+            <a
+              href={url}
+              target={target}
+              className="group flex h-8 items-center gap-2.5 rounded-md px-2 text-neutral-500 transition-colors hover:bg-zinc-500/30 hover:text-neutral-400"
+            >
+              <span className="transition-transform group-hover:rotate-12">
+                {svg}
+              </span>
+              <p
+                className={`transition-transform duration-500 ${!expanded && 'scale-[.1]'}`}
+              >
+                <span
+                  className={`transition-opacity duration-300 ${expanded ? 'opacity-100' : 'opacity-0'}`}
+                >
+                  {text}
+                </span>
+              </p>
+            </a>
+          </li>
+        ) : (
           <li key={index}>
             <Link
               href={`/${prefix}/${url}`}
@@ -43,5 +65,20 @@ export default function NavLinks({
         )
       })}
     </ul>
+  )
+}
+
+export function NavbarSignOut() {
+  const handleClick = async () => {
+    await signOutUser()
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className="rounded-md bg-neutral-800/50 py-1.5 text-neutral-400 transition-all hover:bg-neutral-800"
+    >
+      Sign Out
+    </button>
   )
 }
