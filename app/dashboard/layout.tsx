@@ -1,6 +1,7 @@
 import DashboardNav from '@/components/nav/dashboard-nav'
 import { createClient } from '@/lib/db/server'
 import { podFromEmail } from '@/lib/utils'
+import { redirect } from 'next/navigation'
 
 export default async function DashboardLayout({ children }) {
   const db = createClient()
@@ -9,9 +10,23 @@ export default async function DashboardLayout({ children }) {
     data: { user },
   } = await db.auth.getUser()
 
-  const role = user?.user_metadata?.role ?? 'exec'
-  // const pod = podFromEmail(user)
-  console.log(user)
+  if (!user || !user.email) {
+    redirect('/login')
+  }
+
+  const role = user.user_metadata.role ?? 'exec'
+  const pod = podFromEmail(user.email)
+
+  let sheetId
+  if (role === 'pod') {
+    const { data } = await db
+      .from('sheets')
+      .select('sheet_id')
+      .eq('pod', pod)
+      .single()
+
+    sheetId = data?.sheet_id
+  }
 
   const links =
     role === 'exec'
@@ -139,8 +154,28 @@ export default async function DashboardLayout({ children }) {
             ),
           },
           {
+            text: 'Accounts',
+            url: `media-buyer/${user.id}/accounts`,
+            svg: (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="size-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
+                />
+              </svg>
+            ),
+          },
+          {
             text: 'Notifications',
-            url: 'media-buyer/notifications',
+            url: `media-buyer/${user.id}/notifications`,
             svg: (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -154,6 +189,25 @@ export default async function DashboardLayout({ children }) {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                />
+              </svg>
+            ),
+          },
+          (sheetId !== null || sheetId !== '') && {
+            text: `${pod.charAt(0).toUpperCase() + pod.slice(1)} Sheet`,
+            url: `https://docs.google.com/spreadsheets/d/${sheetId}`,
+            target: '_blank',
+            svg: (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="size-6"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M1.5 5.625c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v12.75c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 18.375V5.625ZM21 9.375A.375.375 0 0 0 20.625 9h-7.5a.375.375 0 0 0-.375.375v1.5c0 .207.168.375.375.375h7.5a.375.375 0 0 0 .375-.375v-1.5Zm0 3.75a.375.375 0 0 0-.375-.375h-7.5a.375.375 0 0 0-.375.375v1.5c0 .207.168.375.375.375h7.5a.375.375 0 0 0 .375-.375v-1.5Zm0 3.75a.375.375 0 0 0-.375-.375h-7.5a.375.375 0 0 0-.375.375v1.5c0 .207.168.375.375.375h7.5a.375.375 0 0 0 .375-.375v-1.5ZM10.875 18.75a.375.375 0 0 0 .375-.375v-1.5a.375.375 0 0 0-.375-.375h-7.5a.375.375 0 0 0-.375.375v1.5c0 .207.168.375.375.375h7.5ZM3.375 15h7.5a.375.375 0 0 0 .375-.375v-1.5a.375.375 0 0 0-.375-.375h-7.5a.375.375 0 0 0-.375.375v1.5c0 .207.168.375.375.375Zm0-3.75h7.5a.375.375 0 0 0 .375-.375v-1.5A.375.375 0 0 0 10.875 9h-7.5A.375.375 0 0 0 3 9.375v1.5c0 .207.168.375.375.375Z"
+                  clipRule="evenodd"
                 />
               </svg>
             ),

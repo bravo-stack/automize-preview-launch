@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   const { sheetID, pod } = await request.json()
 
   const { data: accounts } = await db
-    .from('accounts_backup')
+    .from('accounts')
     .select('name, account_id, pod')
     .eq('pod', pod)
     .order('name', { ascending: true })

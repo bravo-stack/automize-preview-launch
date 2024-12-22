@@ -3,7 +3,7 @@
 import { createAdminClient } from '../db/admin'
 import { createClient } from '../db/server'
 import { podFromEmail } from '../utils'
-// Email: test@automize.com, Pass: t8jJfUDlyCyEXI, Sign-in: https://automize.vercel.app/login
+
 export async function createItem(table, data): Promise<any> {
   const db = createAdminClient()
   const { data: item, error } = await db
@@ -32,6 +32,8 @@ export async function deleteItem(table: string, id, column = 'id') {
 export async function updateItem(table, data, id, identifier = 'id') {
   const db = createAdminClient()
   const { error } = await db.from(table).update(data).eq(identifier, id)
+
+  if (error) console.error('Error updating item:', error)
   return { error: error ? true : false }
 }
 

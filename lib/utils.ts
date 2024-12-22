@@ -39,3 +39,24 @@ export function unscramble(str: string) {
       '='.repeat((4 - (str.length % 4)) % 4), // Add the required padding
   )
 }
+
+export function textFromSQL(text: string) {
+  return text.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+export function date(str: string, time = false) {
+  return time
+    ? new Date(str).toLocaleString()
+    : new Date(str).toISOString().split('T')[0]
+}
+
+export function parseColumn(row, key: string) {
+  const dateColumns = ['created_at', 'updated_at']
+  const timeColumns = ['start_time']
+
+  if (dateColumns.includes(key)) {
+    return date(row[key])
+  } else if (timeColumns.includes(key)) {
+    return date(row[key], true)
+  } else return row[key]
+}

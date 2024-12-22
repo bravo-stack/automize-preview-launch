@@ -19,7 +19,6 @@ export default function FinancialX({
   const handleRefresh = async () => {
     setNotificationState({ state: 'loading', message: 'Refreshing data...' })
     const data = await financialize(stores, sheetId, sheetId ? true : false)
-
     if (data) {
       setNotificationState({
         state: 'success',
