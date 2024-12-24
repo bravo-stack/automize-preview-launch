@@ -1,6 +1,7 @@
 'use client'
 
 import { updateItem } from '@/lib/actions/db'
+import { createItem } from '@/lib/actions/db'
 import { useState } from 'react'
 
 export default function OnboardingForm({}) {
@@ -24,6 +25,7 @@ export default function OnboardingForm({}) {
     yearsInBusiness: '',
     productDescription: '',
     customerAcquisition: '',
+    meetingDateTime: '',
   })
 
   const [step, setStep] = useState(1)
@@ -41,7 +43,9 @@ export default function OnboardingForm({}) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
+    if (!formData.firstName || !formData.lastName) {
+      // @TODO make notification for this
+    }
     const clientData = {
       brand: formData.brandName,
       client_name: `${formData.firstName} ${formData.lastName}`,
@@ -53,16 +57,22 @@ export default function OnboardingForm({}) {
       instagram: formData.instagramLink,
     }
 
-    const { error: status } = await updateItem(
+    const { error: formStatus } = await updateItem(
       'clients',
       clientData,
       formData.email,
       'email',
     )
 
-    setSuccess(status)
+    const bookingData = {
+      time: formData.meetingDateTime,
+      client_name: `${formData.firstName} ${formData.lastName}`,
+      brand_name: formData.brandName,
+    }
 
-    console.log('Form Submitted:', formData)
+    const { error: bookingStatus } = await createItem('bookings', bookingData)
+
+    setSuccess(formStatus && bookingStatus)
   }
 
   if (success === true) {
@@ -399,6 +409,22 @@ export default function OnboardingForm({}) {
               required
               className="w-full  rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
             />
+          </div>
+
+          <div className="col-span-full mb-7 mt-10">
+            <p className="mb-2.5 text-lg font-medium">Schedule a Meeting</p>
+            <input
+              type="datetime-local"
+              name="meetingDateTime"
+              value={formData.meetingDateTime}
+              onChange={handleChange}
+              min={new Date().toISOString().slice(0, 16)} // Ensures only future dates
+              required
+              className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
+            />
+            <label className="mt-1.5 block text-xs text-neutral-500 md:text-sm">
+              Please select a future date and time for the meeting.
+            </label>
           </div>
         </div>
       )}

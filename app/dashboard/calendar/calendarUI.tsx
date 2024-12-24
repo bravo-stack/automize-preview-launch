@@ -20,6 +20,7 @@ interface CalendarAppProps {
   events: {
     id: string
     title: string
+    people: unknown
     start: string
     end: string
   }[]
