@@ -1,0 +1,32 @@
+:root {
+  --sx-color-primary: #6750a4;
+  --sx-color-on-primary: #fff;
+  --sx-color-primary-container: #eaddff;
+  --sx-color-on-primary-container: #21005e;
+  --sx-color-secondary: #625b71;
+  --sx-color-on-secondary: #fff;
+  --sx-color-secondary-container: #e8def8;
+  --sx-color-on-secondary-container: #1e192b;
+  --sx-color-tertiary: #7d5260;
+  --sx-color-on-tertiary: #fff;
+  --sx-color-tertiary-container: #ffd8e4;
+  --sx-color-on-tertiary-container: #370b1e;
+  --sx-color-surface: #fff7f7;
+  --sx-color-surface-dim: #525252;
+  --sx-color-surface-bright: #fff7f7;
+  --sx-color-on-surface: #1f1b1b;
+  --sx-color-surface-container: #383838;
+  --sx-color-surface-container-low: #525252;
+  --sx-color-surface-container-high: #525252;
+  --sx-color-background: #0f0f0f;
+  --sx-color-on-background: #fff;
+  --sx-color-outline: #79747e;
+  --sx-color-outline-variant: #9c9c9c;
+  --sx-color-shadow: #000;
+  --sx-color-surface-tint: #6750a4;
+  --sx-color-neutral: var(--sx-color-outline);
+  --sx-color-neutral-variant: var(--sx-color-outline-variant);
+  --sx-internal-color-gray-ripple-background: #e0e0e0;
+  --sx-internal-color-light-gray: #222222;
+  --sx-internal-color-text: #fff;
+}
