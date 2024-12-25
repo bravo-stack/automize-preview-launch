@@ -4,8 +4,10 @@ import { deleteAccount, updateAccount } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import CreateAccount from './CreateAccount'
+import Link from 'next/link'
 
 interface Account {
+  id?: number | string
   name: string
   account_id: string
   pod: string
@@ -54,7 +56,7 @@ export default function AccountList({
   }
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col justify-center">
+    <main className="mx-auto flex max-w-5xl flex-col justify-center 2xl:max-w-6xl">
       <div className="mb-10 flex gap-2">
         <search className="flex w-full items-center gap-2 rounded-md border border-zinc-800 bg-night-starlit px-2 outline-none transition-colors hover:border-zinc-700 focus:ring focus:ring-zinc-800">
           <svg
@@ -81,17 +83,9 @@ export default function AccountList({
         </search>
 
         <CreateAccount pods={pods} />
-
-        {/* <Link
-          className="whitespace-nowrap rounded-md border px-3 py-1.5 font-medium text-white"
-          href="/dashboard/autometric/manage-accounts/churned"
-        >
-          View Churned
-        </Link> */}
       </div>
 
       <div className="overflow-x-auto">
-        {/* Total accounts: {accounts?.length} */}
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -113,10 +107,20 @@ export default function AccountList({
               >
                 Pod
               </th>
-              <th scope="col" className="relative px-6 py-3">
+              {/* <th
+                scope="col"
+                className="whitespace-nowrap py-3 pl-6 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+              >
+                Portfolio
+              </th>
+              */}
+              <th scope="col" className="relative px-3 py-3">
                 <span className="sr-only">Edit</span>
               </th>
-              <th scope="col" className="relative px-6 py-3">
+              <th scope="col" className="relative px-3 py-3">
+                <span className="sr-only">Edit</span>
+              </th>
+              <th scope="col" className="relative py-3 pr-6">
                 <span className="sr-only">Delete</span>
               </th>
             </tr>
@@ -133,7 +137,16 @@ export default function AccountList({
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                   {account.pod}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+
+                <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium">
+                  <Link
+                    href={`/dashboard/notes/${account.id}`}
+                    className="inline-block text-gray-500 underline"
+                  >
+                    Portfolio
+                  </Link>
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium">
                   <button
                     onClick={() => setEditAccount(account)}
                     className="text-indigo-600 hover:text-indigo-900"
@@ -141,7 +154,7 @@ export default function AccountList({
                     Edit
                   </button>
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                <td className="whitespace-nowrap py-4 pr-6 text-right text-sm font-medium">
                   <button
                     onClick={() => setConfirmDelete(account.account_id)}
                     className="text-red-600 hover:text-red-900"

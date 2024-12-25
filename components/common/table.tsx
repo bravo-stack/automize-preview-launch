@@ -42,8 +42,8 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
 
   return (
-    <div className="mt-2">
-      <div className="flex gap-2.5 ">
+    <div className="mx-auto mt-2 max-w-full 2xl:max-w-7xl">
+      <div className="flex gap-2.5">
         {!noSearch && ( // Only render the search input if noSearch is false
           <div className="flex-1">
             <label
@@ -66,12 +66,15 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-md border border-zinc-800">
+      <div className="overflow-x-scroll rounded-md border border-zinc-800">
         <table className="w-full">
           <thead className="border-zinc-800 text-left">
             <tr>
               {keys.map((key, index) => (
-                <th key={index} className="border-b border-zinc-800 px-4 py-2">
+                <th
+                  key={index}
+                  className="whitespace-nowrap border-b border-zinc-800 px-4 py-2"
+                >
                   {textFromSQL(key)}
                 </th>
               ))}

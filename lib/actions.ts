@@ -42,6 +42,18 @@ export async function refresh(path: string) {
   revalidatePath(path, 'page')
 }
 
+export async function getRole(): Promise<string> {
+  const db = createClient()
+
+  const {
+    data: { user },
+  } = await db.auth.getUser()
+
+  if (!user || !user.email) redirect('/login')
+
+  return user.user_metadata.role ?? 'exec'
+}
+
 export async function createUser(
   email: string,
   password: string,

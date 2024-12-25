@@ -26,6 +26,8 @@ export default function OnboardingForm({}) {
     customerAcquisition: '',
   })
 
+  console.log('Name:', formData.firstName)
+
   const [step, setStep] = useState(1)
   const [success, setSuccess] = useState<boolean | null>(null)
 
@@ -44,7 +46,7 @@ export default function OnboardingForm({}) {
 
     const clientData = {
       brand: formData.brandName,
-      client_name: `${formData.firstName} ${formData.lastName}`,
+      full_name: `${formData.firstName} ${formData.lastName}`,
       phone_number: formData.phoneNumber,
       address: `${formData.streetAddress}${formData.streetAddress2 ? `, ${formData.streetAddress2}` : ''}, ${formData.city}, ${formData.state} ${formData.postalCode}`,
       discord_id: formData.discordUsername,
@@ -61,8 +63,6 @@ export default function OnboardingForm({}) {
     )
 
     setSuccess(status)
-
-    console.log('Form Submitted:', formData)
   }
 
   if (success === true) {

@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/db/server'
-import AccountList from '@/components/AccountList'
 import ListTabs from './ListTabs'
 
 export default async function AccountsPage() {

@@ -1,7 +1,8 @@
+import { createAdminClient } from '@/lib/db/admin'
 import Section from '@/components/common/section'
 import Table from '@/components/common/table'
-import { createAdminClient } from '@/lib/db/admin'
 import EditPodAccountButton from './editPodAccount'
+import Link from 'next/link'
 
 export default async function NotificationPage({ params }) {
   const { id } = params
@@ -24,7 +25,15 @@ export default async function NotificationPage({ params }) {
 
   const accounts = data.map(({ client_id, ...client }) => ({
     ...client,
-    action: <EditPodAccountButton client={{ client_id, ...client }} />,
+    details: (
+      <Link
+        href={`/dashboard/notes/${client_id}`}
+        className="block w-fit rounded-md border border-zinc-800 bg-night-dusk px-1.5 py-0.5 text-neutral-400 transition-colors hover:border-zinc-700"
+      >
+        View Details
+      </Link>
+    ),
+    edit: <EditPodAccountButton client={{ client_id, ...client }} />,
   }))
 
   return (
