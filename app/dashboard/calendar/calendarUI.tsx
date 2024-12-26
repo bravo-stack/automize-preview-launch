@@ -11,7 +11,7 @@ import {
   createViewWeek,
 } from '@schedule-x/calendar'
 import { createEventsServicePlugin } from '@schedule-x/events-service'
-
+import { createCurrentTimePlugin } from '@schedule-x/current-time'
 import '@schedule-x/theme-default/dist/index.css'
 
 import './theme.css'
@@ -27,7 +27,7 @@ interface CalendarAppProps {
 }
 
 function CalendarApp({ events }: CalendarAppProps) {
-  const plugins = [createEventsServicePlugin()]
+  const plugins = [createEventsServicePlugin(), createCurrentTimePlugin()]
 
   const calendar = useNextCalendarApp(
     {
@@ -37,7 +37,7 @@ function CalendarApp({ events }: CalendarAppProps) {
         createViewMonthGrid(),
         createViewMonthAgenda(),
       ],
-      events, // Dynamically include events
+      events,
     },
     plugins,
   )

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/db/server'
 import CalendarApp from './calendarUI'
+import ManageMeetingsButton from './ManageMeetingsButton'
 
 export default async function Page() {
   const db = createClient()
@@ -38,7 +39,9 @@ export default async function Page() {
   return (
     <main className="space-y-7 p-7">
       <section className="mx-auto max-w-7xl">
-        <CalendarApp events={events} /> {/* Pass events to CalendarApp */}
+        <ManageMeetingsButton events={events} />
+
+        <CalendarApp events={events} />
       </section>
     </main>
   )

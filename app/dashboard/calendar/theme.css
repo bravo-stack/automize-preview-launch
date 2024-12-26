@@ -30,3 +30,12 @@
   --sx-internal-color-light-gray: #222222;
   --sx-internal-color-text: #fff;
 }
+
+.sx__event-modal .sx__event-icon {
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 16px;
+  max-height: 16px;
+  opacity: 0;
+  margin-inline-end: var(--sx-spacing-padding2);
+}
