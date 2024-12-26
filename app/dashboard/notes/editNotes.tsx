@@ -4,11 +4,14 @@ import { updateItem } from '@/lib/actions/db'
 import { useState } from 'react'
 
 export default function EditNotes({ client }) {
-  const [mb_notes, setNotes] = useState(client.mb_notes ?? '')
-  const [drive, setDrive] = useState(client.drive ?? '')
-  const [website, setWebsite] = useState(client.website ?? '')
-  const [instagram, setInstagram] = useState(client.insta ?? '')
-  const [drop_day, setDropDay] = useState(client.drop_day ?? null)
+  const [mb_notes, setMBNotes] = useState(client.mb_notes ?? '')
+  const [education_info, setEducationInfo] = useState(
+    client.education_info ?? '',
+  )
+  const [organic_notes, setOrganicNotes] = useState(client.organic_notes ?? '')
+  const [backend_notes, setBackendNotes] = useState(
+    client.backend_notes ?? null,
+  )
   const [open, setOpen] = useState(false)
 
   const handleSave = async (e) => {
@@ -16,10 +19,9 @@ export default function EditNotes({ client }) {
 
     const mediaBuyerUpdates = {
       mb_notes,
-      drive,
-      website,
-      instagram,
-      drop_day: new Date(drop_day),
+      website: education_info,
+      instagram: organic_notes,
+      drop_day: new Date(backend_notes),
     }
 
     const { error } = await updateItem(
@@ -49,76 +51,72 @@ export default function EditNotes({ client }) {
         onClick={() => setOpen(true)}
         className="rounded-md border border-zinc-800 bg-night-dusk px-1.5 py-0.5 text-neutral-400 transition-colors hover:border-zinc-700"
       >
-        Update
+        Update Notes
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 text-black shadow-lg">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 text-black shadow-lg">
             <h2 className="mb-4 text-xl font-bold">
               Edit Client - Media Buyer
             </h2>
             <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium">Drive Link</label>
-                <input
-                  type="text"
-                  value={drive}
-                  onChange={(e) => setDrive(e.target.value)}
-                  placeholder="E.g., https://drive.google.com/drive/..."
-                  className="w-full rounded border px-3 py-2"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-sm font-medium">
-                    Website Link
+                    Education Info
                   </label>
-                  <input
-                    type="text"
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                    placeholder="E.g., https://arekos.com/"
-                    className="w-full rounded border px-3 py-2"
+                  <textarea
+                    value={education_info}
+                    onChange={(e) => setEducationInfo(e.target.value)}
+                    rows={3}
+                    placeholder="Write education info here"
+                    className="w-full rounded border border-neutral-300 px-3 py-2"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium">
-                    Instagram Link
+                    Organic Notes
                   </label>
-                  <input
-                    type="text"
-                    value={instagram}
-                    onChange={(e) => setInstagram(e.target.value)}
-                    placeholder="E.g. https://www.instagram.com/grailsnextdoor/?hl=en"
-                    className="w-full rounded border px-3 py-2"
+
+                  <textarea
+                    value={organic_notes}
+                    onChange={(e) => setOrganicNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Write organic notes here"
+                    className="w-full rounded border border-neutral-300 px-3 py-2"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium">Drop Day</label>
-                <input
-                  type="date"
-                  value={drop_day}
-                  onChange={(e) => setDropDay(e.target.value)}
-                  className="w-full rounded border px-3 py-2"
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-sm font-medium">
+                    Media Buyer Notes
+                  </label>
+                  <textarea
+                    value={mb_notes}
+                    onChange={(e) => setMBNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Write media buyer notes here"
+                    className="w-full rounded border border-neutral-300 px-3 py-2"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium">
-                  Media Buyer Notes
-                </label>
-                <textarea
-                  value={mb_notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={4}
-                  placeholder="Write notes about the client here"
-                  className="w-full rounded border px-3 py-2"
-                />
+                <div>
+                  <label className="block text-sm font-medium">
+                    Backend Notes
+                  </label>
+
+                  <textarea
+                    value={backend_notes}
+                    onChange={(e) => setBackendNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Write backend notes here"
+                    className="w-full rounded border border-neutral-300 px-3 py-2"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end space-x-2">

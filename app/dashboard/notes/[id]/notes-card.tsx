@@ -1,11 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import EditNotes from '../editNotes'
 
-const NotesCard = ({ notes }) => {
+const NotesCard = ({ notes, client }) => {
   return (
     <div className="col-span-full rounded-md border border-zinc-900 bg-night-starlit p-5">
-      <h2 className="font-semibold tracking-tighter">Stored Notes</h2>
+      <div className="flex justify-between">
+        <h2 className="font-semibold tracking-tighter">Stored Notes</h2>
+
+        <EditNotes client={client} />
+      </div>
+
       <div className="mt-2 space-y-2">
         {notes.map((note, index) => (
           <CollapsibleNote

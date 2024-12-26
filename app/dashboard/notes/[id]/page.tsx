@@ -96,7 +96,7 @@ export default async function ClientPortfolioPage({ params }) {
           <ClientCard title="Metrics" properties={metrics} client={c} />
           <ClientCard title="Other Info" properties={other} client={c} />
 
-          <NotesCard notes={notesData} />
+          <NotesCard notes={notesData} client={c} />
         </div>
       </Section>
     </main>
