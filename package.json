@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@fullcalendar/interaction": "^6.1.15",
+    "@schedule-x/current-time": "^2.12.1",
+    "@schedule-x/event-modal": "^2.12.1",
     "@schedule-x/events-service": "^2.12.1",
     "@schedule-x/react": "^2.12.1",
     "@schedule-x/theme-default": "^2.12.1",

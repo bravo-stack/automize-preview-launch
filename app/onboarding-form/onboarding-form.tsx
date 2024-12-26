@@ -1,7 +1,7 @@
 'use client'
 
-import { updateItem } from '@/lib/actions/db'
-import { createItem } from '@/lib/actions/db'
+import { updateItem, createItem } from '@/lib/actions/db'
+
 import { useState } from 'react'
 
 export default function OnboardingForm({}) {
@@ -32,6 +32,8 @@ export default function OnboardingForm({}) {
 
   const [step, setStep] = useState(1)
   const [success, setSuccess] = useState<boolean | null>(null)
+  const [missingFields, setMissingFields] = useState<string[]>([])
+  const [showPopup, setShowPopup] = useState(false)
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -46,8 +48,18 @@ export default function OnboardingForm({}) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.firstName || !formData.lastName) {
-      // @TODO make notification for this
+    // Validate required fields
+    const requiredFields = [
+      'firstName',
+      'lastName',
+      'brandName',
+      'meetingDateTime',
+    ]
+    const missing = requiredFields.filter((field) => !formData[field])
+    if (missing.length > 0) {
+      setMissingFields(missing)
+      setShowPopup(true)
+      return
     }
 
     const clientData = {
@@ -76,7 +88,7 @@ export default function OnboardingForm({}) {
 
     const { error: bookingStatus } = await createItem('bookings', bookingData)
 
-    setSuccess(formStatus && bookingStatus)
+    setSuccess(!formStatus && !bookingStatus)
   }
 
   if (success === true) {
@@ -135,7 +147,7 @@ export default function OnboardingForm({}) {
       {step === 1 && (
         <div className="grid grid-cols-2 px-3.5 py-7 md:p-10">
           <p className="col-span-full mb-2.5 text-lg font-medium">
-            Full Legal Name
+            Full Legal Name <span className="text-red-500">*</span>
           </p>
           <div className="mr-2 md:mr-7">
             <input
@@ -416,13 +428,16 @@ export default function OnboardingForm({}) {
           </div>
 
           <div className="col-span-full mb-7 mt-10">
-            <p className="mb-2.5 text-lg font-medium">Schedule a Meeting</p>
+            <p className="mb-2.5 text-lg font-medium">
+              {' '}
+              Schedule a Meeting <span className="text-red-500">*</span>
+            </p>
             <input
               type="datetime-local"
               name="meetingDateTime"
               value={formData.meetingDateTime}
               onChange={handleChange}
-              min={new Date().toISOString().slice(0, 16)} // Ensures only future dates
+              min={new Date().toISOString().slice(0, 16)}
               required
               className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
             />
@@ -461,6 +476,34 @@ export default function OnboardingForm({}) {
           >
             Submit
           </button>
+        </div>
+      )}
+
+      {showPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="rounded-lg bg-white p-6 shadow-lg">
+            <h2 className="text-lg font-bold text-gray-900">Missing Fields</h2>
+            <p className="mt-4 text-sm text-gray-600">
+              Please fill out the following required fields:
+            </p>
+            <ul className="mt-2 list-disc pl-5 text-sm text-gray-700">
+              {missingFields.map((field) => {
+                const fieldLabels: Record<string, string> = {
+                  firstName: 'First Name',
+                  lastName: 'Last Name',
+                  brandName: 'Brand Name',
+                  meetingDateTime: 'Meeting Date and Time',
+                }
+                return <li key={field}>{fieldLabels[field] || field}</li>
+              })}
+            </ul>
+            <button
+              onClick={() => setShowPopup(false)}
+              className="mt-6 rounded bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </form>
