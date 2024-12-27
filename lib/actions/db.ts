@@ -17,6 +17,17 @@ export async function createItem(table, data): Promise<any> {
   return { data: item, error: error ? true : false }
 }
 
+export async function upsertItem(table, data): Promise<any> {
+  const db = createAdminClient()
+  const { data: item, error } = await db.from(table).upsert(data)
+  // .select('id')
+  // .single()
+
+  if (error) console.log(error)
+
+  return { data: item, error: error ? true : false }
+}
+
 export async function deleteItem(table: string, id, column = 'id') {
   const db = createClient()
   const { error } = await db.from(table).delete().eq(column, id)

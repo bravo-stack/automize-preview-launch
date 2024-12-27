@@ -42,7 +42,7 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
 
   return (
-    <div className="mx-auto mt-2 max-w-full 2xl:max-w-7xl">
+    <div className="mx-auto mt-2 max-w-4xl 2xl:max-w-7xl">
       <div className="flex gap-2.5">
         {!noSearch && ( // Only render the search input if noSearch is false
           <div className="flex-1">
@@ -92,9 +92,9 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
                   {keys.map((key, colIndex) => (
                     <td
                       key={colIndex}
-                      className="border-b border-zinc-800 px-4 py-2"
+                      className="whitespace-nowrap border-b border-zinc-800 px-4 py-2"
                     >
-                      {parseColumn(row, key)}
+                      {parseColumn(row, key) ?? 'N/A'}
                     </td>
                   ))}
                 </tr>
