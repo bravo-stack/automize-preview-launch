@@ -12,7 +12,7 @@ export default function OnboardingForm({ clientID }) {
     email: '',
     discordUsername: '',
     phoneNumber: '',
-    monthlyRevenue: null,
+    monthlyRevenue: '',
     streetAddress: '',
     streetAddress2: '',
     city: '',
@@ -72,7 +72,8 @@ export default function OnboardingForm({ clientID }) {
       phone_number: formData.phoneNumber,
       address: `${formData.streetAddress}${formData.streetAddress2 ? `, ${formData.streetAddress2}` : ''}, ${formData.city}, ${formData.state} ${formData.postalCode}`,
       discord_id: formData.discordUsername,
-      starting_mrr: formData.monthlyRevenue,
+      starting_mrr:
+        formData.monthlyRevenue === '' ? null : formData.monthlyRevenue,
       website: formData.websiteURL,
       instagram: formData.instagramLink,
       intro_notes: formData.introduction,
