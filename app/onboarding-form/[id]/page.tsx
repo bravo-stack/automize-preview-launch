@@ -1,12 +1,13 @@
 import Image from 'next/image'
-import OnboardingForm from './onboarding-form'
+import OnboardingForm from '../onboarding-form'
 import img from '@/public/ixm.jpeg'
 
 export const metadata = {
   title: 'InsightX Media - Onboarding Form',
 }
 
-export default function OnboardingFormPage({}) {
+export default function OnboardingFormPage({ params }) {
+  const { id } = params
   return (
     <main className="min-h-screen bg-neutral-900 px-2 py-20 md:p-20">
       {/* IXM Logo */}
@@ -16,7 +17,7 @@ export default function OnboardingFormPage({}) {
         className="mx-auto mb-2.5 w-48 rounded-md md:w-64"
       />
 
-      <OnboardingForm />
+      <OnboardingForm clientID={id} />
     </main>
   )
 }

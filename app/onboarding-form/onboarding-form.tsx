@@ -1,17 +1,18 @@
 'use client'
 
 import { updateItem, createItem } from '@/lib/actions/db'
+import { createClientDrive } from '@/lib/actions/google'
 
 import { useState } from 'react'
 
-export default function OnboardingForm({}) {
+export default function OnboardingForm({ clientID }) {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     discordUsername: '',
     phoneNumber: '',
-    monthlyRevenue: '',
+    monthlyRevenue: null,
     streetAddress: '',
     streetAddress2: '',
     city: '',
@@ -48,13 +49,15 @@ export default function OnboardingForm({}) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate required fields
+    // 1. validating input
     const requiredFields = [
       'firstName',
       'lastName',
+      'email',
       'brandName',
       'meetingDateTime',
     ]
+
     const missing = requiredFields.filter((field) => !formData[field])
     if (missing.length > 0) {
       setMissingFields(missing)
@@ -62,6 +65,7 @@ export default function OnboardingForm({}) {
       return
     }
 
+    // 2. parsing data
     const clientData = {
       brand: formData.brandName,
       full_name: `${formData.firstName} ${formData.lastName}`,
@@ -71,14 +75,8 @@ export default function OnboardingForm({}) {
       starting_mrr: formData.monthlyRevenue,
       website: formData.websiteURL,
       instagram: formData.instagramLink,
+      intro_notes: formData.introduction,
     }
-
-    const { error: formStatus } = await updateItem(
-      'clients',
-      clientData,
-      formData.email,
-      'email',
-    )
 
     const bookingData = {
       time: formData.meetingDateTime,
@@ -86,7 +84,16 @@ export default function OnboardingForm({}) {
       brand_name: formData.brandName,
     }
 
+    // 3. pushing to database
+    const { error: formStatus } = await updateItem(
+      'clients',
+      clientData,
+      clientID,
+    )
+
     const { error: bookingStatus } = await createItem('bookings', bookingData)
+
+    await createClientDrive(formData.email, formData.brandName)
 
     setSuccess(!formStatus && !bookingStatus)
   }
@@ -98,7 +105,7 @@ export default function OnboardingForm({}) {
         <p className="mt-4 text-pretty text-center text-neutral-600 md:text-lg">
           Your onboarding form has been received and is currently being
           processed into our system. Please standby for further instructions
-          through our slack channels.
+          from our team.
         </p>
       </div>
     )

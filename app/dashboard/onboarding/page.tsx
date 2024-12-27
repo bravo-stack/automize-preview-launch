@@ -1,15 +1,15 @@
 import Link from 'next/link'
 import ClosingForm from './closing-form'
 import { createAdminClient } from '@/lib/db/admin'
-import OnboarderForm from './onboarder-form'
+import OnboarderForm, { CopyOnboardingLink } from './onboarder-form'
 
 export default async function OnboardingPage({ searchParams }) {
   const db = createAdminClient()
-  const { client, email } = searchParams
+  const { client, id } = searchParams
 
   const { data: closed } = await db
     .from('clients')
-    .select('brand, email, closed_by')
+    .select('id, brand, email, closed_by')
     .eq('onboarded', false)
 
   return (
@@ -23,13 +23,13 @@ export default async function OnboardingPage({ searchParams }) {
           <ClosingForm />
         </div>
 
-        {client && email && (
+        {client && id && (
           <div className="p-5">
-            <OnboarderForm client={client} email={email} />
+            <OnboarderForm client={client} id={id} />
           </div>
         )}
 
-        <ul className="grid grid-cols-2 p-5 shadow xl:grid-cols-3 2xl:grid-cols-4">
+        <ul className="2xl:grid-cols- grid grid-cols-2 gap-5 p-5 shadow">
           {closed && closed.length !== 0 ? (
             closed.map((client, index) => (
               <li
@@ -42,20 +42,26 @@ export default async function OnboardingPage({ searchParams }) {
                 </div>
 
                 <div className="flex items-center justify-between gap-0.5 text-sm text-neutral-400">
-                  <Link
-                    href={`/dashboard/onboarding?client=${client.brand}&email=${client.email}`}
-                    className="group cursor-pointer rounded-full transition-all duration-500 hover:bg-neutral-700/50 hover:px-2"
-                  >
-                    <h3>
-                      <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-500 group-hover:bg-teal-500" />
-                      <span className="group-hover:hidden">
-                        Pending Onboarding
-                      </span>
-                      <span className="hidden underline group-hover:inline-block">
-                        Click to onboard
-                      </span>
-                    </h3>
-                  </Link>
+                  {client.email ? (
+                    <Link
+                      href={`/dashboard/onboarding?client=${client.brand}&id=${client.id}`}
+                      className="group cursor-pointer rounded-full transition-all duration-500 hover:bg-neutral-700/50 hover:px-2"
+                    >
+                      <h3>
+                        <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-500 group-hover:bg-teal-500" />
+                        <span className="group-hover:hidden">
+                          Pending Onboarding
+                        </span>
+                        <span
+                          className={`hidden underline group-hover:inline-block`}
+                        >
+                          Click to onboard
+                        </span>
+                      </h3>
+                    </Link>
+                  ) : (
+                    <CopyOnboardingLink brand={client.brand} id={client.id} />
+                  )}
                   <p className=""> Closed by {client.closed_by}</p>
                 </div>
               </li>

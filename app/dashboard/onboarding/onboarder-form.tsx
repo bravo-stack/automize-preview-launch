@@ -1,11 +1,11 @@
 'use client'
 
-import { updateItem } from '@/lib/actions/db'
+import { createItem, updateItem } from '@/lib/actions/db'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-export default function OnboarderForm({ client, email }) {
+export default function OnboarderForm({ client, id }) {
   const router = useRouter()
   const [formData, setFormData] = useState({
     shopify_access: 'No',
@@ -13,12 +13,25 @@ export default function OnboarderForm({ client, email }) {
     discord_id: '',
     education_info: '',
     organic_notes: '',
-    // special_request: '',
+  })
+
+  const [isSR, setSR] = useState(false)
+  const [specialReq, setSpecialReq] = useState({
+    package_type: '',
+    closed_by: '',
   })
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }))
+  }
+
+  const handleSRChange = (e) => {
+    const { name, value } = e.target
+    setSpecialReq((prevData) => ({
       ...prevData,
       [name]: value,
     }))
@@ -34,15 +47,34 @@ export default function OnboarderForm({ client, email }) {
       onboarded: true,
     }
 
-    const { error } = await updateItem('clients', onboardedData, email, 'email')
+    const requestData = {
+      client_id: id,
+      ...specialReq,
+    }
 
-    alert(
-      error
-        ? 'Error submitting onboarding information.'
-        : 'Successfully updated client.',
-    )
+    if (isSR) {
+      const { error: statusOB } = await updateItem('clients', onboardedData, id)
+      const { error: statusSR } = await createItem(
+        'special_requests',
+        requestData,
+      )
+
+      alert(
+        statusOB || statusSR
+          ? 'Error submitting onboarding information.'
+          : 'Successfully updated client.',
+      )
+    } else {
+      const { error } = await updateItem('clients', onboardedData, id)
+      alert(
+        error
+          ? 'Error submitting onboarding information.'
+          : 'Successfully updated client.',
+      )
+    }
 
     router.push('/dashboard/onboarding')
+    router.refresh()
   }
 
   return (
@@ -53,7 +85,7 @@ export default function OnboarderForm({ client, email }) {
       <div className="p-5">
         <h1 className="text-2xl font-semibold">ONBOARDER FORM</h1>
         <p className="font-medium text-neutral-600">
-          Currently onboarding {client}, {email}
+          Currently onboarding {client}
         </p>
       </div>
 
@@ -135,18 +167,56 @@ export default function OnboarderForm({ client, email }) {
           />
         </div>
 
-        {/* <div>
-          <label className="mb-1.5 block text-neutral-500">
-            Any special requests? If none, leave blank
+        <div className="flex items-center gap-2">
+          <label
+            className="cursor-pointer text-neutral-500"
+            htmlFor="special-requests"
+          >
+            Toggle if any special requests
           </label>
-          <textarea
-            name="special_request"
-            value={formData.special_request}
-            onChange={handleChange}
-            rows={2}
-            className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
-          />
-        </div> */}
+          <button
+            id="special-requests"
+            type="button"
+            className={`relative h-7 w-12 cursor-pointer rounded-full border-none p-0 transition-colors duration-200 focus:outline-none
+                 ${isSR ? 'bg-blue-500' : 'bg-gray-300'}`}
+            onClick={() => setSR(!isSR)}
+          >
+            <div
+              className={`absolute top-1/2 h-6 w-6 -translate-y-1/2 transform rounded-full bg-white transition-all duration-200
+                  ${isSR ? 'left-[1.35rem]' : 'left-[0.15rem]'}`}
+            ></div>
+          </button>
+        </div>
+
+        {isSR && (
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="mb-1.5 block text-neutral-500">
+                Package Type
+              </label>
+              <input
+                type="text"
+                name="package_type"
+                value={specialReq.package_type}
+                onChange={handleSRChange}
+                className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-neutral-500">
+                Who Closed the Deal
+              </label>
+              <input
+                type="text"
+                name="closed_by"
+                value={specialReq.closed_by}
+                onChange={handleSRChange}
+                className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between p-5">
@@ -165,5 +235,31 @@ export default function OnboarderForm({ client, email }) {
         </button>
       </div>
     </form>
+  )
+}
+
+export function CopyOnboardingLink({ brand, id }) {
+  return (
+    <h3
+      onClick={() => {
+        navigator.clipboard
+          .writeText(
+            `Onboarding link for client ${brand}: https://automize.vercel.app/onboarding-form/${id}`,
+          )
+          .then(() => {
+            alert('Text copied to clipboard!')
+          })
+          .catch((err) => {
+            alert('Error copying text. Please try again or copy manually.')
+          })
+      }}
+      className="group cursor-pointer rounded-full transition-all duration-500 hover:bg-neutral-700/50 hover:px-2"
+    >
+      <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-red-500 group-hover:bg-pink-500" />
+      <span className="group-hover:hidden">Incomplete Jotform</span>
+      <span className={`hidden group-hover:inline-block`}>
+        Copy jotform link
+      </span>
+    </h3>
   )
 }
