@@ -11,7 +11,7 @@ interface TableProps {
 
 export default function Table({ data, action, noSearch = false }: TableProps) {
   const [search, setSearch] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+  // const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
   const keys = data.length > 0 ? Object.keys(data[0]) : []
@@ -34,10 +34,10 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
     return filtered
   }, [search, data, noSearch])
 
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredData.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredData, currentPage, itemsPerPage])
+  // const paginatedData = useMemo(() => {
+  //   const startIndex = (currentPage - 1) * itemsPerPage
+  //   return filteredData.slice(startIndex, startIndex + itemsPerPage)
+  // }, [filteredData, currentPage, itemsPerPage])
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
 
@@ -59,7 +59,7 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)
-                setCurrentPage(1)
+                // setCurrentPage(1)
               }}
             />
           </div>
@@ -86,8 +86,8 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
             </tr>
           </thead>
           <tbody>
-            {paginatedData.length > 0 ? (
-              paginatedData.map((row, rowIndex) => (
+            {filteredData.length > 0 ? (
+              filteredData.map((row, rowIndex) => (
                 <tr key={rowIndex} className="hover:bg-night-starlit">
                   {keys.map((key, colIndex) => (
                     <td
@@ -114,7 +114,7 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
       </div>
 
       {/* Pagination Controls */}
-      <div className="mt-4 flex items-center justify-between">
+      {/* <div className="mt-4 flex items-center justify-between">
         <span className="text-sm text-neutral-600">
           {`Showing ${(currentPage - 1) * itemsPerPage + 1} - ${Math.min(
             currentPage * itemsPerPage,
@@ -140,7 +140,7 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
             Next
           </button>
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }

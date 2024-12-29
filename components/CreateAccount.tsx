@@ -47,7 +47,7 @@ export default function CreateAccount({ pods }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium">
-                    Account Name
+                    Brand Name
                   </label>
                   <input
                     type="text"

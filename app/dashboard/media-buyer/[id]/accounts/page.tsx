@@ -12,6 +12,7 @@ export default async function NotificationPage({ params }) {
     .from('pod_table')
     .select('client_id, brand, notes, drive, website, insta, drop_day')
     .eq('user_id', id)
+    .order('brand')
 
   if (error || !data) {
     return (
@@ -24,6 +25,7 @@ export default async function NotificationPage({ params }) {
   }
 
   const accounts = data.map(({ client_id, ...client }) => ({
+    edit: <EditPodAccountButton client={{ client_id, ...client }} />,
     ...client,
     details: (
       <Link
@@ -33,7 +35,6 @@ export default async function NotificationPage({ params }) {
         View Details
       </Link>
     ),
-    edit: <EditPodAccountButton client={{ client_id, ...client }} />,
   }))
 
   return (

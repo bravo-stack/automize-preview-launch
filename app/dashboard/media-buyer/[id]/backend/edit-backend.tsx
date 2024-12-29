@@ -3,7 +3,7 @@
 import { updateItem, upsertItem } from '@/lib/actions/db'
 import { useState } from 'react'
 
-export default function EditBackendButton({ client }) {
+export default function EditBackendButton({ client, client_id }) {
   const [priority, setPriority] = useState(client.priority ?? '')
   const [cvr, setCVR] = useState(client.cvr ?? '')
   const [increase_cvr, setIncreaseCVR] = useState(client.increase_cvr ?? '')
@@ -16,7 +16,7 @@ export default function EditBackendButton({ client }) {
     e.preventDefault()
 
     const backendData = {
-      client_id: client.client_id,
+      client_id,
       priority,
       cvr,
       increase_cvr,
@@ -29,9 +29,10 @@ export default function EditBackendButton({ client }) {
 
     alert(
       error
-        ? 'Error submitting onboarding information.'
+        ? 'Error submitting information. Please ensure all fields are filled out correctly.'
         : 'Successfully updated client.',
     )
+    setOpen(false)
   }
 
   return (

@@ -11,6 +11,8 @@ export default async function ClientPortfolioPage({ params }) {
 
   const { data: c } = await db.from('clients').select('*').eq('id', id).single()
 
+  console.log(c)
+
   const role = await getRole()
 
   let details, access, links, rebill, metrics, other
@@ -27,10 +29,10 @@ export default async function ClientPortfolioPage({ params }) {
 
     access = [
       'onboarded',
-      'fb_access',
+      // 'fb_access',
       'shopify_access',
       'fb_key',
-      'shopify_key',
+      // 'shopify_key',
       'store_id',
     ]
 
@@ -43,8 +45,8 @@ export default async function ClientPortfolioPage({ params }) {
       'onboarded',
       'fb_access',
       'shopify_access',
-      'fb_key',
-      'shopify_key',
+      // 'fb_key',
+      // 'shopify_key',
       'store_id',
     ]
 

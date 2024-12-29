@@ -5,8 +5,8 @@ export default async function AccountsPage() {
   const db = createClient()
 
   const { data: accounts } = await db
-    .from('accounts')
-    .select('id, name, account_id, pod, status, created_at')
+    .from('clients')
+    .select('id, brand, fb_key, pod, status, created_at')
 
   const { data: pods } = await db.from('pod').select('name')
 

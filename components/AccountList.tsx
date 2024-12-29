@@ -8,8 +8,8 @@ import Link from 'next/link'
 
 interface Account {
   id?: number | string
-  name: string
-  account_id: string
+  brand: string
+  fb_key: string
   pod: string
   status: string
 }
@@ -30,7 +30,7 @@ export default function AccountList({
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
     const filtered = accounts.filter((account) =>
-      account.name.toLowerCase().includes(e.target.value.toLowerCase()),
+      account.brand.toLowerCase().includes(e.target.value.toLowerCase()),
     )
     setFilteredAccounts(filtered)
   }
@@ -129,10 +129,10 @@ export default function AccountList({
             {filteredAccounts.map((account, index) => (
               <tr key={index}>
                 <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                  {account.name}
+                  {account.brand}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                  {account.account_id}
+                  {account.fb_key}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                   {account.pod}
@@ -156,7 +156,7 @@ export default function AccountList({
                 </td>
                 <td className="whitespace-nowrap py-4 pr-6 text-right text-sm font-medium">
                   <button
-                    onClick={() => setConfirmDelete(account.account_id)}
+                    onClick={() => setConfirmDelete(account.fb_key)}
                     className="text-red-600 hover:text-red-900"
                   >
                     Delete
@@ -211,9 +211,9 @@ export default function AccountList({
                   </label>
                   <input
                     type="text"
-                    value={editAccount.name}
+                    value={editAccount.brand}
                     onChange={(e) =>
-                      setEditAccount({ ...editAccount, name: e.target.value })
+                      setEditAccount({ ...editAccount, brand: e.target.value })
                     }
                     required
                     placeholder="E.g. InsightX Media"
@@ -227,12 +227,12 @@ export default function AccountList({
                   </label>
                   <input
                     type="text"
-                    value={editAccount.account_id}
+                    value={editAccount.fb_key}
                     disabled
                     onChange={(e) =>
                       setEditAccount({
                         ...editAccount,
-                        account_id: e.target.value,
+                        fb_key: e.target.value,
                       })
                     }
                     required

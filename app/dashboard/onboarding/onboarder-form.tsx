@@ -4,6 +4,7 @@ import { createItem, updateItem } from '@/lib/actions/db'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { sendDiscordMessage } from '@/lib/actions/discord'
 
 export default function OnboarderForm({ client, id }) {
   const router = useRouter()
@@ -59,18 +60,21 @@ export default function OnboarderForm({ client, id }) {
         requestData,
       )
 
-      alert(
-        statusOB || statusSR
-          ? 'Error submitting onboarding information.'
-          : 'Successfully updated client.',
-      )
-    } else {
-      const { error } = await updateItem('clients', onboardedData, id)
-      alert(
-        error
-          ? 'Error submitting onboarding information.'
-          : 'Successfully updated client.',
-      )
+      if (!statusSR) {
+        const message =
+          `**SPECIAL REQUEST FROM ${client || 'Unknown Client'}**\n\n` +
+          `Client: ${client || 'N/A'}\n` +
+          `Package type: ${specialReq.package_type || 'N/A'}\n` +
+          `Closed by: ${specialReq.closed_by || 'N/A'}\n\n` +
+          `<@989529544702689303> <@1293941738666197064> <@1061841640379134012> <@1258500284095660059>`
+
+        await sendDiscordMessage('sulaiman-test', message)
+        alert(
+          statusOB || statusSR
+            ? 'Error submitting onboarding information.'
+            : 'Successfully updated client.',
+        )
+      }
     }
 
     router.push('/dashboard/onboarding')

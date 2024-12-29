@@ -6,11 +6,15 @@ export default async function BackendPage({ params }) {
   const { id } = params
   const db = createClient()
 
-  const { data } = await db.from('backend_table').select('*').eq('user_id', id)
+  const { data } = await db
+    .from('backend_table')
+    .select('*')
+    .eq('user_id', id)
+    .order('brand')
 
-  const accounts = data?.map(({ user_id: _, ...rest }) => ({
+  const accounts = data?.map(({ user_id: _, client_id, ...rest }) => ({
+    edit: <EditBackendButton client={{ ...rest }} client_id={client_id} />,
     ...rest,
-    action: <EditBackendButton client={{ ...rest }} />,
   }))
 
   return (

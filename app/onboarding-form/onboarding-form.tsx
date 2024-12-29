@@ -68,6 +68,7 @@ export default function OnboardingForm({ clientID }) {
     // 2. parsing data
     const clientData = {
       brand: formData.brandName,
+      email: formData.email,
       full_name: `${formData.firstName} ${formData.lastName}`,
       phone_number: formData.phoneNumber,
       address: `${formData.streetAddress}${formData.streetAddress2 ? `, ${formData.streetAddress2}` : ''}, ${formData.city}, ${formData.state} ${formData.postalCode}`,

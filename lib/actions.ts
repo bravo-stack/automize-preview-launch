@@ -175,17 +175,17 @@ export async function createAccount(accountData: any) {
 
 export async function updateAccount(accountData: any) {
   const db = createClient()
-  const { name, account_id, pod, status } = accountData
+  const { brand, fb_key, pod, status } = accountData
 
   const { data, error } = await db
     .from('accounts')
     .update({
-      name,
+      brand,
       pod,
       status,
       churn_date: status === 'left' ? new Date() : null,
     })
-    .eq('account_id', account_id)
+    .eq('fb_key', fb_key)
 
   if (data && !error) {
     return true
