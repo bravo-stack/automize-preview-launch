@@ -27,7 +27,7 @@ export default async function Pods() {
         <h1 className="w-fit bg-gradient-to-b from-white via-zinc-500/90 to-white/60 bg-clip-text text-4xl tracking-wide text-transparent">
           Organize, Create & Handle
         </h1>
-        <h2 className="text-4xl text-white/70">Google Spreadsheets</h2>
+        <h2 className="text-4xl text-white/70">Pod Spreadsheets</h2>
       </header>
 
       <section>
