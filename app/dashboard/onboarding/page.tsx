@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import ClosingForm from './closing-form'
-import { createAdminClient } from '@/lib/db/admin'
 import OnboarderForm, { CopyOnboardingLink } from './onboarder-form'
+import { createClient } from '@/lib/db/server'
+import DeleteItem from '@/components/actions/delete-item'
 
 export default async function OnboardingPage({ searchParams }) {
-  const db = createAdminClient()
+  const db = createClient()
   const { client, id } = searchParams
 
   const { data: closed } = await db
@@ -34,12 +35,14 @@ export default async function OnboardingPage({ searchParams }) {
             closed.map((client, index) => (
               <li
                 key={index}
-                className=" rounded border border-zinc-800 bg-night-starlit p-3"
+                className="group/p relative rounded border border-zinc-800 bg-night-starlit p-3"
               >
                 <div className="flex items-center justify-between gap-0.5">
                   <h3 className="font-semibold">{client.brand}</h3>
                   <p>{client.email}</p>
                 </div>
+
+                <DeleteItem table="clients" id={client.id} button />
 
                 <div className="flex items-center justify-between gap-0.5 text-sm text-neutral-400">
                   {client.email ? (
