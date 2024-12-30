@@ -1,9 +1,10 @@
 import Section from '@/components/common/section'
-import { createClient } from '@/lib/db/server'
 import ClientCard from './client-card'
 import NotesCard from './notes-card'
+import { createClient } from '@/lib/db/server'
 import { textFromSQL } from '@/lib/utils'
 import { getRole } from '@/lib/actions'
+import Link from 'next/link'
 
 export default async function ClientPortfolioPage({ params }) {
   const db = createClient()
@@ -27,28 +28,14 @@ export default async function ClientPortfolioPage({ params }) {
       'starting_mrr',
     ]
 
-    access = [
-      'onboarded',
-      // 'fb_access',
-      'shopify_access',
-      'fb_key',
-      // 'shopify_key',
-      'store_id',
-    ]
+    access = ['onboarded', 'shopify_access', 'fb_key', 'store_id']
 
     links = ['website', 'instagram', 'whimsicals', 'drive']
     rebill = ['rebill_amt', 'rebill_date']
     metrics = ['margins', 'cogs', 'break_even_roas', 'bc_review', 'passed_bcr']
     other = ['drop_day', 'client_reports', 'closed_by', 'outside_issues']
   } else {
-    access = [
-      'onboarded',
-      'fb_access',
-      'shopify_access',
-      // 'fb_key',
-      // 'shopify_key',
-      'store_id',
-    ]
+    access = ['onboarded', 'fb_access', 'shopify_access', 'store_id']
 
     links = ['website', 'instagram', 'whimsicals', 'drive']
     metrics = [
@@ -81,7 +68,17 @@ export default async function ClientPortfolioPage({ params }) {
         <p>Client Portfolio&nbsp;&nbsp;&bull;&nbsp;&nbsp;{c.status}</p>
       </header>
 
-      <Section title="Overview">
+      <Section
+        title="Overview"
+        actions={
+          <Link
+            href={`/dashboard/notes/${id}/edit`}
+            className="rounded-md bg-white px-3 py-1.5 font-medium text-black"
+          >
+            Edit Portfolio
+          </Link>
+        }
+      >
         <div className="grid grid-cols-2 gap-5 p-5">
           {details && (
             <ClientCard
