@@ -56,7 +56,7 @@ export default async function Pods() {
           <CreatePodSheet user={user} />
 
           <Link
-            href="/dashboard/pods/manage-accounts"
+            href="/dashboard/autometric/manage-accounts"
             className="rounded-md border border-white px-3 py-1.5 font-medium"
           >
             Manage&nbsp;Accounts

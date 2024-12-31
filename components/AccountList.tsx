@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import CreateAccount from './CreateAccount'
 import Link from 'next/link'
+import { updateItem } from '@/lib/actions/db'
 
 interface Account {
   id?: number | string
@@ -50,7 +51,20 @@ export default function AccountList({
   }
 
   const handleEdit = async (updatedAccount: Account) => {
-    await updateAccount(updatedAccount)
+    const accountData = {
+      brand: updatedAccount.brand,
+      pod: updatedAccount.pod,
+      status: updatedAccount.status,
+      churn_date: updatedAccount.status === 'left' ? new Date() : null,
+    }
+
+    const { error } = await updateItem(
+      'clients',
+      accountData,
+      updatedAccount.fb_key,
+      'fb_key',
+    )
+
     setEditAccount(null)
     router.refresh()
   }
