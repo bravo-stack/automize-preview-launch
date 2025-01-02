@@ -1,6 +1,7 @@
 'use client'
 
 import { createAccount } from '@/lib/actions'
+import { createItem } from '@/lib/actions/db'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -12,16 +13,18 @@ export default function CreateAccount({ pods }) {
   const router = useRouter()
 
   const handleSave = async () => {
-    const response = await createAccount({
-      name,
-      account_id: `act_${account_id}`,
-      pod: pod === 'none' ? null : pod,
-    })
+    const clientAccount = {
+      brand: name,
+      fb_key: `act_${account_id}`,
+      pod,
+    }
+    const { error } = await createItem('clients', clientAccount)
 
-    if (!response) {
-      console.error('Error creating account.')
+    if (error) {
+      alert('Error creating client.')
     } else {
       router.refresh()
+      alert('Client added successfully.')
     }
 
     setShowModal(false)

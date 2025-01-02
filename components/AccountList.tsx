@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import CreateAccount from './CreateAccount'
 import Link from 'next/link'
-import { updateItem } from '@/lib/actions/db'
+import { deleteItem, updateItem } from '@/lib/actions/db'
 
 interface Account {
   id?: number | string
@@ -37,7 +37,8 @@ export default function AccountList({
   }
 
   const handleDelete = async (accountId: string) => {
-    await deleteAccount(accountId)
+    await deleteItem('clients', accountId, 'fb_key')
+    // await deleteAccount(accountId)
     setConfirmDelete(null)
     router.refresh()
   }
