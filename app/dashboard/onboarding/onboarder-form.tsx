@@ -176,7 +176,8 @@ export default function OnboarderForm({ client, id }) {
             className="cursor-pointer text-neutral-500"
             htmlFor="special-requests"
           >
-            Toggle if any special requests
+            Toggle if any special requests (Upsells, issues, wants to bring on
+            multiple brands)
           </label>
           <button
             id="special-requests"

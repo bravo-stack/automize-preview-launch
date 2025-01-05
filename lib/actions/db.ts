@@ -1,5 +1,6 @@
 'use server'
 
+import { encrypt } from '../crypto'
 import { createAdminClient } from '../db/admin'
 import { createClient } from '../db/server'
 import { podFromEmail } from '../utils'
@@ -15,6 +16,19 @@ export async function createItem(table, data): Promise<any> {
   if (error) console.log(error)
 
   return { data: item, error: error ? true : false }
+}
+
+export async function updateKeys(data) {
+  const db = createAdminClient()
+  const payload = {
+    ...(data.fb_key && { fb_key: `act_${data.fb_key}` }),
+    ...(data.shopify_key && { shopify_key: encrypt(data.shopify_key) }), // Encrypt here
+    ...(data.store_id && { store_id: data.store_id }),
+  }
+
+  const { error } = await db.from('clients').update(payload).eq('id', data.id)
+
+  return { error: error ? true : false }
 }
 
 export async function upsertItem(table, data): Promise<any> {

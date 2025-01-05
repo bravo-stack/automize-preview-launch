@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import ClosingForm from './closing-form'
+import DeleteItem from '@/components/actions/delete-item'
 import OnboarderForm, { CopyOnboardingLink } from './onboarder-form'
 import { createClient } from '@/lib/db/server'
-import DeleteItem from '@/components/actions/delete-item'
 
 export default async function OnboardingPage({ searchParams }) {
   const db = createClient()
@@ -12,6 +12,11 @@ export default async function OnboardingPage({ searchParams }) {
     .from('clients')
     .select('id, brand, email, closed_by')
     .eq('onboarded', false)
+
+  // this is some crazy javascript bs lmao props to u if yk what this is
+  const sortedClosed = closed?.sort(
+    (a, b) => Number(!!b.email) - Number(!!a.email),
+  )
 
   return (
     <main className="space-y-7 p-7">
@@ -31,8 +36,8 @@ export default async function OnboardingPage({ searchParams }) {
         )}
 
         <ul className="2xl:grid-cols- grid grid-cols-2 gap-5 p-5 shadow">
-          {closed && closed.length !== 0 ? (
-            closed.map((client, index) => (
+          {sortedClosed && sortedClosed.length !== 0 ? (
+            sortedClosed.map((client, index) => (
               <li
                 key={index}
                 className="group/p relative rounded border border-zinc-800 bg-night-starlit p-3"

@@ -1,4 +1,8 @@
-export default function Section({ children, title, actions = <></> }) {
+export default function Section({
+  children,
+  title = 'Section',
+  actions = <></>,
+}) {
   return (
     <section className="mx-auto max-w-7xl divide-y divide-zinc-800 overflow-hidden rounded-md border border-zinc-800">
       <div className="flex items-center justify-between bg-night-starlit px-5 py-2.5">

@@ -51,7 +51,7 @@ export function date(str: string, time = false) {
 }
 
 export function parseColumn(row, key: string) {
-  const dateColumns = ['created_at', 'updated_at']
+  const dateColumns = ['created_at', 'updated_at', 'closed_at']
   const timeColumns = ['start_time']
 
   if (dateColumns.includes(key)) {

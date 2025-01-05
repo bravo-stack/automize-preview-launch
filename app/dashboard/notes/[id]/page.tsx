@@ -5,6 +5,7 @@ import { createClient } from '@/lib/db/server'
 import { textFromSQL } from '@/lib/utils'
 import { getRole } from '@/lib/actions'
 import Link from 'next/link'
+import ManageKeys from '@/components/actions/manage-keys'
 
 export default async function ClientPortfolioPage({ params }) {
   const db = createClient()
@@ -28,7 +29,7 @@ export default async function ClientPortfolioPage({ params }) {
       'starting_mrr',
     ]
 
-    access = ['onboarded', 'shopify_access', 'fb_key', 'store_id']
+    access = ['onboarded', 'fb_key', 'store_id', 'shopify_access']
 
     links = ['website', 'instagram', 'whimsicals', 'drive']
     rebill = ['rebill_amt', 'rebill_date']
@@ -71,12 +72,16 @@ export default async function ClientPortfolioPage({ params }) {
       <Section
         title="Overview"
         actions={
-          <Link
-            href={`/dashboard/notes/${id}/edit`}
-            className="rounded-md bg-white px-3 py-1.5 font-medium text-black"
-          >
-            Edit Portfolio
-          </Link>
+          <div className="flex gap-2.5">
+            {role === 'exec' && <ManageKeys client={c} />}
+
+            <Link
+              href={`/dashboard/notes/${id}/edit`}
+              className="block rounded-md bg-white px-3 py-1.5 font-medium text-black"
+            >
+              Edit Portfolio
+            </Link>
+          </div>
         }
       >
         <div className="grid grid-cols-2 gap-5 p-5">

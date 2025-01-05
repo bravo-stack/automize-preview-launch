@@ -9,7 +9,7 @@ export const metadata = {
 export default function OnboardingFormPage({ params }) {
   const { id } = params
   return (
-    <main className="min-h-screen bg-neutral-900 px-2 py-20 md:p-20">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-neutral-900 px-2 py-20 md:p-20">
       {/* IXM Logo */}
       <Image
         src={img}

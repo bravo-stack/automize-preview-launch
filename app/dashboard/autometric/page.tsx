@@ -2,6 +2,8 @@ import CreateSheet from '@/components/CreateSheet'
 import { createClient } from '@/lib/db/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Section from '@/components/common/section'
+import Table from '@/components/common/table'
 
 export default async function Autometric() {
   const db = createClient()
@@ -20,16 +22,33 @@ export default async function Autometric() {
     redirect('/')
   }
 
+  const { data: onboarded } = await db
+    .from('clients')
+    .select('id, brand, closed_by, closed_at, fb_key, shopify_key')
+    .eq('onboarded', true)
+    .or('fb_key.is.null,shopify_key.is.null')
+
+  const onboardedData = onboarded?.map(({ id, ...rest }) => ({
+    ...rest,
+    details: (
+      <Link
+        href={`/dashboard/notes/${id}`}
+        className="block w-fit rounded-md border border-zinc-800 bg-night-dusk px-1.5 py-0.5 text-neutral-400 transition-colors hover:border-zinc-700"
+      >
+        Edit Details
+      </Link>
+    ),
+  }))
+
   return (
-    <main className="flex flex-col justify-center space-y-10 px-6 pb-24 pt-10 md:px-24">
+    <main className="mx-auto flex max-w-7xl flex-col justify-center space-y-10 px-6 pb-24 pt-10 md:px-24">
       <header className="">
         <h1 className="w-fit bg-gradient-to-b from-white via-zinc-500/90 to-white/60 bg-clip-text text-4xl tracking-wide text-transparent">
           Organize, Create & Handle
         </h1>
         <h2 className="text-4xl text-white/70">Google Spreadsheets</h2>
       </header>
-
-      <section>
+      <section className="">
         <div className="mb-10 flex gap-3">
           <search className="flex w-full items-center gap-2 rounded-md border border-zinc-800 bg-night-starlit px-2 outline-none transition-colors hover:border-zinc-700 focus:ring focus:ring-zinc-800">
             <svg
@@ -88,8 +107,20 @@ export default async function Autometric() {
           })}
         </ul>
       </section>
+      <header className="">
+        <h1 className="text-4xl text-white/70">Clients Pending Access</h1>
+      </header>
 
-      {/* <Sheet /> */}
+      <Section title="Clients Pending Access">
+        <div className="space-y-5 p-5">
+          <p className="mx-auto max-w-prose text-center font-medium">
+            All clients listed below have gone through the full onboarding
+            process, and are in need of either a Facebook key, a Shopify key, or
+            both.
+          </p>
+          <Table data={onboardedData} />
+        </div>
+      </Section>
     </main>
   )
 }

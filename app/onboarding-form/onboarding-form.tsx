@@ -29,12 +29,11 @@ export default function OnboardingForm({ clientID }) {
     meetingDateTime: '',
   })
 
-  console.log('Name:', formData.firstName)
-
   const [step, setStep] = useState(1)
   const [success, setSuccess] = useState<boolean | null>(null)
   const [missingFields, setMissingFields] = useState<string[]>([])
   const [showPopup, setShowPopup] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -53,8 +52,12 @@ export default function OnboardingForm({ clientID }) {
     const requiredFields = [
       'firstName',
       'lastName',
-      'email',
       'brandName',
+      'email',
+      'phoneNumber',
+      'discordUsername',
+      'websiteURL',
+      'instagramLink',
       'meetingDateTime',
     ]
 
@@ -65,7 +68,15 @@ export default function OnboardingForm({ clientID }) {
       return
     }
 
-    // 2. parsing data
+    setLoading(true) // Disable submit button and show spinner
+
+    // 2. create client drive
+    const { folderId } = await createClientDrive(
+      formData.email,
+      formData.brandName,
+    )
+
+    // 3. parsing data
     const clientData = {
       brand: formData.brandName,
       email: formData.email,
@@ -78,6 +89,7 @@ export default function OnboardingForm({ clientID }) {
       website: formData.websiteURL,
       instagram: formData.instagramLink,
       intro_notes: formData.introduction,
+      drive: `https://drive.google.com/drive/folders/${folderId}`,
     }
 
     const bookingData = {
@@ -95,8 +107,7 @@ export default function OnboardingForm({ clientID }) {
 
     const { error: bookingStatus } = await createItem('bookings', bookingData)
 
-    await createClientDrive(formData.email, formData.brandName)
-
+    setLoading(false)
     setSuccess(!formStatus && !bookingStatus)
   }
 
@@ -480,10 +491,32 @@ export default function OnboardingForm({ clientID }) {
           </button>
 
           <button
+            type="button"
             onClick={handleSubmit}
-            className="block rounded-md bg-green-600 px-10 py-3 text-lg font-medium text-white"
+            className={`block rounded-md bg-green-600 py-3 text-lg font-medium text-white ${loading ? 'px-7' : 'px-10'}`}
+            disabled={loading}
           >
-            Submit
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                Submitting
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="animate-spin"
+                  fill="white"
+                >
+                  <path
+                    d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z"
+                    opacity=".25"
+                  />
+                  <path d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z" />
+                </svg>
+              </div>
+            ) : (
+              'Submit'
+            )}
           </button>
         </div>
       )}
@@ -501,6 +534,11 @@ export default function OnboardingForm({ clientID }) {
                   firstName: 'First Name',
                   lastName: 'Last Name',
                   brandName: 'Brand Name',
+                  email: 'Email Address',
+                  phoneNumber: 'Phone Number',
+                  discordUsername: 'Discord Username',
+                  websiteURL: 'Website Link',
+                  instagramLink: 'Instagram Link',
                   meetingDateTime: 'Meeting Date and Time',
                 }
                 return <li key={field}>{fieldLabels[field] || field}</li>

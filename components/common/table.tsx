@@ -12,7 +12,7 @@ interface TableProps {
 export default function Table({ data, action, noSearch = false }: TableProps) {
   const [search, setSearch] = useState('')
   // const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  // const itemsPerPage = 5
 
   const keys = data.length > 0 ? Object.keys(data[0]) : []
 
@@ -38,8 +38,7 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
   //   const startIndex = (currentPage - 1) * itemsPerPage
   //   return filteredData.slice(startIndex, startIndex + itemsPerPage)
   // }, [filteredData, currentPage, itemsPerPage])
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
+  // const totalPages = Math.ceil(filteredData.length / itemsPerPage)
 
   return (
     <div className="mx-auto mt-2 max-w-4xl 2xl:max-w-7xl">

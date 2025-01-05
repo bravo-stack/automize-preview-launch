@@ -5,25 +5,19 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 export default function ClosingForm() {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [link, setLink] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     brand: '',
-    // email: '',
     closed_by: '',
-    rebill_date: '',
-    // starting_mrr: '',
+    close_amt: undefined,
   })
-  const [link, setLink] = useState<string | null>(null)
-
-  const router = useRouter()
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const { data, error } = await createItem('clients', {
-      ...formData,
-      rebill_date: formData.rebill_date ?? null,
-    })
+    const { data, error } = await createItem('clients', formData)
 
     if (error) {
       alert(
@@ -74,21 +68,6 @@ export default function ClosingForm() {
                     />
                   </div>
 
-                  {/* <div className="grid grid-cols-2 gap-3"> 
-               <div>
-                  <label className="block text-sm font-medium">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    placeholder="E.g. example@domain.com"
-                    className="w-full rounded border px-3 py-2"
-                  />
-                </div> 
-              </div> */}
-
                   <div>
                     <label className="block text-sm font-medium">
                       Who Closed Them?
@@ -104,32 +83,17 @@ export default function ClosingForm() {
                     />
                   </div>
 
-                  {/* <div>
-                <label className="block text-sm font-medium">
-                  How much $/m?
-                </label>
-                <input
-                type="number"
-                  name="starting_mrr"
-                  value={formData.starting_mrr}
-                  onChange={handleChange}
-                  required
-                  placeholder="E.g. 1000"
-                  className="w-full rounded border px-3 py-2"
-                  />
-                  </div> */}
-
                   <div>
                     <label className="block text-sm font-medium">
-                      Rebill Date
+                      Retainer Amount
                     </label>
                     <input
-                      type="date"
-                      name="rebill_date"
-                      value={formData.rebill_date}
+                      type="number"
+                      name="close_amt"
+                      value={formData.close_amt}
                       onChange={handleChange}
                       required
-                      placeholder="E.g. 2024-01-01"
+                      placeholder="Please enter a numeric value"
                       className="w-full rounded border px-3 py-2"
                     />
                   </div>
@@ -163,9 +127,6 @@ export default function ClosingForm() {
                     <strong>Click to copy: </strong>
                     {link}
                   </p>
-                  {/* <p className="text-xs text-neutral-500 2xl:text-sm">
-                    Click link to copy
-                  </p> */}
                 </div>
               )}
 
@@ -178,7 +139,7 @@ export default function ClosingForm() {
                     setFormData({
                       brand: '',
                       closed_by: '',
-                      rebill_date: '',
+                      close_amt: undefined,
                     })
                   }}
                   className="rounded-md bg-black px-4 py-2 text-white shadow-sm transition-colors"
