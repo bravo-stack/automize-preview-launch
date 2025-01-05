@@ -24,12 +24,13 @@ export default async function Autometric() {
 
   const { data: onboarded } = await db
     .from('clients')
-    .select('id, brand, closed_by, closed_at, fb_key, shopify_key')
+    .select('id, brand, closed_by, closed_at, fb_key, shopify_key, discord_id')
     .eq('onboarded', true)
     .or('fb_key.is.null,shopify_key.is.null')
 
-  const onboardedData = onboarded?.map(({ id, ...rest }) => ({
+  const onboardedData = onboarded?.map(({ id, discord_id, ...rest }) => ({
     ...rest,
+    discord_access: discord_id === null ? 'No' : 'Yes',
     details: (
       <Link
         href={`/dashboard/notes/${id}`}
