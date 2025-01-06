@@ -11,11 +11,10 @@ interface TableProps {
 
 export default function Table({ data, action, noSearch = false }: TableProps) {
   const [search, setSearch] = useState('')
-  // const [currentPage, setCurrentPage] = useState(1)
-  // const itemsPerPage = 5
+  const [isPopupOpen, setIsPopupOpen] = useState(false)
+  const [currentNote, setCurrentNote] = useState<string | null>(null)
 
   const keys = data.length > 0 ? Object.keys(data[0]) : []
-
   if (keys.includes('id')) {
     keys.splice(keys.indexOf('id'), 1)
   }
@@ -34,16 +33,30 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
     return filtered
   }, [search, data, noSearch])
 
-  // const paginatedData = useMemo(() => {
-  //   const startIndex = (currentPage - 1) * itemsPerPage
-  //   return filteredData.slice(startIndex, startIndex + itemsPerPage)
-  // }, [filteredData, currentPage, itemsPerPage])
-  // const totalPages = Math.ceil(filteredData.length / itemsPerPage)
+  const handleOpenNote = (note: string) => {
+    setCurrentNote(note)
+    setIsPopupOpen(true)
+  }
+
+  const handleClosePopup = () => {
+    setCurrentNote(null)
+    setIsPopupOpen(false)
+  }
+
+  const isUrl = (value: string) => {
+    try {
+      const url = new URL(value)
+      const shortenedUrl = `${url.hostname}/...`
+      return shortenedUrl
+    } catch {
+      return null
+    }
+  }
 
   return (
     <div className="mx-auto mt-2 max-w-4xl 2xl:max-w-7xl">
       <div className="flex gap-2.5">
-        {!noSearch && ( // Only render the search input if noSearch is false
+        {!noSearch && (
           <div className="flex-1">
             <label
               htmlFor="autocomplete"
@@ -58,14 +71,13 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)
-                // setCurrentPage(1)
               }}
             />
           </div>
         )}
       </div>
 
-      <div className="overflow-x-scroll rounded-md border border-zinc-800">
+      <div className="max-h-[70vh] overflow-y-auto overflow-x-scroll rounded-md border border-zinc-800">
         <table className="w-full">
           <thead className="border-zinc-800 text-left">
             <tr>
@@ -93,7 +105,35 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
                       key={colIndex}
                       className="whitespace-nowrap border-b border-zinc-800 px-4 py-2"
                     >
-                      {parseColumn(row, key) ?? 'N/A'}
+                      {key.toLowerCase() === 'notes' && row[key] ? (
+                        <button
+                          onClick={() => handleOpenNote(row[key])}
+                          className="rounded-md border border-zinc-800 bg-night-dusk px-1.5 py-0.5 text-neutral-400 transition-colors hover:border-zinc-700"
+                        >
+                          View Note
+                        </button>
+                      ) : typeof row[key] === 'string' ? (
+                        (() => {
+                          const shortenedUrl = isUrl(row[key])
+                          return shortenedUrl ? (
+                            <div className="flex items-center space-x-2">
+                              <span
+                                className="cursor-pointer text-blue-500 underline hover:text-blue-600"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(row[key])
+                                  alert('Link copied to clipboard!')
+                                }}
+                              >
+                                {shortenedUrl}
+                              </span>
+                            </div>
+                          ) : (
+                            parseColumn(row, key) ?? 'N/A'
+                          )
+                        })()
+                      ) : (
+                        parseColumn(row, key) ?? 'N/A'
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -112,34 +152,26 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
         </table>
       </div>
 
-      {/* Pagination Controls */}
-      {/* <div className="mt-4 flex items-center justify-between">
-        <span className="text-sm text-neutral-600">
-          {`Showing ${(currentPage - 1) * itemsPerPage + 1} - ${Math.min(
-            currentPage * itemsPerPage,
-            filteredData.length,
-          )} of ${filteredData.length} rows.`}
-        </span>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="rounded-md border border-zinc-800 px-3 py-1 text-neutral-600 disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="rounded-md border border-zinc-800 px-3 py-1 text-neutral-600 disabled:opacity-50"
-          >
-            Next
-          </button>
+      {isPopupOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative w-11/12 max-w-2xl rounded-lg bg-white text-black shadow-lg">
+            <div className="flex flex-col space-y-4 p-6">
+              <h2 className="text-lg font-bold">Note Details</h2>
+              <div className="max-h-96 overflow-y-auto">
+                <p className="text-sm">{currentNote}</p>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button
+                  className="rounded-md bg-black px-3 py-1.5 text-white"
+                  onClick={handleClosePopup}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div> */}
+      )}
     </div>
   )
 }

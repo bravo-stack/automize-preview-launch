@@ -34,6 +34,13 @@ export default function OnboardingForm({ clientID }) {
   const [missingFields, setMissingFields] = useState<string[]>([])
   const [showPopup, setShowPopup] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [isEmailValid, setIsEmailValid] = useState(true)
+  const [isFocused, setIsFocused] = useState(false)
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email) // Return true if email is valid
+  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -43,6 +50,8 @@ export default function OnboardingForm({ clientID }) {
       ...prevData,
       [name]: value,
     }))
+
+    if (name === 'email') setIsEmailValid(validateEmail(value))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,6 +73,13 @@ export default function OnboardingForm({ clientID }) {
     const missing = requiredFields.filter((field) => !formData[field])
     if (missing.length > 0) {
       setMissingFields(missing)
+      setShowPopup(true)
+      return
+    }
+
+    if (!validateEmail(formData.email)) {
+      setIsEmailValid(false)
+      setMissingFields(['Email: incorrect format'])
       setShowPopup(true)
       return
     }
@@ -203,9 +219,20 @@ export default function OnboardingForm({ clientID }) {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              onBlur={() => setIsFocused(false)}
+              onFocus={() => setIsFocused(true)}
               required
-              className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
+              className={`w-full rounded border px-3 py-2 hover:ring-2 ${
+                isEmailValid || !formData.email
+                  ? 'border-neutral-400 bg-neutral-100 hover:ring-blue-400 focus:ring-blue-600'
+                  : 'border-red-500 bg-red-50 focus:ring-red-500'
+              }`}
             />
+            {!isEmailValid && !isFocused && formData.email && (
+              <span className="mt-1 block text-sm font-medium text-red-600">
+                Invalid email format. Please enter a valid email.
+              </span>
+            )}
             <label className="mt-1.5 block text-xs text-neutral-500 md:text-sm">
               example@example.com
             </label>

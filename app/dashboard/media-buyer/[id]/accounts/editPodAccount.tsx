@@ -4,7 +4,7 @@ import { updateItem } from '@/lib/actions/db'
 import { useState } from 'react'
 
 export default function EditPodAccountButton({ client }) {
-  const [mb_notes, setNotes] = useState(client.mb_notes ?? '')
+  const [mb_notes, setNotes] = useState(client.notes ?? '')
   const [drive, setDrive] = useState(client.drive ?? '')
   const [website, setWebsite] = useState(client.website ?? '')
   const [instagram, setInstagram] = useState(client.insta ?? '')
@@ -33,14 +33,6 @@ export default function EditPodAccountButton({ client }) {
         ? 'Error submitting onboarding information.'
         : 'Successfully updated client.',
     )
-
-    // Reset the form
-    // setNotes('')
-    // setDrive('')
-    // setWebsite('')
-    // setInstagram('daily')
-    // setDropDay('12:00')
-    // setOpen(false)
   }
 
   return (
