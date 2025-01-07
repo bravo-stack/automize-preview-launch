@@ -10,7 +10,7 @@ export default async function NotificationPage({ params }) {
 
   const { data, error } = await db
     .from('pod_table')
-    .select('client_id, brand, notes, drive, website, insta, drop_day')
+    .select('client_id, brand, notes, drop_day, drive, website, insta')
     .eq('user_id', id)
     .order('brand')
 

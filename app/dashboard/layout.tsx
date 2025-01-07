@@ -1,3 +1,4 @@
+import RefreshPodButtons from '@/components/actions/refresh-pods'
 import DashboardNav from '@/components/nav/dashboard-nav'
 import { createClient } from '@/lib/db/server'
 import { podFromEmail } from '@/lib/utils'
@@ -18,14 +19,16 @@ export default async function DashboardLayout({ children }) {
   const pod = podFromEmail(user.email)
 
   let sheetId
+  let sheet
   if (role === 'pod') {
     const { data } = await db
       .from('sheets')
-      .select('sheet_id')
+      .select('sheet_id, refresh')
       .eq('pod', pod)
       .single()
 
     sheetId = data?.sheet_id
+    sheet = data
   }
 
   const links =
@@ -292,12 +295,13 @@ export default async function DashboardLayout({ children }) {
         ]
 
   return (
-    <div className=" h-screen overflow-hidden ">
-      {/* Only show DashboardNav on large screens */}
+    <div className="h-screen overflow-hidden">
       <div className="hidden h-full lg:flex">
         <DashboardNav links={links} />
-        <div className="flex w-full flex-col">
-          <div className=" flex h-[60px] items-center justify-end gap-5 border-b border-zinc-800 px-6"></div>
+        <div id="main-focus" className="flex w-full flex-col pr-[250px]">
+          <div className="flex h-[60px] items-center justify-start gap-2.5 border-b border-zinc-800 px-6">
+            {role === 'pod' && <RefreshPodButtons data={sheet} pod={pod} />}
+          </div>
 
           <div className="flex-1 overflow-y-auto">{children}</div>
         </div>

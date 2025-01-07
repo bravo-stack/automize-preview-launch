@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 export default function EditBackendButton({ client, client_id }) {
   const [priority, setPriority] = useState(client.priority ?? '')
+  const [drop_day, setDropDay] = useState(client.drop_day ?? '')
   const [cvr, setCVR] = useState(client.cvr ?? '')
   const [increase_cvr, setIncreaseCVR] = useState(client.increase_cvr ?? '')
   const [sms_date, setSMSDate] = useState(client.sms_date ?? '')
@@ -20,12 +21,16 @@ export default function EditBackendButton({ client, client_id }) {
       priority,
       cvr,
       increase_cvr,
-      sms_date,
+      sms_date: sms_date === '' ? null : new Date(sms_date),
       email_auto,
       sms_auto,
     }
 
     const { error } = await upsertItem('backend', backendData)
+
+    if (client.drop_day !== drop_day) {
+      await updateItem('clients', { drop_day: new Date(drop_day) }, client_id)
+    }
 
     alert(
       error
@@ -47,30 +52,42 @@ export default function EditBackendButton({ client, client_id }) {
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-lg rounded-lg bg-white p-6 text-black shadow-lg">
-            <h2 className="mb-4 text-xl font-bold">
-              Edit Client - Media Buyer
-            </h2>
+            <h2 className="mb-4 text-xl font-bold">Edit Client - Backend</h2>
 
             <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium">CVR</label>
-                <input
-                  type="text"
-                  value={cvr}
-                  onChange={(e) => setCVR(e.target.value)}
-                  placeholder=""
-                  className="w-full rounded border px-3 py-2"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium">CVR</label>
+                  <input
+                    type="text"
+                    value={cvr}
+                    onChange={(e) => setCVR(e.target.value)}
+                    placeholder=""
+                    className="w-full rounded border px-3 py-2"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium">Priority</label>
                   <input
                     type="text"
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    placeholder="E.g., https://arekos.com/"
+                    className="w-full rounded border px-3 py-2"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium">
+                    Upcoming Drop Date
+                  </label>
+                  <input
+                    type="date"
+                    value={drop_day}
+                    onChange={(e) => setDropDay(e.target.value)}
+                    placeholder="E.g. https://www.instagram.com/grailsnextdoor/?hl=en"
                     className="w-full rounded border px-3 py-2"
                   />
                 </div>

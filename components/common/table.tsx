@@ -54,7 +54,7 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
   }
 
   return (
-    <div className="mx-auto mt-2 max-w-4xl 2xl:max-w-7xl">
+    <div className="">
       <div className="flex gap-2.5">
         {!noSearch && (
           <div className="flex-1">
@@ -78,8 +78,8 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
       </div>
 
       <div className="max-h-[70vh] overflow-y-auto overflow-x-scroll rounded-md border border-zinc-800">
-        <table className="w-full">
-          <thead className="border-zinc-800 text-left">
+        <table className="relative w-full">
+          <thead className="sticky top-0 border-b border-zinc-800 bg-night-dusk text-left">
             <tr>
               {keys.map((key, index) => (
                 <th
@@ -118,21 +118,26 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
                           return shortenedUrl ? (
                             <div className="flex items-center space-x-2">
                               <span
-                                className="cursor-pointer text-blue-500 underline hover:text-blue-600"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(row[key])
-                                  alert('Link copied to clipboard!')
-                                }}
+                                className="cursor-pointer underline hover:text-neutral-500"
+                                onClick={() => window.open(row[key], '_blank')}
                               >
-                                {shortenedUrl}
+                                View
                               </span>
                             </div>
                           ) : (
-                            parseColumn(row, key) ?? 'N/A'
+                            <span
+                              className={`${!parseColumn(row, key) && 'text-neutral-600'}`}
+                            >
+                              {parseColumn(row, key) || 'N/A'}
+                            </span>
                           )
                         })()
                       ) : (
-                        parseColumn(row, key) ?? 'N/A'
+                        <span
+                          className={`${!parseColumn(row, key) && 'text-neutral-600'}`}
+                        >
+                          {parseColumn(row, key) || 'N/A'}
+                        </span>
                       )}
                     </td>
                   ))}

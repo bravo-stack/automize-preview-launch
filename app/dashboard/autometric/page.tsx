@@ -1,7 +1,7 @@
-import CreateSheet from '@/components/CreateSheet'
 import { createClient } from '@/lib/db/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import CreateSheet from '@/components/CreateSheet'
 import Section from '@/components/common/section'
 import Table from '@/components/common/table'
 
@@ -24,13 +24,18 @@ export default async function Autometric() {
 
   const { data: onboarded } = await db
     .from('clients')
-    .select('id, brand, closed_by, closed_at, fb_key, shopify_key, discord_id')
+    .select(
+      'id, brand, closed_by, closed_at, fb_key, shopify_key, store_id, discord_id, email, phone_number, closed_at, rebill_date, rebill_amt, website, instagram, drive',
+    )
     .eq('onboarded', true)
-    .or('fb_key.is.null,shopify_key.is.null')
+    .or(
+      'fb_key.is.null,shopify_key.is.null,email.is.null,phone_number.is.null,discord_id.is.null,rebill_amt.is.null,rebill_date.is.null,website.is.null,instagram.is.null,drive.is.null',
+    )
 
   const onboardedData = onboarded?.map(({ id, discord_id, ...rest }) => ({
     ...rest,
     discord_access: discord_id === null ? 'No' : 'Yes',
+    shopify_key: rest.shopify_key === null ? 'N/A' : 'Exists',
     details: (
       <Link
         href={`/dashboard/notes/${id}`}
@@ -42,14 +47,14 @@ export default async function Autometric() {
   }))
 
   return (
-    <main className="mx-auto flex max-w-7xl flex-col justify-center space-y-10 px-6 pb-24 pt-10 md:px-24">
+    <main className="mx-auto flex max-w-6xl flex-col justify-center space-y-10 px-6 pb-24 pt-10 md:px-24 2xl:max-w-none">
       <header className="">
         <h1 className="w-fit bg-gradient-to-b from-white via-zinc-500/90 to-white/60 bg-clip-text text-4xl tracking-wide text-transparent">
           Organize, Create & Handle
         </h1>
         <h2 className="text-4xl text-white/70">Google Spreadsheets</h2>
       </header>
-      <section className="">
+      <section className="max-w-screen-2xl">
         <div className="mb-10 flex gap-3">
           <search className="flex w-full items-center gap-2 rounded-md border border-zinc-800 bg-night-starlit px-2 outline-none transition-colors hover:border-zinc-700 focus:ring focus:ring-zinc-800">
             <svg
@@ -112,12 +117,14 @@ export default async function Autometric() {
         <h1 className="text-4xl text-white/70">Clients Pending Access</h1>
       </header>
 
-      <Section title="Clients Pending Access">
+      <Section title="Clients Pending Access" full>
         <div className="space-y-5 p-5">
           <p className="mx-auto max-w-prose text-center font-medium">
-            All clients listed below have gone through the full onboarding
-            process, and are in need of either a Facebook key, a Shopify key, or
-            both.
+            {onboardedData?.length} clients listed below have gone through the
+            full onboarding process, and are missing at least one of the
+            following: Facebook key, Shopify key, Store ID, Email, Phone Number,
+            Rebill Amount, Rebill Date, Closed Date, Website, Instagram, or
+            Drive.
           </p>
           <Table data={onboardedData} />
         </div>

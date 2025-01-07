@@ -7,6 +7,15 @@ import { useState } from 'react'
 export default function DashboardNav({ links }) {
   const [expanded, setExpanded] = useState(true)
 
+  const toggleSidebar = () => {
+    setExpanded(!expanded)
+
+    const targetDiv = document.getElementById('main-focus')
+    if (targetDiv) {
+      targetDiv.style.paddingRight = expanded ? '70px' : '250px'
+    }
+  }
+
   return (
     <aside
       className={`dark:border-dark-outline relative hidden h-screen flex-shrink-0 flex-col border-r border-zinc-800 px-4 pb-6 pt-4 transition-all duration-500 md:flex ${expanded ? 'w-[250px]' : 'w-[70px]'}`}
@@ -21,7 +30,7 @@ export default function DashboardNav({ links }) {
           </Link>
         )}
 
-        <button className="-mt-4" onClick={() => setExpanded(!expanded)}>
+        <button className="-mt-4" onClick={toggleSidebar}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
