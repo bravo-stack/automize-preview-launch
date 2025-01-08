@@ -3,16 +3,20 @@
 import Link from 'next/link'
 import NavLinks, { NavbarSignOut } from './nav-links'
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 export default function DashboardNav({ links }) {
   const [expanded, setExpanded] = useState(true)
+  const path = usePathname()
 
   const toggleSidebar = () => {
     setExpanded(!expanded)
 
-    const targetDiv = document.getElementById('main-focus')
-    if (targetDiv) {
-      targetDiv.style.paddingRight = expanded ? '70px' : '250px'
+    if (path === '/dashboard/autometric') {
+      const targetDiv = document.getElementById('main-focus')
+      if (targetDiv) {
+        targetDiv.style.paddingRight = expanded ? '70px' : '250px'
+      }
     }
   }
 

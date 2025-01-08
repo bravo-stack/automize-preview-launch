@@ -26,7 +26,7 @@ export default function OnboardingForm({ clientID }) {
     yearsInBusiness: '',
     productDescription: '',
     customerAcquisition: '',
-    meetingDateTime: '',
+    // meetingDateTime: '',
   })
 
   const [step, setStep] = useState(1)
@@ -67,7 +67,7 @@ export default function OnboardingForm({ clientID }) {
       'discordUsername',
       'websiteURL',
       'instagramLink',
-      'meetingDateTime',
+      // 'meetingDateTime',
     ]
 
     const missing = requiredFields.filter((field) => !formData[field])
@@ -108,11 +108,11 @@ export default function OnboardingForm({ clientID }) {
       drive: `https://drive.google.com/drive/folders/${folderId}`,
     }
 
-    const bookingData = {
-      time: formData.meetingDateTime,
-      client_name: `${formData.firstName} ${formData.lastName}`,
-      brand_name: formData.brandName,
-    }
+    // const bookingData = {
+    //   time: formData.meetingDateTime,
+    //   client_name: `${formData.firstName} ${formData.lastName}`,
+    //   brand_name: formData.brandName,
+    // }
 
     // 3. pushing to database
     const { error: formStatus } = await updateItem(
@@ -121,10 +121,11 @@ export default function OnboardingForm({ clientID }) {
       clientID,
     )
 
-    const { error: bookingStatus } = await createItem('bookings', bookingData)
+    // const { error: bookingStatus } = await createItem('bookings', bookingData)
 
     setLoading(false)
-    setSuccess(!formStatus && !bookingStatus)
+    setSuccess(!formStatus)
+    // setSuccess(!formStatus && !bookingStatus)
   }
 
   if (success === true) {
@@ -474,7 +475,7 @@ export default function OnboardingForm({ clientID }) {
             />
           </div>
 
-          <div className="col-span-full mb-7 mt-10">
+          {/* <div className="col-span-full mb-7 mt-10">
             <p className="mb-2.5 text-lg font-medium">
               {' '}
               Schedule a Meeting <span className="text-red-500">*</span>
@@ -491,7 +492,7 @@ export default function OnboardingForm({ clientID }) {
             <label className="mt-1.5 block text-xs text-neutral-500 md:text-sm">
               Please select a future date and time for the meeting.
             </label>
-          </div>
+          </div> */}
         </div>
       )}
 
@@ -566,7 +567,7 @@ export default function OnboardingForm({ clientID }) {
                   discordUsername: 'Discord Username',
                   websiteURL: 'Website Link',
                   instagramLink: 'Instagram Link',
-                  meetingDateTime: 'Meeting Date and Time',
+                  // meetingDateTime: 'Meeting Date and Time',
                 }
                 return <li key={field}>{fieldLabels[field] || field}</li>
               })}

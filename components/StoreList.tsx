@@ -3,8 +3,6 @@
 import UpdateStore from './UpdateStore'
 
 export default function StoreList({ stores }: { stores: any[] }) {
-  const handleUpdate = async () => {}
-
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200 bg-white">

@@ -17,11 +17,11 @@ export default async function FinancialXPage() {
 
   return (
     <main className="gap-10 px-6 py-28 lg:px-12 lg:py-12">
-      <div className="rounded-md-md space-y-10 bg-night-starlit p-5 lg:p-10">
+      <div className="space-y-10 rounded-md bg-night-starlit p-5 lg:p-10">
         <div className="flex justify-between">
           <h2 className="text-lg font-semibold">Shopify Store List</h2>
 
-          <div className="space-x-2">
+          <div className="flex items-center gap-2">
             <a
               className="underline"
               href="https://docs.google.com/spreadsheets/d/19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY/"
