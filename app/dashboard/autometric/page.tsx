@@ -33,9 +33,6 @@ export default async function Autometric() {
     )
 
   const onboardedData = onboarded?.map(({ id, discord_id, ...rest }) => ({
-    ...rest,
-    discord_access: discord_id === null ? 'No' : 'Yes',
-    shopify_key: rest.shopify_key === null ? 'N/A' : 'Exists',
     details: (
       <Link
         href={`/dashboard/notes/${id}`}
@@ -44,6 +41,9 @@ export default async function Autometric() {
         Edit Details
       </Link>
     ),
+    ...rest,
+    discord_access: discord_id === null ? 'No' : 'Yes',
+    shopify_key: rest.shopify_key === null ? 'N/A' : 'Exists',
   }))
 
   return (
