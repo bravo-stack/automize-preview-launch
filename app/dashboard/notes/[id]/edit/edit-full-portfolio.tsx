@@ -22,7 +22,13 @@ export default function EditClientPortfolio({ role, client }) {
     links = ['website', 'instagram', 'whimsicals', 'drive']
     rebill = ['rebill_amt', 'rebill_date']
     metrics = ['margins', 'cogs', 'break_even_roas', 'bc_review']
-    other = ['drop_day', 'client_reports', 'closed_by', 'outside_issues']
+    other = [
+      'drop_day',
+      'client_reports',
+      'closed_by',
+      'closed_at',
+      'outside_issues',
+    ]
   } else {
     access = ['store_id']
     links = ['website', 'instagram', 'whimsicals', 'drive']
@@ -34,7 +40,13 @@ export default function EditClientPortfolio({ role, client }) {
       'passed_bcr',
       'starting_mrr',
     ]
-    other = ['drop_day', 'client_reports', 'closed_by', 'outside_issues']
+    other = [
+      'drop_day',
+      'client_reports',
+      'closed_by',
+      'closed_at',
+      'outside_issues',
+    ]
   }
 
   const allProperties = { details, access, links, rebill, metrics, other }
@@ -55,7 +67,8 @@ export default function EditClientPortfolio({ role, client }) {
   }
 
   const getInputType = (key) => {
-    if (key === 'drop_day' || key === 'rebill_date') return 'date'
+    if (key === 'drop_day' || key === 'rebill_date' || key === 'closed_at')
+      return 'date'
     if (
       key === 'cogs' ||
       key === 'break_even_roas' ||

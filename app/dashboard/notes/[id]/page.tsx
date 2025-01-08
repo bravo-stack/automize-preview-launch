@@ -1,9 +1,9 @@
-import Section from '@/components/common/section'
-import ClientCard from './client-card'
-import NotesCard from './notes-card'
 import { createClient } from '@/lib/db/server'
 import { textFromSQL } from '@/lib/utils'
 import { getRole } from '@/lib/actions'
+import Section from '@/components/common/section'
+import ClientCard from './client-card'
+import NotesCard from './notes-card'
 import Link from 'next/link'
 import ManageKeys from '@/components/actions/manage-keys'
 
@@ -12,8 +12,6 @@ export default async function ClientPortfolioPage({ params }) {
   const { id } = params
 
   const { data: c } = await db.from('clients').select('*').eq('id', id).single()
-
-  console.log(c)
 
   const role = await getRole()
 
@@ -34,7 +32,13 @@ export default async function ClientPortfolioPage({ params }) {
     links = ['website', 'instagram', 'whimsicals', 'drive']
     rebill = ['rebill_amt', 'rebill_date']
     metrics = ['margins', 'cogs', 'break_even_roas', 'bc_review', 'passed_bcr']
-    other = ['drop_day', 'client_reports', 'closed_by', 'outside_issues']
+    other = [
+      'drop_day',
+      'client_reports',
+      'closed_by',
+      'closed_at',
+      'outside_issues',
+    ]
   } else {
     access = ['onboarded', 'fb_access', 'shopify_access', 'store_id']
 
@@ -47,7 +51,13 @@ export default async function ClientPortfolioPage({ params }) {
       'passed_bcr',
       'starting_mrr',
     ]
-    other = ['drop_day', 'client_reports', 'closed_by', 'outside_issues']
+    other = [
+      'drop_day',
+      'client_reports',
+      'closed_by',
+      'closed_date',
+      'outside_issues',
+    ]
   }
 
   const notes = [
@@ -62,6 +72,7 @@ export default async function ClientPortfolioPage({ params }) {
     heading: textFromSQL(noteKey),
     content: c[noteKey] ?? 'N/A',
   }))
+
   return (
     <main className="space-y-7 p-7">
       <header>

@@ -6,24 +6,29 @@ export default function ClientCard({ title = '', properties, client }) {
       <h2 className="font-semibold tracking-tighter">{title}</h2>
 
       <ul className="mt-2 space-y-2">
-        {properties.map((property, index) => (
-          <li key={index} className="space-y-0.5">
-            <p className="text-xs font-medium 2xl:text-sm">
-              {textFromSQL(property)}
-            </p>
-            <p>
-              {client[property] === undefined ||
-              client[property] === null ||
-              client[property] === ''
-                ? 'N/A'
-                : typeof client[property] === 'boolean'
-                  ? client[property]
+        {properties.map((property, index) => {
+          const value = client[property]
+
+          const displayValue =
+            value === undefined || value === null || value === ''
+              ? 'N/A'
+              : property === 'closed_at' && value
+                ? new Date(value).toDateString()
+                : typeof value === 'boolean'
+                  ? value
                     ? 'Yes'
                     : 'No'
-                  : client[property]}
-            </p>
-          </li>
-        ))}
+                  : value
+
+          return (
+            <li key={index} className="space-y-0.5">
+              <p className="text-xs font-medium 2xl:text-sm">
+                {textFromSQL(property)}
+              </p>
+              <p>{displayValue}</p>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
