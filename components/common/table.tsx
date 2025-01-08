@@ -54,7 +54,7 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
   }
 
   return (
-    <div className="">
+    <div className="mx-auto max-w-4xl 2xl:mx-0 2xl:max-w-full">
       <div className="flex gap-2.5">
         {!noSearch && (
           <div className="flex-1">
@@ -77,7 +77,7 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
         )}
       </div>
 
-      <div className="max-h-[70vh] overflow-y-auto overflow-x-scroll rounded-md border border-zinc-800">
+      <div className="max-h-[70vh] overflow-x-auto overflow-y-auto rounded-md border border-zinc-800">
         <table className="relative w-full">
           <thead className="sticky top-0 border-b border-zinc-800 bg-night-dusk text-left">
             <tr>

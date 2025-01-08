@@ -7,16 +7,17 @@ import { usePathname } from 'next/navigation'
 
 export default function DashboardNav({ links }) {
   const [expanded, setExpanded] = useState(true)
-  const path = usePathname()
 
   const toggleSidebar = () => {
     setExpanded(!expanded)
 
-    if (path === '/dashboard/autometric') {
-      const targetDiv = document.getElementById('main-focus')
-      if (targetDiv) {
-        targetDiv.style.paddingRight = expanded ? '70px' : '250px'
-      }
+    const targetDiv = document.getElementById('main-focus')
+    if (targetDiv) {
+      setTimeout(() => {
+        targetDiv.style.width = expanded
+          ? 'calc(100% - 70px)'
+          : 'calc(100% - 250px)'
+      }, 500) // 500 milliseconds = half a second
     }
   }
 
