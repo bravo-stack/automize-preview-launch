@@ -25,7 +25,7 @@ export default function ClientCard({ title = '', properties, client }) {
               <p className="text-xs font-medium 2xl:text-sm">
                 {textFromSQL(property)}
               </p>
-              <p>{displayValue}</p>
+              <p className="truncate">{displayValue}</p>
             </li>
           )
         })}

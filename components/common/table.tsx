@@ -7,9 +7,15 @@ interface TableProps {
   data: any
   noSearch?: boolean
   action?: ReactElement
+  priority?: boolean
 }
 
-export default function Table({ data, action, noSearch = false }: TableProps) {
+export default function Table({
+  data,
+  action,
+  noSearch = false,
+  priority = false,
+}: TableProps) {
   const [search, setSearch] = useState('')
   const [isPopupOpen, setIsPopupOpen] = useState(false)
   const [currentNote, setCurrentNote] = useState<string | null>(null)
@@ -30,8 +36,18 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
       )
     }
 
+    if (priority) {
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+      filtered = filtered.filter((row) => {
+        const closedAt = row.closed_at ? new Date(row.closed_at) : null
+        return closedAt && closedAt >= sevenDaysAgo
+      })
+    }
+
     return filtered
-  }, [search, data, noSearch])
+  }, [search, data, noSearch, priority])
 
   const handleOpenNote = (note: string) => {
     setCurrentNote(note)
@@ -99,7 +115,17 @@ export default function Table({ data, action, noSearch = false }: TableProps) {
           <tbody>
             {filteredData.length > 0 ? (
               filteredData.map((row, rowIndex) => (
-                <tr key={rowIndex} className="hover:bg-night-starlit">
+                <tr
+                  key={rowIndex}
+                  className={`${
+                    priority &&
+                    row.closed_at &&
+                    new Date(row.closed_at) >=
+                      new Date(new Date().setDate(new Date().getDate() - 3))
+                      ? 'bg-red-800/15 hover:bg-red-800/30' // TODO: RED OVER HERE
+                      : ''
+                  } hover:bg-night-starlit`}
+                >
                   {keys.map((key, colIndex) => (
                     <td
                       key={colIndex}

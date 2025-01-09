@@ -28,6 +28,7 @@ export default function EditClientPortfolio({ role, client }) {
       'closed_by',
       'closed_at',
       'outside_issues',
+      'team',
     ]
   } else {
     access = ['store_id']
@@ -46,6 +47,7 @@ export default function EditClientPortfolio({ role, client }) {
       'closed_by',
       'closed_at',
       'outside_issues',
+      'team',
     ]
   }
 

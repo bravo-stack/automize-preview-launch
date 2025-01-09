@@ -35,7 +35,7 @@ export default async function Autometric() {
   const onboardedData = onboarded?.map(({ id, discord_id, ...rest }) => ({
     details: (
       <Link
-        href={`/dashboard/notes/${id}`}
+        href={`/dashboard/notes/${id}/edit`}
         className="block w-fit rounded-md border border-zinc-800 bg-night-dusk px-1.5 py-0.5 text-neutral-400 transition-colors hover:border-zinc-700"
       >
         Edit Details
@@ -119,7 +119,7 @@ export default async function Autometric() {
             Rebill Amount, Rebill Date, Closed Date, Website, Instagram, or
             Drive.
           </p>
-          <Table data={onboardedData} />
+          <Table data={onboardedData} priority />
         </div>
       </Section>
     </main>

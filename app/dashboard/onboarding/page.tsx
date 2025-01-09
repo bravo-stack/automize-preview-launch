@@ -13,6 +13,8 @@ export default async function OnboardingPage({ searchParams }) {
     .select('id, brand, email, closed_by')
     .eq('onboarded', false)
 
+  const { data: pods } = await db.from('pod').select('name')
+
   // this is some crazy javascript bs lmao props to u if yk what this is
   const sortedClosed = closed?.sort(
     (a, b) => Number(!!b.email) - Number(!!a.email),
@@ -31,7 +33,7 @@ export default async function OnboardingPage({ searchParams }) {
 
         {client && id && (
           <div className="p-5">
-            <OnboarderForm client={client} id={id} />
+            <OnboarderForm client={client} id={id} pods={pods} />
           </div>
         )}
 

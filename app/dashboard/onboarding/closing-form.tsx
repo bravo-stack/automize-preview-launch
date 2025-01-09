@@ -12,12 +12,24 @@ export default function ClosingForm() {
     brand: '',
     closed_by: '',
     close_amt: undefined,
+    team: '',
   })
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const { data, error } = await createItem('clients', formData)
+    const closedClient = {
+      ...formData,
+      team: formData.team.toUpperCase(),
+      rebill_date: (() => {
+        const today = new Date()
+        const thirtyDaysAhead = new Date(today)
+        thirtyDaysAhead.setDate(today.getDate() + 30)
+        return thirtyDaysAhead
+      })(),
+    }
+
+    const { data, error } = await createItem('clients', closedClient)
 
     if (error) {
       alert(
@@ -97,6 +109,20 @@ export default function ClosingForm() {
                       className="w-full rounded border px-3 py-2"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium">
+                      Team A or B?
+                    </label>
+                    <input
+                      type="text"
+                      name="team"
+                      value={formData.team}
+                      onChange={handleChange}
+                      placeholder="Please enter either 'A' or 'B'"
+                      className="w-full rounded border px-3 py-2"
+                    />
+                  </div>
                 </>
               )}
 
@@ -112,7 +138,7 @@ export default function ClosingForm() {
                     onClick={() => {
                       navigator.clipboard
                         .writeText(
-                          `Onboarding link for client ${formData.brand}: ${link}`,
+                          `Onboarding link for ${formData.brand}: ${link}`,
                         )
                         .then(() => {
                           alert('Text copied to clipboard!')
@@ -140,6 +166,7 @@ export default function ClosingForm() {
                       brand: '',
                       closed_by: '',
                       close_amt: undefined,
+                      team: '',
                     })
                   }}
                   className="rounded-md bg-black px-4 py-2 text-white shadow-sm transition-colors"

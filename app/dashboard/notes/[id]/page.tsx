@@ -38,6 +38,7 @@ export default async function ClientPortfolioPage({ params }) {
       'closed_by',
       'closed_at',
       'outside_issues',
+      'team',
     ]
   } else {
     access = ['onboarded', 'fb_access', 'shopify_access', 'store_id']
@@ -57,6 +58,7 @@ export default async function ClientPortfolioPage({ params }) {
       'closed_by',
       'closed_date',
       'outside_issues',
+      'team',
     ]
   }
 
@@ -74,7 +76,7 @@ export default async function ClientPortfolioPage({ params }) {
   }))
 
   return (
-    <main className="space-y-7 p-7">
+    <main className="mx-auto max-w-7xl space-y-7 p-7">
       <header>
         <h1 className="text-2xl font-bold tracking-tighter">{c.brand}</h1>
         <p>Client Portfolio&nbsp;&nbsp;&bull;&nbsp;&nbsp;{c.status}</p>

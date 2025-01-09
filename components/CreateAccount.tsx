@@ -1,6 +1,5 @@
 'use client'
 
-import { createAccount } from '@/lib/actions'
 import { createItem } from '@/lib/actions/db'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'

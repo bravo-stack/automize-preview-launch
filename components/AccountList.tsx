@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { deleteItem, updateItem } from '@/lib/actions/db'
 
 interface Account {
-  id?: number | string
+  id: string
   brand: string
   fb_key: string
   pod: string
@@ -35,20 +35,15 @@ export default function AccountList({
     setFilteredAccounts(filtered)
   }
 
-  const handleDelete = async (accountId: string) => {
-    await deleteItem('clients', accountId, 'fb_key')
-    // await deleteAccount(accountId)
+  const handleDelete = async (clientId: string) => {
+    await deleteItem('clients', clientId)
     setConfirmDelete(null)
     router.refresh()
   }
 
-  const closeDeleteModal = () => {
-    setConfirmDelete(null)
-  }
+  const closeDeleteModal = () => setConfirmDelete(null)
 
-  const closeEditModal = () => {
-    setEditAccount(null)
-  }
+  const closeEditModal = () => setEditAccount(null)
 
   const handleEdit = async (updatedAccount: Account) => {
     const accountData = {
@@ -58,11 +53,11 @@ export default function AccountList({
       churn_date: updatedAccount.status === 'left' ? new Date() : null,
     }
 
+    // please test this TODO
     const { error } = await updateItem(
       'clients',
       accountData,
-      updatedAccount.fb_key,
-      'fb_key',
+      updatedAccount.id,
     )
 
     setEditAccount(null)
@@ -170,7 +165,7 @@ export default function AccountList({
                 </td>
                 <td className="whitespace-nowrap py-4 pr-6 text-right text-sm font-medium">
                   <button
-                    onClick={() => setConfirmDelete(account.fb_key)}
+                    onClick={() => setConfirmDelete(account.id)}
                     className="text-red-600 hover:text-red-900"
                   >
                     Delete

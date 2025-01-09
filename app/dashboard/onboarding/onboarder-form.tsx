@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { sendDiscordMessage } from '@/lib/actions/discord'
 
-export default function OnboarderForm({ client, id }) {
+export default function OnboarderForm({ client, id, pods }) {
   const router = useRouter()
   const [formData, setFormData] = useState({
     shopify_access: 'No',
@@ -14,8 +14,10 @@ export default function OnboarderForm({ client, id }) {
     discord_id: '',
     education_info: '',
     organic_notes: '',
+    pod: undefined,
   })
 
+  console.log(formData)
   const [isSR, setSR] = useState(false)
   const [specialReq, setSpecialReq] = useState({
     package_type: '',
@@ -75,6 +77,12 @@ export default function OnboarderForm({ client, id }) {
             : 'Successfully updated client.',
         )
       }
+    } else {
+      const { error } = await updateItem('clients', onboardedData, id)
+
+      alert(
+        error ? 'Error onboarding client.' : 'Successfully onboarded client.',
+      )
     }
 
     router.push('/dashboard/onboarding')
@@ -141,6 +149,27 @@ export default function OnboarderForm({ client, id }) {
             required
             className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
           />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-neutral-500">Pod</label>
+          <select
+            name="pod"
+            value={formData.pod}
+            onChange={handleChange}
+            className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
+          >
+            <option value="none">None</option>
+            {pods.map((pod, index) => (
+              <option key={index} value={pod.name}>
+                {pod.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium"></label>
         </div>
 
         <div>
@@ -249,7 +278,7 @@ export function CopyOnboardingLink({ brand, id }) {
       onClick={() => {
         navigator.clipboard
           .writeText(
-            `Onboarding link for client ${brand}: https://automize.vercel.app/onboarding-form/${id}`,
+            `Onboarding link for ${brand}: https://automize.vercel.app/onboarding-form/${id}`,
           )
           .then(() => {
             alert('Text copied to clipboard!')
