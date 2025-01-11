@@ -19,7 +19,7 @@ export default function EditPodAccountButton({ client }) {
       drive,
       website,
       instagram,
-      drop_day: new Date(drop_day),
+      drop_day: drop_day ? new Date(drop_day) : null,
     }
 
     const { error } = await updateItem(
@@ -33,6 +33,8 @@ export default function EditPodAccountButton({ client }) {
         ? 'Error submitting onboarding information.'
         : 'Successfully updated client.',
     )
+
+    setOpen(false)
   }
 
   return (
