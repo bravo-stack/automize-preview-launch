@@ -92,32 +92,7 @@ export default async function ManagePodsPage({ searchParams }) {
         </div>
       </section>
 
-      <Section title="Pod-Account List">
-        <div className="flex divide-x divide-zinc-800 overflow-x-scroll p-5">
-          {sortedByClientCount?.map(({ name, clients }, index) => (
-            <div key={index} className="">
-              <h3 className="border-y border-zinc-800 bg-night-starlit p-2.5 text-center text-lg font-semibold">
-                {name}
-              </h3>
-              <ul className="divide-y divide-zinc-800 border-b border-zinc-800">
-                <li className="p-0.5 text-center text-sm font-medium">
-                  {clients.length}
-                </li>
-                {clients.map((client) => (
-                  <li key={client.id}>
-                    <UpdateClientPod
-                      client={{ ...client, pod: name }}
-                      pods={pods}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {pod && (
+      {pod ? (
         <section className="mx-auto max-w-7xl divide-y divide-zinc-800 overflow-hidden rounded-md border border-zinc-800">
           <div className="flex items-center justify-between bg-night-starlit px-5  py-2.5">
             <h2 className="text-lg font-semibold tracking-tighter">
@@ -162,6 +137,31 @@ export default async function ManagePodsPage({ searchParams }) {
             )}
           </div>
         </section>
+      ) : (
+        <Section title="Pod-Account List">
+          <div className="flex divide-x divide-zinc-800 overflow-x-scroll p-5">
+            {sortedByClientCount?.map(({ name, clients }, index) => (
+              <div key={index} className="">
+                <h3 className="border-y border-zinc-800 bg-night-starlit p-2.5 text-center text-lg font-semibold">
+                  {name}
+                </h3>
+                <ul className="divide-y divide-zinc-800 border-b border-zinc-800">
+                  <li className="p-0.5 text-center text-sm font-medium">
+                    {clients.length}
+                  </li>
+                  {clients.map((client) => (
+                    <li key={client.id}>
+                      <UpdateClientPod
+                        client={{ ...client, pod: name }}
+                        pods={pods}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </Section>
       )}
     </main>
   )
