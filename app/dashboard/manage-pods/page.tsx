@@ -3,46 +3,12 @@ import Link from 'next/link'
 import UpdateItem from '@/components/actions/update-item'
 import CreateAccount from './create-user'
 import DeleteUser from './delete-user'
-import { createAdminClient } from '@/lib/db/admin'
-import { generateRandomString } from '@/lib/utils'
+import Section from '@/components/common/section'
+import UpdateClientPod from './update-pod'
 
 export default async function ManagePodsPage({ searchParams }) {
   const db = createClient()
   const { pod } = searchParams
-
-  // async function createAccounts() {
-  //   const { data: pods } = await db
-  //     .from('pod')
-  //     .select('id, name, discord_id, user_id')
-  //     .order('name')
-
-  //   const accounts = []
-
-  //   for (const pod of pods) {
-  //     const { name } = pod
-  //     const email = `${name}@automize.com`
-  //     const password = generateRandomString(14)
-
-  //     await db.auth.admin.createUser({
-  //       email: email,
-  //       password: password,
-  //       user_metadata: { role: 'pod' }, // role can be adjusted based on your needs
-  //       email_confirm: true,
-  //     })
-
-  //     accounts.push({
-  //       email: email,
-  //       password: password,
-  //     })
-  //   }
-
-  //   console.log('Account Creation Summary:')
-  //   console.table(accounts)
-  // }
-
-  // await createAccounts()
-
-  // return
 
   let clients
   if (pod) {
@@ -59,6 +25,14 @@ export default async function ManagePodsPage({ searchParams }) {
     .select('id, name, discord_id, user_id')
     .order('name')
 
+  const { data: podAccounts } = await db
+    .from('pod')
+    .select('name, clients (id, brand)')
+
+  const sortedByClientCount = podAccounts?.sort(
+    (a, b) => b.clients.length - a.clients.length,
+  )
+
   const accounts = pods?.filter((pod) => pod.user_id !== null)
 
   return (
@@ -70,24 +44,6 @@ export default async function ManagePodsPage({ searchParams }) {
           </h2>
 
           <CreateAccount />
-
-          {/* <AddButton
-            buttonText="Add Pod +"
-            inputs={[
-              {
-                name: 'name',
-                label: 'Pod Name',
-                type: 'text',
-                placeholder: 'Enter Pod Name',
-              },
-              {
-                name: 'discord_id',
-                label: 'Discord ID',
-                type: 'text',
-                placeholder: 'Enter Discord ID',
-              },
-            ]}
-          /> */}
         </div>
 
         <div className="p-5 shadow">
@@ -135,6 +91,31 @@ export default async function ManagePodsPage({ searchParams }) {
           )}
         </div>
       </section>
+
+      <Section title="Pod-Account List">
+        <div className="flex divide-x divide-zinc-800 overflow-x-scroll p-5">
+          {sortedByClientCount?.map(({ name, clients }, index) => (
+            <div key={index} className="">
+              <h3 className="border-y border-zinc-800 bg-night-starlit p-2.5 text-center text-lg font-semibold">
+                {name}
+              </h3>
+              <ul className="divide-y divide-zinc-800 border-b border-zinc-800">
+                <li className="p-0.5 text-center text-sm font-medium">
+                  {clients.length}
+                </li>
+                {clients.map((client) => (
+                  <li key={client.id}>
+                    <UpdateClientPod
+                      client={{ ...client, pod: name }}
+                      pods={pods}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Section>
 
       {pod && (
         <section className="mx-auto max-w-7xl divide-y divide-zinc-800 overflow-hidden rounded-md border border-zinc-800">
