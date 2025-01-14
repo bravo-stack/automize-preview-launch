@@ -38,7 +38,12 @@ export default async function OnboardingPage({ searchParams }) {
           </div>
         )}
 
-        <ul className="2xl:grid-cols- grid grid-cols-2 gap-5 p-5 shadow">
+        <ul className="2xl:grid-cols- grid grid-cols-2 gap-2.5 p-5 shadow">
+          <li className="col-span-2 mb-2.5 text-center">
+            Entries are split into two sections: Pending onboarding (orange) and
+            pending jotform (red). Each section is ordered from newest to
+            oldest.
+          </li>
           {sortedClosed && sortedClosed.length !== 0 ? (
             sortedClosed.map((client, index) => (
               <li
