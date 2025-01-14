@@ -119,7 +119,8 @@ export default async function Autometric() {
             Rebill Amount, Rebill Date, Closed Date, Website, Instagram, or
             Drive.
           </p>
-          <Table data={onboardedData} priority />
+
+          <Table data={onboardedData} />
         </div>
       </Section>
     </main>

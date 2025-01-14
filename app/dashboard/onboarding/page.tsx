@@ -10,8 +10,9 @@ export default async function OnboardingPage({ searchParams }) {
 
   const { data: closed } = await db
     .from('clients')
-    .select('id, brand, email, closed_by')
+    .select('id, brand, email, closed_by, closed_at')
     .eq('onboarded', false)
+    .order('closed_at', { ascending: false })
 
   const { data: pods } = await db.from('pod').select('name')
 

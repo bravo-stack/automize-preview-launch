@@ -18,6 +18,15 @@ export default function ClosingForm() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (
+      Object.values(formData).some(
+        (value) => value === '' || value === null || value === undefined,
+      )
+    ) {
+      alert('Please fill out all fields before submitting.')
+      return
+    }
+
     const closedClient = {
       ...formData,
       team: formData.team.toUpperCase(),
@@ -117,6 +126,7 @@ export default function ClosingForm() {
                     <input
                       type="text"
                       name="team"
+                      required
                       value={formData.team}
                       onChange={handleChange}
                       placeholder="Please enter either 'A' or 'B'"
