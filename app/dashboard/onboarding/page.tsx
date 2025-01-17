@@ -10,7 +10,7 @@ export default async function OnboardingPage({ searchParams }) {
 
   const { data: closed } = await db
     .from('clients')
-    .select('id, brand, email, closed_by, closed_at')
+    .select('id, brand, email, closed_by, closed_at, drive')
     .eq('onboarded', false)
     .order('closed_at', { ascending: false })
 
@@ -38,30 +38,54 @@ export default async function OnboardingPage({ searchParams }) {
           </div>
         )}
 
-        <ul className="2xl:grid-cols- grid grid-cols-2 gap-2.5 p-5 shadow">
+        <ul className="grid grid-cols-2 gap-1.5 p-5 shadow">
           <li className="col-span-2 mb-2.5 text-center">
             Entries are split into two sections: Pending onboarding (orange) and
             pending jotform (red). Each section is ordered from newest to
-            oldest.
+            oldest. Clicking a{' '}
+            <span className="font-semibold">
+              client&apos;s name will lead to their portfolio
+            </span>
+            .
           </li>
           {sortedClosed && sortedClosed.length !== 0 ? (
             sortedClosed.map((client, index) => (
               <li
                 key={index}
-                className="group/p relative rounded border border-zinc-800 bg-night-starlit p-3"
+                className="group/p relative flex justify-between rounded border border-zinc-800 bg-night-starlit p-3"
               >
-                <div className="flex items-center justify-between gap-0.5">
-                  <h3 className="font-semibold">{client.brand}</h3>
-                  <p>{client.email}</p>
+                <div className="items-center justify-between space-y-0.5">
+                  <h3 className="font-semibold">
+                    <Link
+                      href={`/dashboard/notes/${client.id}`}
+                      className="hover:underline"
+                    >
+                      {client.brand}
+                    </Link>
+                  </h3>
+                  <p>
+                    <a
+                      className={
+                        client.drive ? 'cursor-pointer hover:underline' : ''
+                      }
+                      href={client.drive}
+                      target="_blank"
+                    >
+                      {client.email}
+                    </a>
+                  </p>
+                  <p className="text-sm">
+                    {new Date(client.closed_at).toDateString()}
+                  </p>
                 </div>
 
                 <DeleteItem table="clients" id={client.id} button />
 
-                <div className="flex items-center justify-between gap-0.5 text-sm text-neutral-400">
+                <div className="space-y-0.5 text-right text-sm text-neutral-400">
                   {client.email ? (
                     <Link
                       href={`/dashboard/onboarding?client=${client.brand}&id=${client.id}`}
-                      className="group cursor-pointer rounded-full transition-all duration-500 hover:bg-neutral-700/50 hover:px-2"
+                      className="group block cursor-pointer rounded-full transition-all duration-500 hover:bg-neutral-700/50 hover:px-2"
                     >
                       <h3>
                         <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-500 group-hover:bg-teal-500" />
@@ -78,7 +102,22 @@ export default async function OnboardingPage({ searchParams }) {
                   ) : (
                     <CopyOnboardingLink brand={client.brand} id={client.id} />
                   )}
-                  <p className=""> Closed by {client.closed_by}</p>
+                  {client.email && client.drive ? (
+                    <a
+                      href={client.drive}
+                      target="_blank"
+                      className="block cursor-pointer hover:underline"
+                    >
+                      Open Drive
+                    </a>
+                  ) : (
+                    <p>Drive Missing</p>
+                  )}
+                  <p className="">
+                    {client.closed_by
+                      ? `Closed by ${client.closed_by}`
+                      : 'Closer missing'}
+                  </p>
                 </div>
               </li>
             ))
