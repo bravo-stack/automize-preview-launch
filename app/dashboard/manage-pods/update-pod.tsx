@@ -7,10 +7,11 @@ import { useState } from 'react'
 export default function UpdateClientPod({ client, pods }) {
   const [open, setOpen] = useState(false)
   const [pod, setPod] = useState(client.pod || 'none')
+  const [status, setStatus] = useState(client.status || 'active')
   const router = useRouter()
 
   const handleSave = async () => {
-    const { error } = await updateItem('clients', { pod }, client.id)
+    const { error } = await updateItem('clients', { pod, status }, client.id)
 
     if (error) {
       alert('Error updating pod.')
@@ -51,6 +52,20 @@ export default function UpdateClientPod({ client, pods }) {
                       {pod.name}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">
+                  Client Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full rounded border px-3 py-2"
+                >
+                  <option value="active">Active</option>
+                  <option value="left">Left</option>
                 </select>
               </div>
 

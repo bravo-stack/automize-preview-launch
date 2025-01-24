@@ -27,13 +27,30 @@ export default async function ManagePodsPage({ searchParams }) {
 
   const { data: podAccounts } = await db
     .from('pod')
-    .select('name, clients (id, brand)')
+    .select('name, clients (id, brand, status, pod)')
 
-  const sortedByClientCount = podAccounts?.sort(
+  const churnedClients: {
+    id: number
+    brand: string
+    status: string
+    pod: string
+  }[] = []
+  const activePodAccounts = podAccounts?.map((pod) => {
+    const activeClients = pod.clients.filter((client) => {
+      if (client.status === 'left') {
+        churnedClients.push(client)
+        return false
+      }
+      return true
+    })
+    return { ...pod, clients: activeClients }
+  })
+
+  activePodAccounts?.push({ name: 'churned', clients: churnedClients })
+
+  const sortedByClientCount = activePodAccounts?.sort(
     (a, b) => b.clients.length - a.clients.length,
   )
-
-  const accounts = pods?.filter((pod) => pod.user_id !== null)
 
   return (
     <main className="space-y-7 p-7">
@@ -142,7 +159,9 @@ export default async function ManagePodsPage({ searchParams }) {
           <div className="flex divide-x divide-zinc-800 overflow-x-scroll p-5">
             {sortedByClientCount?.map(({ name, clients }, index) => (
               <div key={index} className="">
-                <h3 className="border-y border-zinc-800 bg-night-starlit p-2.5 text-center text-lg font-semibold">
+                <h3
+                  className={`border-y border-zinc-800 bg-night-starlit p-2.5 text-center text-lg font-semibold ${name === 'churned' && 'text-red-500'}`}
+                >
                   {name}
                 </h3>
                 <ul className="divide-y divide-zinc-800 border-b border-zinc-800">
@@ -151,10 +170,7 @@ export default async function ManagePodsPage({ searchParams }) {
                   </li>
                   {clients.map((client) => (
                     <li key={client.id}>
-                      <UpdateClientPod
-                        client={{ ...client, pod: name }}
-                        pods={pods}
-                      />
+                      <UpdateClientPod client={{ ...client }} pods={pods} />
                     </li>
                   ))}
                 </ul>
