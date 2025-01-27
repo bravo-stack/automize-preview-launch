@@ -3,6 +3,7 @@
 import TimeSelector from '@/components/booking/time-selector'
 import { updateItem, createItem } from '@/lib/actions/db'
 import { createClientDrive } from '@/lib/actions/google'
+import { normalizeToStartOfDay } from '@/lib/utils'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -190,7 +191,7 @@ export default function OnboardingForm({ clientID, existingTimeSlots }) {
       // Check if the time slot conflicts with existing time slots or it's in the past
       const isAvailable =
         (selectedDate !== null || i > currentTime) &&
-        currentDate >= today &&
+        normalizeToStartOfDay(currentDate) >= normalizeToStartOfDay(today) &&
         !existingSlots.some(
           ({ date, slotStartTime, slotEndTime }) =>
             date ===

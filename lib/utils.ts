@@ -96,3 +96,7 @@ export function convertTo12HourFormat(time24: string) {
 
   return [`${paddedHour}:${paddedMinute}`, period]
 }
+
+export const normalizeToStartOfDay = (date) => {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
