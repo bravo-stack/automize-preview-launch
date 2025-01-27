@@ -60,3 +60,39 @@ export function parseColumn(row, key: string) {
     return date(row[key], true)
   } else return row[key]
 }
+
+export function addHours(time: string, hoursToAdd: number) {
+  const [hourStr, minuteStr] = time.split(':')
+
+  let hour = parseInt(hourStr)
+  let minute = parseInt(minuteStr)
+
+  hour += hoursToAdd
+
+  // Adjust the hour and minute if needed
+  if (hour >= 24) {
+    hour %= 24
+  }
+
+  const paddedHour = hour.toString().padStart(2, '0')
+  const paddedMinute = minute.toString().padStart(2, '0')
+
+  return `${paddedHour}:${paddedMinute}`
+}
+
+export function convertTo12HourFormat(time24: string) {
+  const [hourStr, minuteStr] = time24.split(':')
+
+  let hour = parseInt(hourStr)
+  let minute = parseInt(minuteStr)
+
+  const period = hour >= 12 ? 'PM' : 'AM'
+
+  hour = hour % 12 || 12
+
+  const hourString = hour.toString()
+  const paddedHour = hourString.length === 1 ? ` ${hourString}` : hourString
+  const paddedMinute = minute.toString().padStart(2, '0')
+
+  return [`${paddedHour}:${paddedMinute}`, period]
+}

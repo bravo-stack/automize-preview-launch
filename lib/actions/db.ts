@@ -91,6 +91,7 @@ export async function createUser(email, password, pod, discord): Promise<any> {
 export async function deleteUser(user_id): Promise<any> {
   const db = createAdminClient()
   const { error } = await db.auth.admin.deleteUser(user_id)
+  if (error) console.log(error)
   return { error: error ? true : false }
 }
 

@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 export default async function DashboardPage() {
   const db = createClient()
 
-  redirect('/dashboard/autometric')
+  redirect('/dashboard/calendar')
 
   const {
     data: { user },

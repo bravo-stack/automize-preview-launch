@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { deleteItem } from '@/lib/actions/db'
+import { useRouter } from 'next/navigation'
 interface CancelMeetingButtonProps {
   meetingId: string
   meetingTitle: string
@@ -14,6 +15,7 @@ export default function CancelMeetingButton({
   meetingTime,
 }: CancelMeetingButtonProps) {
   const [isConfirming, setIsConfirming] = useState(false)
+  const router = useRouter()
 
   const handleCancelClick = () => {
     setIsConfirming(true)
@@ -21,11 +23,10 @@ export default function CancelMeetingButton({
 
   const handleConfirm = async () => {
     try {
-      const success = await deleteItem('bookings', meetingId)
+      const success = await deleteItem('booking', parseInt(meetingId))
       if (success) {
-        console.log(`Successfully cancelled meeting with ID: ${meetingId}`)
-        // Refresh the page
-        window.location.reload()
+        router.refresh()
+        alert(`Successfully cancelled meeting`)
       } else {
         console.error(`Failed to cancel meeting with ID: ${meetingId}`)
       }
