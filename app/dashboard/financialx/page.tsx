@@ -9,9 +9,9 @@ export default async function FinancialXPage() {
   const db = createClient()
 
   const { data: stores } = await db
-    .from('accounts')
-    .select('*')
-    .order('name')
+    .from('clients')
+    .select('id, brand, fb_key, store_id, shopify_key, rebill_date')
+    .order('brand')
     .neq('store_id', null)
     .eq('status', 'active')
 

@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
   const { sheetID, datePreset, status } = await request.json()
 
   const { data: accounts } = await db
-    .from('accounts')
-    .select('name, account_id, pod')
-    .order('name', { ascending: true })
+    .from('clients')
+    .select('brand, fb_key, pod')
+    .order('brand', { ascending: true })
     .eq('status', status)
 
   if (accounts === null) {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   async function fetchAllInsights() {
     if (accounts !== null) {
       const fetchPromises = accounts.map((account: any) =>
-        fetchInsights(account.account_id, account.name, account.pod),
+        fetchInsights(account.fb_key, account.brand, account.pod),
       )
       return Promise.all(fetchPromises)
     }

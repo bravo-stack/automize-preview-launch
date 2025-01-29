@@ -303,13 +303,13 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
     const results = await Promise.all(
       stores.map(async (store) => {
         try {
-          const { store_id, key, name } = store
-          const decryptedKey = decrypt(key)
+          const { store_id, shopify_key, brand } = store
+          const decryptedKey = decrypt(shopify_key)
           // console.log(`Fetching data for store: ${store_id}`)
 
           let res
           if (rebill) {
-            res = await fetchOrders(store_id, decryptedKey, store.last_rebill)
+            res = await fetchOrders(store_id, decryptedKey, store.rebill_date)
           } else {
             res = await fetchOrders(store_id, decryptedKey)
           }
@@ -321,13 +321,13 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
           const revenue =
             totalOrders > 0 ? totalOrders * AOV : 'Could not retrieve'
 
-          return { name, revenue, lastRebill: store.last_rebill }
+          return { name: brand, revenue, lastRebill: store.rebill_date }
         } catch (error) {
           console.error(`Error processing store ${store.store_id}.`)
           return {
-            name: store.name,
+            name: store.brand,
             revenue: 'Error fetching data',
-            lastRebill: store.last_rebill,
+            lastRebill: store.rebill_date,
           }
         }
       }),
@@ -395,11 +395,11 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
       let fetchPromises
       if (rebill) {
         fetchPromises = stores.map((store: any) =>
-          fetchInsights(store.account_id, store.name, store.last_rebill),
+          fetchInsights(store.fb_key, store.brand, store.rebill_date),
         )
       } else {
         fetchPromises = stores.map((store: any) =>
-          fetchInsights(store.account_id, store.name),
+          fetchInsights(store.fb_key, store.brand),
         )
       }
       return Promise.all(fetchPromises)
@@ -433,7 +433,7 @@ export async function financialize(
     fbSinceRebill as FbData[],
   )
 
-  const id = sheetId ?? '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY' // '19xIfkTLIQpuY4V00502VijpAIo_UOPLxYron2oFK1Q8'
+  const id = sheetId ?? '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY' // '19xIfkTLIQpuY4V00502VijpAIo_UOPLxYron2oFK1Q8' //
 
   let totalRevenueLast30 = 0
   let totalFbLast30Spend = 0
@@ -486,7 +486,7 @@ export async function financialize(
         s.fbLast30Roas,
         s.fbSinceRebillRoas,
         rebillStatus,
-        s.lastRebill,
+        s.lastRebill ? s.lastRebill : 'Missing rebill date',
         rebillStatus === 'rebillable next date'
           ? addDaysToDate(s.lastRebill)
           : '',
