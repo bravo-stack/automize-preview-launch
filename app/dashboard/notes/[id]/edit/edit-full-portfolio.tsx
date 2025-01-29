@@ -8,6 +8,7 @@ import { useState } from 'react'
 
 export default function EditClientPortfolio({ role, client }) {
   let details, access, links, rebill, metrics, other
+  let allProperties
 
   if (role === 'exec') {
     details = [
@@ -30,6 +31,8 @@ export default function EditClientPortfolio({ role, client }) {
       'outside_issues',
       'team',
     ]
+
+    allProperties = { details, access, links, rebill, metrics, other }
   } else {
     access = ['store_id']
     links = ['website', 'instagram', 'whimsicals', 'drive']
@@ -49,9 +52,9 @@ export default function EditClientPortfolio({ role, client }) {
       'outside_issues',
       'team',
     ]
+    allProperties = { access, links, metrics, other }
   }
 
-  const allProperties = { details, access, links, rebill, metrics, other }
   const [formData, setFormData] = useState({ ...client })
 
   const handleInputChange = (key, value) => {

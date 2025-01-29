@@ -131,7 +131,9 @@ export default function Table({
                       key={colIndex}
                       className="whitespace-nowrap border-b border-zinc-800 px-4 py-2"
                     >
-                      {key.toLowerCase() === 'notes' && row[key] ? (
+                      {(key.toLowerCase() === 'notes' ||
+                        key.toLowerCase() === 'increase_cvr') &&
+                      row[key] ? (
                         <button
                           onClick={() => handleOpenNote(row[key])}
                           className="rounded-md border border-zinc-800 bg-night-dusk px-1.5 py-0.5 text-neutral-400 transition-colors hover:border-zinc-700"
