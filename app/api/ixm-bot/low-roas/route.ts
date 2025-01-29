@@ -16,10 +16,10 @@ export async function GET(req: NextRequest) {
   const db = createAdminClient()
 
   const { data: accounts } = (await db
-    .from('accounts')
-    .select('name, account_id, pod (discord_id, name)')
+    .from('clients')
+    .select('brand, fb_key, pod (discord_id, name)')
     .eq('status', 'active')
-    .order('name', { ascending: true })) as unknown as { data: any[] }
+    .order('brand', { ascending: true })) as unknown as { data: any[] }
 
   // console.log(accounts)
   if (!accounts || accounts.length === 0) {
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
 
   async function fetchAllInsights() {
     const fetchPromises = accounts.map((account: any) =>
-      fetchInsights(account.account_id, account.name).then((result) => ({
+      fetchInsights(account.fb_key, account.brand).then((result) => ({
         ...account,
         ...result,
       })),
