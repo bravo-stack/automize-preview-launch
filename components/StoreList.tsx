@@ -1,10 +1,14 @@
 'use client'
 
-import UpdateStore from './UpdateStore'
+import Link from 'next/link'
 
 export default function StoreList({ stores }: { stores: any[] }) {
   return (
     <div className="overflow-x-auto">
+      <p className="mb-1">
+        Showing all {stores?.length} currently active clients that have been
+        assigned a store ID:
+      </p>
       <table className="min-w-full divide-y divide-gray-200 bg-white">
         <thead className="bg-gray-50">
           <tr>
@@ -23,13 +27,18 @@ export default function StoreList({ stores }: { stores: any[] }) {
           {stores?.map((store, index) => (
             <tr key={index}>
               <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                {store.name}
+                {store.brand}
               </td>
               <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                {store.last_rebill ?? 'No Rebill Date Provided'}
+                {store.rebill_date ?? 'No Rebill Date Provided'}
               </td>
               <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
-                <UpdateStore store={store} />
+                <Link
+                  href={`/dashboard/notes/${store.id}`}
+                  className="text-indigo-600 hover:text-indigo-900"
+                >
+                  Visit Portfolio
+                </Link>
               </td>
             </tr>
           ))}

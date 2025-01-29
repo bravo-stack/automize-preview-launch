@@ -486,7 +486,7 @@ export async function financialize(
         s.fbLast30Roas,
         s.fbSinceRebillRoas,
         rebillStatus,
-        s.lastRebill ? s.lastRebill : 'MISSING REBILL DATE',
+        s.lastRebill ? s.lastRebill : 'Missing rebill date',
         rebillStatus === 'rebillable next date'
           ? addDaysToDate(s.lastRebill)
           : '',
