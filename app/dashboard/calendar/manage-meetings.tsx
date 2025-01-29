@@ -39,7 +39,7 @@ export default function ManageMeetingsButton({
     <>
       <button
         onClick={handleOpen}
-        className="my-2 mb-5 rounded-md  bg-neutral-800/50 px-5 py-3  text-neutral-400 transition-all hover:bg-neutral-800"
+        className="my-2 rounded-md bg-neutral-800/50 px-5 py-3 text-neutral-400 transition-all hover:bg-neutral-800"
       >
         Manage Meetings
       </button>

@@ -18,6 +18,7 @@ import { useState } from 'react'
 import './theme.css'
 import Link from 'next/link'
 import EditMeeting from './edit-meeting'
+import DeleteItem from '@/components/actions/delete-item'
 
 interface CalendarEvent {
   id: string
@@ -74,7 +75,7 @@ function CalendarApp({ events, pods }: CalendarAppProps) {
 
       {isModalOpen && selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 text-black shadow-lg">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 text-black shadow-lg">
             <h2 className="mb-4 text-xl font-bold">{selectedEvent.title}</h2>
 
             <div className="space-y-1.5">
@@ -108,6 +109,8 @@ function CalendarApp({ events, pods }: CalendarAppProps) {
               </button>
 
               <div className="flex gap-2">
+                <DeleteItem table="booking" id={selectedEvent.id} filled />
+
                 <EditMeeting
                   meetingId={selectedEvent.id}
                   meetingTitle={selectedEvent.title}

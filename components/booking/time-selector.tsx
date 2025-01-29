@@ -59,9 +59,9 @@ const TimeSelector: React.FC<TimeSelectorProps> = ({
   }
 
   return (
-    <>
-      <div className="col-span-2 flex flex-col items-center justify-center space-y-2">
-        <div className="text-lg font-semibold">
+    <div className="col-span-full flex flex-col justify-center rounded border border-neutral-300 bg-neutral-100 p-2">
+      <div className="col-span-2 flex flex-col items-center justify-center">
+        <div className="mb-1 text-sm font-medium tracking-tighter">
           Week {Math.ceil((currentWeekStart.getDate() + 6) / 7)} of{' '}
           {currentWeekStart.toLocaleString('default', { month: 'short' })}
         </div>
@@ -116,15 +116,25 @@ const TimeSelector: React.FC<TimeSelectorProps> = ({
         </div>
       </div>
 
-      <div className="col-span-2 mx-auto mt-2.5 grid max-w-96 grid-cols-4 gap-x-1.5 gap-y-2 p-5 pt-0">
+      <div className="mx-auto mt-2.5 flex w-full max-w-96 flex-col gap-y-2 p-5 pt-0">
         {availableTimeSlots.map((timeSlot, index) => {
           const [time, period] = convertTo12HourFormat(timeSlot.time)
+          const startHour = parseInt(time.split(':')[0])
+          const startMinute = parseInt(time.split(':')[1])
+          const endTime = new Date(selectedDate)
+          endTime.setHours(
+            period === 'PM' && startHour !== 12 ? startHour + 12 : startHour,
+          )
+          endTime.setMinutes(startMinute + 75)
+          const [endHour, endPeriod] = convertTo12HourFormat(
+            endTime.toTimeString().split(' ')[0],
+          )
 
           return (
             <button
               key={index}
               type="button"
-              className={`rounded px-1.5 py-1 transition-colors ${
+              className={`w-full rounded px-1.5 py-1 transition-colors ${
                 timeSlot.available
                   ? 'bg-blue-500 text-white hover:bg-blue-600'
                   : 'cursor-not-allowed bg-gray-300 text-gray-600'
@@ -132,12 +142,40 @@ const TimeSelector: React.FC<TimeSelectorProps> = ({
               onClick={() => onSelectTimeSlot(timeSlot.time)}
               disabled={!timeSlot.available}
             >
-              {time} <span className="text-xs">{period}</span>
+              {time} {period} - {endHour} {endPeriod}
             </button>
           )
         })}
       </div>
-    </>
+
+      <div className="col-span-2 text-center">
+        {selectedTimeSlot === 'contact' ? (
+          <p className="font-medium">
+            Our team will contact you. You may now submit the form.
+          </p>
+        ) : (
+          <>
+            <p className="font-medium">
+              {selectedTimeSlot
+                ? `Booking selected for ${selectedDate.toDateString()} ${convertTo12HourFormat(selectedTimeSlot).join(' ')}`
+                : 'No timeslot selected'}
+            </p>
+            <p className="mt-2 text-sm text-gray-600">
+              Can&apos;t find the right time?{' '}
+              <button
+                type="button"
+                className="text-blue-500 hover:underline"
+                onClick={() => {
+                  onSelectTimeSlot('contact')
+                }}
+              >
+                Click here and our team will be in touch.
+              </button>
+            </p>
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 

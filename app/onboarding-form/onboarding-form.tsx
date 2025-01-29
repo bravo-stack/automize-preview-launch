@@ -120,24 +120,35 @@ export default function OnboardingForm({ clientID, existingTimeSlots }) {
       intro_notes: formData.introduction,
       drive: `https://drive.google.com/drive/folders/${folderId}`,
     }
-
-    const date = new Date(selectedDate)
-    const [year, month, day] = [
-      date.getFullYear(),
-      date.getMonth() + 1,
-      date.getDate(),
-    ]
-    const [hour, minute] = selectedTimeSlot.split(':').map(Number)
-    // Use UTC methods to prevent timezone conversion
-    const combinedDate = new Date(Date.UTC(year, month - 1, day, hour, minute))
-    const oneHourLater = new Date(
-      Date.UTC(year, month - 1, day, hour + 1, minute),
-    )
-    const bookingData = {
-      name: `Onboarding for ${formData.brandName}`,
-      client_id: clientID,
-      start_time: combinedDate,
-      end_time: oneHourLater,
+    let bookingData
+    if (selectedTimeSlot !== 'contact') {
+      const date = new Date(selectedDate)
+      const [year, month, day] = [
+        date.getFullYear(),
+        date.getMonth() + 1,
+        date.getDate(),
+      ]
+      const [hour, minute] = selectedTimeSlot.split(':').map(Number)
+      // Use UTC methods to prevent timezone conversion
+      const combinedDate = new Date(
+        Date.UTC(year, month - 1, day, hour, minute),
+      )
+      const oneHourLater = new Date(
+        Date.UTC(year, month - 1, day, hour + 1, minute),
+      )
+      bookingData = {
+        name: `Onboarding for ${formData.brandName}`,
+        client_id: clientID,
+        start_time: combinedDate,
+        end_time: oneHourLater,
+      }
+    } else {
+      bookingData = {
+        name: `Onboarding for ${formData.brandName}`,
+        client_id: clientID,
+        start_time: null,
+        end_time: null,
+      }
     }
 
     // 3. pushing to database
@@ -159,7 +170,7 @@ export default function OnboardingForm({ clientID, existingTimeSlots }) {
 
   // BOOKING LOGIC
 
-  const totalDuration = 60
+  const totalDuration = 75
   const generateTimeSlots = useCallback(() => {
     const availableTimeSlots: { time: string; available: boolean }[] = []
     const today = new Date()
@@ -182,8 +193,11 @@ export default function OnboardingForm({ clientID, existingTimeSlots }) {
       return { date, slotStartTime, slotEndTime }
     })
 
-    // Generate time slots from 12PM to 5PM in 15-minute intervals
-    for (let i = 12 * 60; i <= 17 * 60; i += 15) {
+    // Generate time slots from 8:45AM to 7:00PM in 15-minute intervals, excluding 3:00-5:00PM
+    for (let i = 8 * 60 + 45; i <= 19 * 60; i += 75) {
+      // Skip time slots between 3:00PM and 5:00PM
+      if (i >= 14 * 60 && i < 17 * 60) continue
+
       const hour = Math.floor(i / 60)
       const minute = (i % 60).toString().padStart(2, '0')
       const time = `${hour}:${minute}`
@@ -216,9 +230,11 @@ export default function OnboardingForm({ clientID, existingTimeSlots }) {
             slotStartTime: number
             slotEndTime: number
           }) => {
+            // if td then set unavailable
             if (date !== currentDate.toLocaleDateString()) {
               return false
             }
+            // if out of bounds then set unavailable
             if (i < slotStartTime && i + totalDuration * 60 > slotStartTime)
               return true
 
@@ -245,22 +261,35 @@ export default function OnboardingForm({ clientID, existingTimeSlots }) {
     return (
       <div className="mx-auto flex max-w-3xl flex-col items-center justify-center rounded bg-white px-2.5 py-5 text-center md:p-10">
         <h1 className="text-4xl font-bold text-green-600">Thank You!</h1>
-        <p className="mt-4 text-pretty text-center text-neutral-600 md:text-lg">
-          Your onboarding form has been received and is currently being
-          processed into our system. Please save the link below to track and
-          join your meeting booked at{' '}
-          <span className="font-semibold">
-            {selectedDate.toDateString()} {selectedTimeSlot}
-          </span>
-          .
-        </p>
-        <Link
-          href={`/meeting/${bookingID}`}
-          target="_blank"
-          className="mt-4 text-pretty text-center font-medium text-neutral-600 underline md:text-xl"
-        >
-          Meeting Link
-        </Link>
+
+        {selectedTimeSlot === 'contact' ? (
+          <>
+            <p className="mt-4 text-pretty text-center text-neutral-600 md:text-lg">
+              Your onboarding form has been received and is currently being
+              processed into our system. Our team has recieved your request for
+              a custom meeting time and will be in touch.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-4 text-pretty text-center text-neutral-600 md:text-lg">
+              Your onboarding form has been received and is currently being
+              processed into our system. Please visit the link below to track
+              and join your meeting booked at{' '}
+              <span className="font-semibold">
+                {selectedDate.toDateString()} {selectedTimeSlot}
+              </span>
+              .
+            </p>
+            <Link
+              href={`/meeting/${bookingID}`}
+              target="_blank"
+              className="mt-4 text-pretty rounded-full border border-green-700 bg-green-500 p-5 text-center font-medium text-white md:text-xl"
+            >
+              Meeting Link
+            </Link>
+          </>
+        )}
       </div>
     )
   }
@@ -570,6 +599,9 @@ export default function OnboardingForm({ clientID, existingTimeSlots }) {
             />
           </div>
 
+          <p className="col-span-full mb-2.5 mt-7 text-lg font-medium">
+            Schedule A Meeting
+          </p>
           <TimeSelector
             selectedDate={selectedDate}
             onDateChange={(date) => setSelectedDate(date)}

@@ -9,6 +9,7 @@ interface DeleteItemProps {
   id: string | number
   column?: string
   button?: boolean
+  filled?: boolean
 }
 
 export default function DeleteItem({
@@ -16,14 +17,16 @@ export default function DeleteItem({
   id,
   column = 'id',
   button = false,
+  filled = false,
 }: DeleteItemProps) {
   const [isOpen, setOpen] = useState(false)
   const router = useRouter()
 
   const handleDelete = async () => {
     try {
-      await deleteItem(table, id, column)
+      const res = await deleteItem(table, id, column)
       setOpen(false)
+      alert(res ? 'Successfully deleted item.' : 'Error deleting item.')
       router.refresh()
     } catch (error) {
       console.error('Error deleting:', error)
@@ -55,7 +58,11 @@ export default function DeleteItem({
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="text-xs text-red-500 hover:text-red-700"
+          className={
+            filled
+              ? 'block rounded-md border border-red-500 px-4 py-2 text-red-500 shadow-sm'
+              : 'text-xs text-red-500 hover:text-red-700'
+          }
         >
           Delete
         </button>

@@ -13,7 +13,11 @@ export default async function OnboardingFormPage({ params }) {
   const db = createClient()
   const today = new Date()
 
-  const { data: bookings, error } = await db.from('booking').select('*')
+  const { data: bookings, error } = await db
+    .from('booking')
+    .select('*')
+    .not('start_time', 'is', null)
+    .not('end_time', 'is', null)
 
   const parsedBookings = bookings?.map((item) => {
     const start = parseISO(item.start_time)
@@ -34,7 +38,7 @@ export default async function OnboardingFormPage({ params }) {
         className="mx-auto mb-2.5 w-48 rounded-md md:w-64"
       />
 
-      <OnboardingForm clientID={id} existingTimeSlots={parsedBookings} />
+      <OnboardingForm clientID={id} existingTimeSlots={parsedBookings || []} />
     </main>
   )
 }

@@ -1,25 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { updateItem } from '@/lib/actions/db'
+import { createItem, updateItem } from '@/lib/actions/db'
 import { useRouter } from 'next/navigation'
 
-export default function EditMeeting({
-  meetingId,
-  meetingTitle,
-  startTime,
-  endTime,
-  notes,
-  mediabuyer,
-  pods,
-  normal = false,
-}) {
+export default function AddMeeting({ pods }) {
   const [isEditing, setIsEditing] = useState(false)
-  const [newStartTime, setNewStartTime] = useState<string>(startTime || null)
-  const [newEndTime, setNewEndTime] = useState<string>(endTime || null)
-  const [newNotes, setNewNotes] = useState<string>(notes || '')
+  const [meetingTitle, setMeetingTitle] = useState<string>('')
+  const [newStartTime, setNewStartTime] = useState<string>('')
+  const [newEndTime, setNewEndTime] = useState<string>('')
+  const [newNotes, setNewNotes] = useState<string>('')
   const [minDateTime, setMinDateTime] = useState<string>('')
-  const [pod, setPod] = useState(mediabuyer || 'none')
+  const [pod, setPod] = useState('none')
 
   const router = useRouter()
 
@@ -42,22 +34,19 @@ export default function EditMeeting({
         return
       }
 
-      const success = await updateItem(
-        'booking',
-        {
-          start_time: newStartTime,
-          end_time: newEndTime,
-          notes: newNotes,
-          pod: pod === 'none' ? null : pod,
-        },
-        meetingId,
-      )
+      const success = await createItem('booking', {
+        name: meetingTitle,
+        start_time: newStartTime,
+        end_time: newEndTime,
+        notes: newNotes,
+        pod: pod === 'none' ? null : pod,
+      })
       if (success) {
         router.refresh()
-        alert('Successfully edited meeting.')
+        alert(`Successfully created ${meetingTitle} meeting.`)
       } else {
         alert('Error updating meeting.')
-        console.error(`Failed to reschedule meeting with ID: ${meetingId}`)
+        console.error(`Failed to reschedule meeting with ID: `)
       }
     } catch (error) {
       alert('Error updating meeting.')
@@ -75,13 +64,9 @@ export default function EditMeeting({
     <>
       <button
         onClick={handleRescheduleClick}
-        className={
-          normal
-            ? 'block rounded-md border border-black px-4 py-2 shadow-sm'
-            : 'rounded bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600'
-        }
+        className="my-2 ml-2.5 rounded-md bg-neutral-800/50 px-5 py-3 text-neutral-400 transition-all hover:bg-neutral-800"
       >
-        Edit Meeting
+        Create New Meeting
       </button>
 
       {isEditing && (
@@ -90,6 +75,22 @@ export default function EditMeeting({
             <h2 className="mb-4 text-lg font-bold text-white">
               Reschedule Meeting
             </h2>
+
+            <div className="mb-4">
+              <label
+                htmlFor="newEndTime"
+                className="block text-sm font-semibold text-gray-400"
+              >
+                Meeting Title
+              </label>
+              <input
+                id="meetingTitle"
+                value={meetingTitle}
+                onChange={(e) => setMeetingTitle(e.target.value)}
+                placeholder="E.g. Filler"
+                className="mt-2 w-full rounded border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+              />
+            </div>
 
             <div className="mb-4">
               <label
