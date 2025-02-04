@@ -531,16 +531,6 @@ export async function financialize(
   return true
 }
 
-export async function revenue(stores: any[]) {
-  const revenueLast30 = await fetchShopify(stores)
-
-  const id = '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY'
-
-  if (revenueLast30) {
-    console.log(revenueLast30)
-  }
-}
-
 function isRebillable(
   revenue: string | number,
   spend: string,

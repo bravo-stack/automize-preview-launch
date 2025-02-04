@@ -12,10 +12,12 @@ export default async function Sheet({ params }: { params: { sheet: string } }) {
     .single()
 
   const { data: stores } = await db
-    .from('accounts')
-    .select('name, account_id, store_id, key, last_rebill')
-    .neq('store_id', null)
+    .from('clients')
+    .select('id, brand, fb_key, store_id, shopify_key, rebill_date')
+    .order('brand')
     .eq('pod', sheet.pod)
+    .neq('store_id', null)
+    .eq('status', 'active')
 
   const links = ['Sheet', 'Automations', 'History', 'Settings']
   const lastRefresh = new Date(sheet.last_refresh).toLocaleString()
