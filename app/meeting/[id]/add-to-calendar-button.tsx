@@ -1,10 +1,11 @@
+// components/add-to-calendar-button.tsx
 'use client'
 
 export function AddToCalendarButton({
   startTime,
   endTime,
   meetingId,
-  title = 'InsightXMedia Onboarding',
+  title = 'IXM Meeting',
 }: {
   startTime: string
   endTime: string
@@ -12,7 +13,10 @@ export function AddToCalendarButton({
   title?: string
 }) {
   const handleAddToCalendar = () => {
-    // Format dates to ICS specification
+    // Generate meeting URL
+    const meetingUrl = `${window.location.origin}/meeting/${meetingId}`
+
+    // Format dates
     const start = new Date(startTime)
       .toISOString()
       .replace(/[-:]/g, '')
@@ -31,13 +35,14 @@ export function AddToCalendarButton({
       `SUMMARY:${title}`,
       `DTSTART:${start}`,
       `DTEND:${end}`,
-      'DESCRIPTION:Your scheduled meeting with InsightXMedia',
+      `DESCRIPTION:Meeting Link: ${meetingUrl}\\n\\nYou can join the meeting at the scheduled time using this link.`,
+      `URL:${meetingUrl}`,
       'LOCATION:Online Meeting',
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n')
 
-    // Create data URL and trigger calendar prompt
+    // Create data URL
     const data = encodeURIComponent(icsContent)
     const link = document.createElement('a')
     link.href = `data:text/calendar;charset=utf8,${data}`
