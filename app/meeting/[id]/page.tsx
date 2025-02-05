@@ -12,6 +12,17 @@ const MeetingCountdown = dynamic(
   },
 )
 
+const AddToCalendarButton = dynamic(
+  () =>
+    import('./add-to-calendar-button').then((mod) => mod.AddToCalendarButton),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="mt-4 h-10 w-48 animate-pulse rounded-lg bg-zinc-700" />
+    ),
+  },
+)
+
 export default async function MeetingPage({ params }) {
   const { id } = params
   const db = createClient()
@@ -34,6 +45,11 @@ export default async function MeetingPage({ params }) {
             <MeetingCountdown
               startTime={meeting.start_time}
               endTime={meeting.end_time}
+            />
+            <AddToCalendarButton
+              startTime={meeting.start_time}
+              endTime={meeting.end_time}
+              meetingId={id}
             />
           </div>
         ) : (
