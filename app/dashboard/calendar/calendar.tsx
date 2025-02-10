@@ -39,8 +39,24 @@ interface CalendarAppProps {
 function CalendarApp({ events, pods }: CalendarAppProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
-
   const plugins = [createEventsServicePlugin(), createCurrentTimePlugin()]
+
+  // calendar.tsx
+  // In your calendar component
+  const formatUTCToLocal = (utcDate: string) => {
+    if (!utcDate) return ''
+
+    const date = new Date(utcDate)
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+  }
+
+  // Process events before passing to calendar
+  const processedEvents = events.map((event) => ({
+    ...event,
+    start: formatUTCToLocal(event.start),
+    end: formatUTCToLocal(event.end),
+  }))
+  console.log(events, processedEvents)
 
   const calendar = useNextCalendarApp(
     {
@@ -50,7 +66,7 @@ function CalendarApp({ events, pods }: CalendarAppProps) {
         createViewMonthGrid(),
         createViewMonthAgenda(),
       ],
-      events,
+      events: processedEvents,
       callbacks: {
         onEventClick(event) {
           handleEventClick(event)

@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import { createClient } from '@/lib/db/server'
 import CalendarApp from './calendar'
 import ManageMeetingsButton from './manage-meetings'
@@ -21,16 +22,13 @@ export default async function Page() {
     return <p>Failed to load bookings.</p>
   }
 
-  // Format date function
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
+  console.log(bookings)
 
-    return `${year}-${month}-${day} ${hours}:${minutes}`
+  // Convert EST time to UTC ISO string
+  const parseEstToUTC = (dateStr: string) => {
+    return DateTime.fromISO(dateStr, { zone: 'America/New_York' })
+      .toUTC()
+      .toISO({ suppressMilliseconds: true })
   }
 
   type Event = {
@@ -54,8 +52,8 @@ export default async function Page() {
           id: booking.id?.toString() || 'N/A',
           title: booking.name || 'N/A',
           people: [(booking.clients as any)?.brand || 'N/A'],
-          start: formatDate(booking.start_time),
-          end: formatDate(booking.end_time),
+          start: parseEstToUTC(booking.start_time),
+          end: parseEstToUTC(booking.end_time),
           notes: booking.notes || 'N/A',
           link: `/meeting/${booking.id}`,
           pod: booking.pod,
@@ -74,7 +72,6 @@ export default async function Page() {
         }
         acc.incompleteMeetings.push(event)
       }
-
       return acc
     },
     { validEvents: [], incompleteMeetings: [] },
