@@ -22,8 +22,6 @@ export default async function Page() {
     return <p>Failed to load bookings.</p>
   }
 
-  console.log(bookings)
-
   // Convert EST time to UTC ISO string
   const parseEstToUTC = (dateStr: string) => {
     return DateTime.fromISO(dateStr, { zone: 'America/New_York' })

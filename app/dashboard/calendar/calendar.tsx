@@ -56,7 +56,6 @@ function CalendarApp({ events, pods }: CalendarAppProps) {
     start: formatUTCToLocal(event.start),
     end: formatUTCToLocal(event.end),
   }))
-  console.log(events, processedEvents)
 
   const calendar = useNextCalendarApp(
     {

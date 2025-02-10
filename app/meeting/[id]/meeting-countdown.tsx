@@ -1,38 +1,43 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { DateTime } from 'luxon'
 
 interface MeetingCountdownProps {
-  startTime: string
-  endTime: string
+  startTime: string // Should receive UTC ISO string
+  endTime: string // Should receive UTC ISO string
 }
 
 export const MeetingCountdown = ({
   startTime,
   endTime,
 }: MeetingCountdownProps) => {
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [currentTime, setCurrentTime] = useState(DateTime.now())
   const [timer, setTimer] = useState<string>('')
 
-  const startDateTime = new Date(startTime)
-  const endDateTime = new Date(endTime)
+  // Parse UTC times and convert to local timezone
+  const startDateTime = DateTime.fromISO(startTime).toLocal()
+  const endDateTime = DateTime.fromISO(endTime).toLocal()
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      setCurrentTime(new Date())
+      setCurrentTime(DateTime.now())
     }, 1000)
 
-    return () => clearInterval(intervalId) // Cleanup on unmount
+    return () => clearInterval(intervalId)
   }, [])
 
   const calculateTimeLeft = useCallback(() => {
-    const timeDiff = startDateTime.getTime() - currentTime.getTime()
+    if (!startDateTime.isValid) return ''
 
-    if (timeDiff > 0) {
-      const hours = Math.floor(timeDiff / (1000 * 60 * 60))
-      const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60))
-      const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000)
-      return `${hours}h ${minutes}m ${seconds}s`
+    const diff = startDateTime.diff(currentTime, [
+      'hours',
+      'minutes',
+      'seconds',
+    ])
+
+    if (diff.as('milliseconds') > 0) {
+      return `${Math.floor(diff.hours)}h ${Math.floor(diff.minutes)}m ${Math.floor(diff.seconds)}s`
     }
 
     return ''
@@ -56,18 +61,11 @@ export const MeetingCountdown = ({
         <div>
           <p className="mb-4 text-lg text-white">
             Meeting is currently live from{' '}
-            {startDateTime.toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}{' '}
-            to{' '}
-            {endDateTime.toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {startDateTime.toLocaleString(DateTime.TIME_SIMPLE)} to{' '}
+            {endDateTime.toLocaleString(DateTime.TIME_SIMPLE)}
           </p>
           <a
-            className="block rounded-lg border border-green-500/50 bg-green-500/25 px-4 py-2 font-semibold text-white transition duration-200 hover:bg-green-500/50 "
+            className="block rounded-lg border border-green-500/50 bg-green-500/25 px-4 py-2 font-semibold text-white transition duration-200 hover:bg-green-500/50"
             href="https://insightxmedia.daily.co/Onboarding"
           >
             Join Meeting
