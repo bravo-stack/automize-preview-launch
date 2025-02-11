@@ -15,9 +15,13 @@ export const MeetingCountdown = ({
   const [currentTime, setCurrentTime] = useState(DateTime.now())
   const [timer, setTimer] = useState<string>('')
 
-  // Parse UTC times and convert to local timezone
-  const startDateTime = DateTime.fromISO(startTime).toLocal()
-  const endDateTime = DateTime.fromISO(endTime).toLocal()
+  // Parse the UTC times, treat them as EST (America/New_York), then convert to local timezone
+  const startDateTime = DateTime.fromISO(startTime, {
+    zone: 'America/New_York',
+  }).toLocal()
+  const endDateTime = DateTime.fromISO(endTime, {
+    zone: 'America/New_York',
+  }).toLocal()
 
   useEffect(() => {
     const intervalId = setInterval(() => {
