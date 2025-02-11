@@ -112,6 +112,12 @@ function CalendarApp({ events, pods }: CalendarAppProps) {
               <p>Client: {selectedEvent.people}</p>
               <p>Notes: {selectedEvent.notes}</p>
               <p>Pod: {selectedEvent.pod || 'No pod assigned.'}</p>
+              <a
+                href="https://insightxmedia.daily.co/Onboarding"
+                className="text-bold block font-medium text-blue-800"
+              >
+                LINK TO MANUALLY JOIN: https://insightxmedia.daily.co/Onboarding
+              </a>
             </div>
 
             <div className="mt-4 flex justify-between gap-2.5">

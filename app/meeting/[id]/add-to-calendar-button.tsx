@@ -1,5 +1,6 @@
-// components/add-to-calendar-button.tsx
 'use client'
+
+import { DateTime } from 'luxon'
 
 export function AddToCalendarButton({
   startTime,
@@ -13,18 +14,19 @@ export function AddToCalendarButton({
   title?: string
 }) {
   const handleAddToCalendar = () => {
-    // Generate meeting URL
     const meetingUrl = `${window.location.origin}/meeting/${meetingId}`
 
-    // Format dates
-    const start = new Date(startTime)
-      .toISOString()
-      .replace(/[-:]/g, '')
-      .replace(/\.\d{3}/g, '')
-    const end = new Date(endTime)
-      .toISOString()
-      .replace(/[-:]/g, '')
-      .replace(/\.\d{3}/g, '')
+    // Convert stored EST times to UTC
+    const startUtc = DateTime.fromISO(startTime, {
+      zone: 'America/New_York',
+    }).toUTC()
+    const endUtc = DateTime.fromISO(endTime, {
+      zone: 'America/New_York',
+    }).toUTC()
+
+    // Format as YYYYMMDDTHHMMSSZ for ICS
+    const start = startUtc.toFormat("yyyyMMdd'T'HHmmss'Z'")
+    const end = endUtc.toFormat("yyyyMMdd'T'HHmmss'Z'")
 
     // Construct ICS file content
     const icsContent = [
@@ -42,10 +44,11 @@ export function AddToCalendarButton({
       'END:VCALENDAR',
     ].join('\r\n')
 
-    // Create data URL
+    // Create downloadable ICS file
     const data = encodeURIComponent(icsContent)
     const link = document.createElement('a')
     link.href = `data:text/calendar;charset=utf8,${data}`
+    link.download = `${title}.ics`
     link.click()
   }
 
