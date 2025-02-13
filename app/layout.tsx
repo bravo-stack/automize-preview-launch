@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { GeistSans } from 'geist/font/sans'
+import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
   title: 'Automize',
@@ -14,7 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={GeistSans.className}>{children}</body>
+      <body className={GeistSans.className}>
+        {children}
+        <Toaster position="top-right" />
+      </body>
     </html>
   )
 }

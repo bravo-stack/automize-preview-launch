@@ -23,13 +23,17 @@ const AddToCalendarButton = dynamic(
   },
 )
 
+export const metadata = {
+  title: 'InsightX Media - Meeting',
+}
+
 export default async function MeetingPage({ params }) {
   const { id } = params
   const db = createClient()
 
   const { data: meeting } = await db
     .from('booking')
-    .select('start_time, end_time')
+    .select('start_time, end_time, type')
     .eq('id', id)
     .single()
 
@@ -37,7 +41,7 @@ export default async function MeetingPage({ params }) {
     <main className="flex h-screen items-center justify-center p-6">
       <div className="z-50 w-full max-w-lg rounded-lg border border-zinc-800 bg-night-starlit p-5 shadow-sm shadow-slate-300/50">
         <h1 className="mb-4 text-center text-2xl font-semibold tracking-tighter text-white">
-          InsightXMedia Onboarding
+          InsightXMedia Meeting Room
         </h1>
 
         {meeting ? (
@@ -45,6 +49,11 @@ export default async function MeetingPage({ params }) {
             <MeetingCountdown
               startTime={meeting.start_time}
               endTime={meeting.end_time}
+              link={
+                meeting.type === 'closing'
+                  ? 'https://insightxmedia.daily.co/closing'
+                  : 'https://insightxmedia.daily.co/Onboarding'
+              }
             />
             <AddToCalendarButton
               startTime={meeting.start_time}

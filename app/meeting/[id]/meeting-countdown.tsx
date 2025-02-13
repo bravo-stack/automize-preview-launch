@@ -6,11 +6,13 @@ import { DateTime } from 'luxon'
 interface MeetingCountdownProps {
   startTime: string // Should receive UTC ISO string
   endTime: string // Should receive UTC ISO string
+  link: string
 }
 
 export const MeetingCountdown = ({
   startTime,
   endTime,
+  link,
 }: MeetingCountdownProps) => {
   const [currentTime, setCurrentTime] = useState(DateTime.now())
   const [timer, setTimer] = useState<string>('')
@@ -70,7 +72,7 @@ export const MeetingCountdown = ({
           </p>
           <a
             className="block rounded-lg border border-green-500/50 bg-green-500/25 px-4 py-2 font-semibold text-white transition duration-200 hover:bg-green-500/50"
-            href="https://insightxmedia.daily.co/Onboarding"
+            href={link}
           >
             Join Meeting
           </a>
@@ -82,7 +84,7 @@ export const MeetingCountdown = ({
               <>
                 The meeting has not started yet. After the meeting begins, a
                 <span className="font-semibold"> Join Meeting</span> button will
-                appear.
+                appear. Please save this link to join the meeting later.
               </>
             ) : (
               'The meeting has ended.'

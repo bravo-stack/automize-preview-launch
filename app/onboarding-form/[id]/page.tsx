@@ -11,7 +11,6 @@ export const metadata = {
 export default async function OnboardingFormPage({ params }) {
   const { id } = params
   const db = createClient()
-  const today = new Date()
 
   const { data: bookings, error } = await db
     .from('booking')
@@ -19,15 +18,17 @@ export default async function OnboardingFormPage({ params }) {
     .not('start_time', 'is', null)
     .not('end_time', 'is', null)
 
-  const parsedBookings = bookings?.map((item) => {
-    const start = parseISO(item.start_time)
-    const end = parseISO(item.end_time)
+  const parsedBookings = bookings
+    ?.filter((item) => item.type !== 'closing')
+    .map((item) => {
+      const start = parseISO(item.start_time)
+      const end = parseISO(item.end_time)
 
-    return [
-      format(start, 'MM/dd/yyyy'), // Date in MM/DD/YYYY format
-      `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`, // Time range in HH:mm - HH:mm format
-    ]
-  })
+      return [
+        format(start, 'MM/dd/yyyy'), // Date in MM/DD/YYYY format
+        `${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`, // Time range in HH:mm - HH:mm format
+      ]
+    })
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-neutral-900 px-2 py-20 md:p-20">

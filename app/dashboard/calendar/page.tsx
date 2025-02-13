@@ -10,7 +10,7 @@ export default async function Page() {
 
   const { data: bookings, error: bookingsError } = await db
     .from('booking')
-    .select('id, pod, name, start_time, end_time, notes, clients (brand)')
+    .select('id, pod, name, start_time, end_time, notes, type, clients (brand)')
 
   const { data: pods } = await db
     .from('pod')
@@ -40,9 +40,10 @@ export default async function Page() {
     pod: string
   }
 
-  const { validEvents, incompleteMeetings } = bookings.reduce<{
+  const { validEvents, incompleteMeetings, closingEvents } = bookings.reduce<{
     validEvents: Event[]
     incompleteMeetings: Event[]
+    closingEvents: Event[]
   }>(
     (acc, booking) => {
       if (booking.start_time && booking.end_time) {
@@ -56,7 +57,12 @@ export default async function Page() {
           link: `/meeting/${booking.id}`,
           pod: booking.pod,
         }
-        acc.validEvents.push(event)
+
+        if (booking.type === 'closing') {
+          acc.closingEvents.push(event)
+        } else {
+          acc.validEvents.push(event)
+        }
       } else {
         const event = {
           id: booking.id?.toString() || 'N/A',
@@ -72,24 +78,24 @@ export default async function Page() {
       }
       return acc
     },
-    { validEvents: [], incompleteMeetings: [] },
+    { validEvents: [], incompleteMeetings: [], closingEvents: [] },
   )
 
   return (
-    <main className="space-y-7 p-7">
+    <main className="space-y-20 p-7">
       <section className="mx-auto max-w-7xl">
         <ManageMeetingsButton events={validEvents} pods={pods} />
         <AddMeeting pods={pods} />
 
         <div className="my-7 grid grid-cols-3 gap-2.5">
-          <h2 className="col-span-full mb-4 text-xl font-semibold">
+          <h2 className="col-span-full text-2xl font-semibold">
             Meetings Without Scheduled Times
           </h2>
-          {incompleteMeetings.length > 0 &&
+          {incompleteMeetings.length > 0 ? (
             incompleteMeetings.map((meeting) => (
               <div
                 key={meeting.id}
-                className="group rounded-lg border border-zinc-800 bg-night-starlit p-4"
+                className="group mt-4 rounded-lg border border-zinc-800 bg-night-starlit p-4"
               >
                 <hgroup>
                   <h3 className="font-medium">
@@ -112,10 +118,55 @@ export default async function Page() {
                   pods={pods}
                 />
               </div>
-            ))}
+            ))
+          ) : (
+            <p className="col-span-full text-lg">
+              No meetings without scheduled times
+            </p>
+          )}
         </div>
+      </section>
 
+      <section>
+        <hgroup className="mb-4">
+          <h2 className="mb-2 text-2xl font-semibold">Main Calendar</h2>
+          <p>IMPORTANT:</p>
+          <p>
+            1. The calendar is automatically converted to your timezone. E.g.,
+            if you are in the UK, the calendar is in BST.
+          </p>
+          <p>
+            2. All meetings added/edited are automatically in EST timezone. They
+            are NOT added based on local timezone.
+          </p>
+        </hgroup>
         <CalendarApp events={validEvents} pods={pods} />
+      </section>
+
+      <section>
+        <hgroup className="mb-4">
+          <h2 className="mb-2 text-2xl font-semibold">Closing Calendar</h2>
+          <p>IMPORTANT:</p>
+          <p>
+            1. The calendar is automatically converted to your timezone. E.g.,
+            if you are in the UK, the calendar is in BST.
+          </p>
+          <p>
+            2. All meetings added/edited are automatically in EST timezone. They
+            are NOT added based on local timezone.
+          </p>
+          <p>
+            3. To allow clients to book closing meetings, send them this link:{' '}
+            <a
+              href="https://automize.vercel.app/booking-form"
+              target="_blank"
+              className="font-medium underline"
+            >
+              https://automize.vercel.app/booking-form
+            </a>
+          </p>
+        </hgroup>
+        <CalendarApp events={closingEvents} pods={pods} />
       </section>
     </main>
   )
