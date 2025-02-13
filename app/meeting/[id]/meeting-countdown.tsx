@@ -82,9 +82,10 @@ export const MeetingCountdown = ({
           <p className="mb-4 text-lg text-white">
             {isMeetingNotStarted ? (
               <>
-                The meeting has not started yet. After the meeting begins, a
+                Please save this link to join when the meeting starts. After the
+                meeting begins, a
                 <span className="font-semibold"> Join Meeting</span> button will
-                appear. Please save this link to join the meeting later.
+                appear.
               </>
             ) : (
               'The meeting has ended.'

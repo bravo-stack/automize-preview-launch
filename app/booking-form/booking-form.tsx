@@ -171,17 +171,17 @@ export default function BookingForm({ existingTimeSlots }) {
         {selectedTimeSlot === 'contact' ? (
           <>
             <p className="mt-4 text-pretty text-center text-neutral-600 md:text-lg">
-              Your onboarding form has been received and is currently being
-              processed into our system. Our team has recieved your request for
-              a custom meeting time and will be in touch.
+              Your booking has been received and is currently being processed
+              into our system. Our team has recieved your request for a custom
+              meeting time and will be in touch.
             </p>
           </>
         ) : (
           <>
             <p className="mt-4 text-pretty text-center text-neutral-600 md:text-lg">
-              Your onboarding form has been received and is currently being
-              processed into our system. Please visit the link below to track
-              and join your meeting booked at{' '}
+              Your booking has been received and is currently being processed
+              into our system. Please visit the link below to track and join
+              your meeting booked at{' '}
               <span className="font-semibold">
                 {selectedDate.toDateString()} {selectedTimeSlot}
               </span>
@@ -192,7 +192,7 @@ export default function BookingForm({ existingTimeSlots }) {
               target="_blank"
               className="mt-4 text-pretty rounded-full border border-green-700 bg-green-500 p-5 text-center font-medium text-white md:text-xl"
             >
-              Meeting Link
+              Click Here to Save Meeting Link
             </Link>
           </>
         )}

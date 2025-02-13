@@ -29,6 +29,7 @@ interface CalendarEvent {
   link: string
   notes: string
   pod: string
+  type: string
 }
 
 interface CalendarAppProps {
@@ -113,10 +114,18 @@ function CalendarApp({ events, pods }: CalendarAppProps) {
               <p>Notes: {selectedEvent.notes}</p>
               <p>Pod: {selectedEvent.pod || 'No pod assigned.'}</p>
               <a
-                href="https://insightxmedia.daily.co/Onboarding"
                 className="text-bold block font-medium text-blue-800"
+                target="_blank"
+                href={
+                  selectedEvent.type === 'closing'
+                    ? 'https://insightxmedia.daily.co/closing'
+                    : 'https://insightxmedia.daily.co/Onboarding'
+                }
               >
-                LINK TO MANUALLY JOIN: https://insightxmedia.daily.co/Onboarding
+                LINK TO MANUALLY JOIN:{' '}
+                {selectedEvent.type === 'closing'
+                  ? 'https://insightxmedia.daily.co/closing'
+                  : 'https://insightxmedia.daily.co/Onboarding'}
               </a>
             </div>
 

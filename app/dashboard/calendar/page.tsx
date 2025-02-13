@@ -38,6 +38,7 @@ export default async function Page() {
     notes: string
     link: string
     pod: string
+    type: string
   }
 
   const { validEvents, incompleteMeetings, closingEvents } = bookings.reduce<{
@@ -56,6 +57,7 @@ export default async function Page() {
           notes: booking.notes || 'N/A',
           link: `/meeting/${booking.id}`,
           pod: booking.pod,
+          type: booking.type,
         }
 
         if (booking.type === 'closing') {
@@ -73,7 +75,9 @@ export default async function Page() {
           notes: booking.notes || 'N/A',
           link: `/meeting/${booking.id}`,
           pod: booking.pod,
+          type: booking.type,
         }
+
         acc.incompleteMeetings.push(event)
       }
       return acc
