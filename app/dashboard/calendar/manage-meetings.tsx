@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import CancelMeetingButton from './cancel-meeting'
-import RescheduleMeetingButton from './edit-meeting'
 import EditMeeting from './edit-meeting'
 
 interface ManageMeetingsButtonProps {
@@ -16,6 +15,7 @@ interface ManageMeetingsButtonProps {
     pod: string
   }[]
   pods: any
+  closing?: boolean
 }
 
 function formatDateTime(dateTime: string): string {
@@ -29,6 +29,7 @@ function formatDateTime(dateTime: string): string {
 export default function ManageMeetingsButton({
   events,
   pods,
+  closing = false,
 }: ManageMeetingsButtonProps) {
   const [isManagingMeetings, setIsManagingMeetings] = useState(false)
 
@@ -41,7 +42,7 @@ export default function ManageMeetingsButton({
         onClick={handleOpen}
         className="my-2 rounded-md bg-neutral-800/50 px-5 py-3 text-neutral-400 transition-all hover:bg-neutral-800"
       >
-        Manage Meetings
+        Manage {closing && 'Closing'} Meetings
       </button>
 
       {isManagingMeetings && (

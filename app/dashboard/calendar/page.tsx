@@ -88,9 +88,6 @@ export default async function Page() {
   return (
     <main className="space-y-20 p-7">
       <section className="mx-auto max-w-7xl">
-        <ManageMeetingsButton events={validEvents} pods={pods} />
-        <AddMeeting pods={pods} />
-
         <div className="my-7 grid grid-cols-3 gap-2.5">
           <h2 className="col-span-full text-2xl font-semibold">
             Meetings Without Scheduled Times
@@ -143,7 +140,16 @@ export default async function Page() {
             2. All meetings added/edited are automatically in EST timezone. They
             are NOT added based on local timezone.
           </p>
+          <p>
+            3. This calendar shows all meetings excluding closing meetings. This
+            includes onboarding and meetings created manually.
+          </p>
         </hgroup>
+
+        <div className="mb-2">
+          <ManageMeetingsButton events={validEvents} pods={pods} />
+          <AddMeeting pods={pods} />
+        </div>
         <CalendarApp events={validEvents} pods={pods} />
       </section>
 
@@ -170,6 +176,12 @@ export default async function Page() {
             </a>
           </p>
         </hgroup>
+
+        <div className="mb-2">
+          <ManageMeetingsButton events={closingEvents} pods={pods} closing />
+          <AddMeeting pods={pods} closing />
+        </div>
+
         <CalendarApp events={closingEvents} pods={pods} />
       </section>
     </main>

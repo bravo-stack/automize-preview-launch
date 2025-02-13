@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createItem, updateItem } from '@/lib/actions/db'
 import { useRouter } from 'next/navigation'
 
-export default function AddMeeting({ pods }) {
+export default function AddMeeting({ pods, closing = false }) {
   const [isEditing, setIsEditing] = useState(false)
   const [meetingTitle, setMeetingTitle] = useState<string>('')
   const [newStartTime, setNewStartTime] = useState<string>('')
@@ -40,6 +40,7 @@ export default function AddMeeting({ pods }) {
         end_time: newEndTime,
         notes: newNotes,
         pod: pod === 'none' ? null : pod,
+        type: closing ? 'closing' : null,
       })
       if (success) {
         router.refresh()
@@ -66,7 +67,7 @@ export default function AddMeeting({ pods }) {
         onClick={handleRescheduleClick}
         className="my-2 ml-2.5 rounded-md bg-neutral-800/50 px-5 py-3 text-neutral-400 transition-all hover:bg-neutral-800"
       >
-        Create New Meeting
+        New {closing && 'Closing'} Meeting
       </button>
 
       {isEditing && (

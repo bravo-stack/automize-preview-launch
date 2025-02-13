@@ -286,7 +286,7 @@ export default function OnboardingForm({ clientID, existingTimeSlots }) {
               target="_blank"
               className="mt-4 text-pretty rounded-full border border-green-700 bg-green-500 p-5 text-center font-medium text-white md:text-xl"
             >
-              Meeting Link
+              Click Here to Save Meeting Link
             </Link>
           </>
         )}
