@@ -1,11 +1,14 @@
 'use client'
 
+import TimeSelector from '@/components/booking/time-selector'
 import { updateItem, createItem } from '@/lib/actions/db'
 import { createClientDrive } from '@/lib/actions/google'
+import { normalizeToStartOfDay } from '@/lib/utils'
+import Link from 'next/link'
+import { useCallback, useEffect, useState } from 'react'
 
-import { useState } from 'react'
-
-export default function OnboardingForm({ clientID }) {
+export default function OnboardingForm({ clientID, existingTimeSlots }) {
+  // STATES
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -26,8 +29,14 @@ export default function OnboardingForm({ clientID }) {
     yearsInBusiness: '',
     productDescription: '',
     customerAcquisition: '',
-    // meetingDateTime: '',
+    meetingDateTime: '',
   })
+
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [timeSlots, setTimeSlots] = useState<
+    { time: string; available: boolean }[]
+  >([])
 
   const [step, setStep] = useState(1)
   const [success, setSuccess] = useState<boolean | null>(null)
@@ -36,15 +45,16 @@ export default function OnboardingForm({ clientID }) {
   const [loading, setLoading] = useState(false)
   const [isEmailValid, setIsEmailValid] = useState(true)
   const [isFocused, setIsFocused] = useState(false)
+  const [bookingID, setBookingID] = useState<string | null>(null)
+
+  // HANDLERS
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email) // Return true if email is valid
+    return emailRegex.test(email)
   }
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
+  const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prevData) => ({
       ...prevData,
@@ -67,11 +77,14 @@ export default function OnboardingForm({ clientID }) {
       'discordUsername',
       'websiteURL',
       'instagramLink',
-      // 'meetingDateTime',
     ]
 
     const missing = requiredFields.filter((field) => !formData[field])
-    if (missing.length > 0) {
+    if (
+      missing.length > 0 ||
+      selectedTimeSlot === null ||
+      selectedDate === null
+    ) {
       setMissingFields(missing)
       setShowPopup(true)
       return
@@ -107,12 +120,36 @@ export default function OnboardingForm({ clientID }) {
       intro_notes: formData.introduction,
       drive: `https://drive.google.com/drive/folders/${folderId}`,
     }
-
-    // const bookingData = {
-    //   time: formData.meetingDateTime,
-    //   client_name: `${formData.firstName} ${formData.lastName}`,
-    //   brand_name: formData.brandName,
-    // }
+    let bookingData
+    if (selectedTimeSlot !== 'contact') {
+      const date = new Date(selectedDate)
+      const [year, month, day] = [
+        date.getFullYear(),
+        date.getMonth() + 1,
+        date.getDate(),
+      ]
+      const [hour, minute] = selectedTimeSlot.split(':').map(Number)
+      // Use UTC methods to prevent timezone conversion
+      const combinedDate = new Date(
+        Date.UTC(year, month - 1, day, hour, minute),
+      )
+      const oneHourLater = new Date(
+        Date.UTC(year, month - 1, day, hour + 1, minute),
+      )
+      bookingData = {
+        name: `Onboarding for ${formData.brandName}`,
+        client_id: clientID,
+        start_time: combinedDate,
+        end_time: oneHourLater,
+      }
+    } else {
+      bookingData = {
+        name: `Onboarding for ${formData.brandName}`,
+        client_id: clientID,
+        start_time: null,
+        end_time: null,
+      }
+    }
 
     // 3. pushing to database
     const { error: formStatus } = await updateItem(
@@ -121,22 +158,138 @@ export default function OnboardingForm({ clientID }) {
       clientID,
     )
 
-    // const { error: bookingStatus } = await createItem('bookings', bookingData)
+    const {
+      data: { id },
+    } = await createItem('booking', bookingData)
 
+    setBookingID(id)
     setLoading(false)
     setSuccess(!formStatus)
     // setSuccess(!formStatus && !bookingStatus)
   }
 
+  // BOOKING LOGIC
+
+  const totalDuration = 75
+  const generateTimeSlots = useCallback(() => {
+    const availableTimeSlots: { time: string; available: boolean }[] = []
+    const today = new Date()
+    const currentDate = selectedDate || today
+    const currentTime = today.getHours() * 60 + today.getMinutes()
+
+    // Convert existing time slots into a more manageable format
+    const existingSlots = existingTimeSlots.map((slot: [any, any]) => {
+      const [date, timeRange] = slot
+      const [startTime, endTime] = timeRange.split(' - ')
+      const [startHour, startMinute] = startTime.split(':').map(Number)
+      const [endHour, endMinute] = endTime.split(':').map(Number)
+      const slotDate = new Date(date)
+      slotDate.setHours(startHour)
+      slotDate.setMinutes(startMinute)
+      const slotStartTime = slotDate.getHours() * 60 + slotDate.getMinutes()
+      slotDate.setHours(endHour)
+      slotDate.setMinutes(endMinute)
+      const slotEndTime = slotDate.getHours() * 60 + slotDate.getMinutes()
+      return { date, slotStartTime, slotEndTime }
+    })
+
+    // Generate time slots from 8:45AM to 7:00PM in 15-minute intervals, excluding 3:00-5:00PM
+    for (let i = 8 * 60 + 45; i <= 19 * 60; i += 75) {
+      // Skip time slots between 3:00PM and 5:00PM
+      if (i >= 14 * 60 && i < 17 * 60) continue
+
+      const hour = Math.floor(i / 60)
+      const minute = (i % 60).toString().padStart(2, '0')
+      const time = `${hour}:${minute}`
+
+      // Check if the time slot conflicts with existing time slots or it's in the past
+      const isAvailable =
+        (selectedDate !== null || i > currentTime) &&
+        normalizeToStartOfDay(currentDate) >= normalizeToStartOfDay(today) &&
+        !existingSlots.some(
+          ({ date, slotStartTime, slotEndTime }) =>
+            date ===
+              currentDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+              }) &&
+            i >= slotStartTime &&
+            i <= slotEndTime,
+        ) // Check past times if it's today
+
+      // Check if the total duration can fit before the next unavailable slot
+      if (isAvailable) {
+        const canFit = !existingSlots.some(
+          ({
+            date,
+            slotStartTime,
+            slotEndTime,
+          }: {
+            date: string
+            slotStartTime: number
+            slotEndTime: number
+          }) => {
+            // if td then set unavailable
+            if (date !== currentDate.toLocaleDateString()) {
+              return false
+            }
+            // if out of bounds then set unavailable
+            if (i < slotStartTime && i + totalDuration * 60 > slotStartTime)
+              return true
+
+            return false
+          },
+        )
+
+        availableTimeSlots.push({ time, available: canFit })
+      } else {
+        availableTimeSlots.push({ time, available: false })
+      }
+    }
+
+    return availableTimeSlots
+  }, [existingTimeSlots, selectedDate, totalDuration])
+
+  useEffect(() => {
+    if (selectedDate) {
+      setTimeSlots(generateTimeSlots())
+    }
+  }, [generateTimeSlots, selectedDate])
+
   if (success === true) {
     return (
       <div className="mx-auto flex max-w-3xl flex-col items-center justify-center rounded bg-white px-2.5 py-5 text-center md:p-10">
         <h1 className="text-4xl font-bold text-green-600">Thank You!</h1>
-        <p className="mt-4 text-pretty text-center text-neutral-600 md:text-lg">
-          Your onboarding form has been received and is currently being
-          processed into our system. Please standby for further instructions
-          from our team.
-        </p>
+
+        {selectedTimeSlot === 'contact' ? (
+          <>
+            <p className="mt-4 text-pretty text-center text-neutral-600 md:text-lg">
+              Your onboarding form has been received and is currently being
+              processed into our system. Our team has recieved your request for
+              a custom meeting time and will be in touch.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-4 text-pretty text-center text-neutral-600 md:text-lg">
+              Your onboarding form has been received and is currently being
+              processed into our system. Please visit the link below to track
+              and join your meeting booked at{' '}
+              <span className="font-semibold">
+                {selectedDate.toDateString()} {selectedTimeSlot}
+              </span>
+              .
+            </p>
+            <Link
+              href={`/meeting/${bookingID}`}
+              target="_blank"
+              className="mt-4 text-pretty rounded-full border border-green-700 bg-green-500 p-5 text-center font-medium text-white md:text-xl"
+            >
+              Click Here to Save Meeting Link
+            </Link>
+          </>
+        )}
       </div>
     )
   }
@@ -446,53 +599,16 @@ export default function OnboardingForm({ clientID }) {
             />
           </div>
 
-          <p className="col-span-full mb-2.5 text-lg font-medium">
-            Briefly Explain Your Product / Service
+          <p className="col-span-full mb-2.5 mt-7 text-lg font-medium">
+            Schedule A Meeting
           </p>
-          <div className="col-span-full mb-7">
-            <textarea
-              name="productDescription"
-              value={formData.productDescription}
-              onChange={handleChange}
-              rows={4}
-              required
-              className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
-            />
-          </div>
-
-          <p className="col-span-full mb-2.5 text-lg font-medium">
-            How are you currently acquiring customers? Please list everything.
-            (I.e. Organic Tiktok, Facebook ads etc.)
-          </p>
-          <div className="col-span-full">
-            <textarea
-              name="customerAcquisition"
-              value={formData.customerAcquisition}
-              onChange={handleChange}
-              rows={4}
-              required
-              className="w-full  rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
-            />
-          </div>
-
-          {/* <div className="col-span-full mb-7 mt-10">
-            <p className="mb-2.5 text-lg font-medium">
-              {' '}
-              Schedule a Meeting <span className="text-red-500">*</span>
-            </p>
-            <input
-              type="datetime-local"
-              name="meetingDateTime"
-              value={formData.meetingDateTime}
-              onChange={handleChange}
-              min={new Date().toISOString().slice(0, 16)}
-              required
-              className="w-full rounded border border-neutral-400 bg-neutral-100 px-3 py-2 hover:ring-2 hover:ring-blue-400 focus:ring-blue-600"
-            />
-            <label className="mt-1.5 block text-xs text-neutral-500 md:text-sm">
-              Please select a future date and time for the meeting.
-            </label>
-          </div> */}
+          <TimeSelector
+            selectedDate={selectedDate}
+            onDateChange={(date) => setSelectedDate(date)}
+            availableTimeSlots={timeSlots}
+            onSelectTimeSlot={(timeslot) => setSelectedTimeSlot(timeslot)}
+            selectedTimeSlot={selectedTimeSlot}
+          />
         </div>
       )}
 
@@ -567,10 +683,11 @@ export default function OnboardingForm({ clientID }) {
                   discordUsername: 'Discord Username',
                   websiteURL: 'Website Link',
                   instagramLink: 'Instagram Link',
-                  // meetingDateTime: 'Meeting Date and Time',
                 }
                 return <li key={field}>{fieldLabels[field] || field}</li>
               })}
+              {selectedDate === null && <li>Meeting Date</li>}
+              {selectedTimeSlot === null && <li>Meeting Time Slot</li>}
             </ul>
             <button
               onClick={() => setShowPopup(false)}
