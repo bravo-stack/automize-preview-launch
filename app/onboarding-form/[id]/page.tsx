@@ -39,7 +39,8 @@ export default async function OnboardingFormPage({ params }) {
         className="mx-auto mb-2.5 w-48 rounded-md md:w-64"
       />
 
-      <OnboardingForm clientID={id} existingTimeSlots={parsedBookings || []} />
+      {/* existingTimeSlots={parsedBookings || []} */}
+      <OnboardingForm clientID={id} />
     </main>
   )
 }
