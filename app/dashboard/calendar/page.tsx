@@ -87,7 +87,7 @@ export default async function Page() {
 
   return (
     <main className="space-y-20 p-7">
-      <section className="mx-auto max-w-7xl">
+      <section className="">
         <div className="my-7 grid grid-cols-3 gap-2.5">
           <h2 className="col-span-full text-2xl font-semibold">
             Meetings Without Scheduled Times
