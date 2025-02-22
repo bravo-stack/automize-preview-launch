@@ -23,6 +23,7 @@ interface RevenueData {
 
 interface FbData {
   name: string
+  pod: string
   roas: number
   spend: number
 }
@@ -305,7 +306,6 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
         try {
           const { store_id, shopify_key, brand } = store
           const decryptedKey = decrypt(shopify_key)
-          // console.log(`Fetching data for store: ${store_id}`)
 
           let res
           if (rebill) {
@@ -346,6 +346,7 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
   async function fetchInsights(
     accountId: string,
     name: string,
+    pod: string,
     rebill?: string,
   ) {
     const dateParam = rebill
@@ -358,6 +359,7 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
       if (!response.ok) {
         return {
           name,
+          pod,
           roas: 'Missing Permissions or Incorrect ID',
           spend: 'Missing Permissions or Incorrect ID',
         }
@@ -367,6 +369,7 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
       if (!data.data || data.data.length === 0) {
         return {
           name,
+          pod,
           roas: 'No Data',
           spend: 'No Data',
         }
@@ -376,6 +379,7 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
 
       return {
         name,
+        pod,
         roas:
           (insights.purchase_roas && insights.purchase_roas[0].value) || '--',
         spend: insights.spend || '--',
@@ -384,6 +388,7 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
       console.error('Error fetching insights:', error)
       return {
         name,
+        pod,
         roas: 'Missing Permissions or Incorrect ID',
         spend: 'Missing Permissions or Incorrect ID',
       }
@@ -395,11 +400,16 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
       let fetchPromises
       if (rebill) {
         fetchPromises = stores.map((store: any) =>
-          fetchInsights(store.fb_key, store.brand, store.rebill_date),
+          fetchInsights(
+            store.fb_key,
+            store.brand,
+            store.pod,
+            store.rebill_date,
+          ),
         )
       } else {
         fetchPromises = stores.map((store: any) =>
-          fetchInsights(store.fb_key, store.brand),
+          fetchInsights(store.fb_key, store.brand, store.pod),
         )
       }
       return Promise.all(fetchPromises)
@@ -479,6 +489,7 @@ export async function financialize(
 
       return [
         s.name,
+        s.pod,
         s.revenueLast30,
         s.fbLast30Spend,
         s.revenueSinceRebill,
@@ -512,6 +523,7 @@ export async function financialize(
 
     sortedSheetData.push([
       'TOTAL/AVG',
+      new Date().toDateString(),
       totalRevenueLast30.toLocaleString(),
       totalFbLast30Spend.toLocaleString(),
       totalRevenueSinceRebill.toLocaleString(),
@@ -617,14 +629,16 @@ function combineData(
     keyRoas: 'fbLast30Roas' | 'fbSinceRebillRoas',
     keySpend: 'fbLast30Spend' | 'fbSinceRebillSpend',
   ) => {
-    data.forEach(({ name, roas, spend }) => {
+    data.forEach(({ name, roas, spend, pod }) => {
       if (!combinedData[name]) {
         combinedData[name] = { name }
       }
       combinedData[name][keyRoas] = roas
       combinedData[name][keySpend] = spend
+      combinedData[name]['pod'] = pod
     })
   }
+
   addRevenueData(revenueLast30, 'revenueLast30')
   addRevenueData(revenueSinceRebill, 'revenueSinceRebill')
   addFbData(fbLast30, 'fbLast30Roas', 'fbLast30Spend')

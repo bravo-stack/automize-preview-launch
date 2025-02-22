@@ -13,7 +13,7 @@ export default async function Sheet({ params }: { params: { sheet: string } }) {
 
   const { data: stores } = await db
     .from('clients')
-    .select('id, brand, fb_key, store_id, shopify_key, rebill_date')
+    .select('id, brand, pod, fb_key, store_id, shopify_key, rebill_date')
     .order('brand')
     .eq('pod', sheet.pod)
     .neq('store_id', null)
