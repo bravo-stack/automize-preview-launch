@@ -13,10 +13,10 @@ export default async function ManagePodsPage({ searchParams }) {
   let clients
   if (pod) {
     const { data } = await db
-      .from('accounts')
-      .select('name')
+      .from('clients')
+      .select('brand')
       .eq('pod', pod)
-      .order('name')
+      .order('brand')
     clients = data
   }
 
