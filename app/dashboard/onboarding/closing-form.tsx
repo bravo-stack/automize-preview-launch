@@ -27,9 +27,9 @@ export default function ClosingForm() {
       return
     }
     
-    const closedClient = {
+	const closedClient = {
       brand: formData.brand,
-      closed_by: formData.closedBy,
+      closed_by: formData.closed_by,
 	rebill_amt: formData.close_amt,
       team: formData.team.toUpperCase(),
       rebill_date: (() => {
