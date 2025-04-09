@@ -5,6 +5,7 @@ import { useState } from 'react'
 import CreateAccount from './CreateAccount'
 import Link from 'next/link'
 import { deleteItem, updateItem } from '@/lib/actions/db'
+import toast from 'react-hot-toast'
 
 interface Account {
   id: string
@@ -59,6 +60,13 @@ export default function AccountList({
       accountData,
       updatedAccount.id,
     )
+
+    if (error) {
+      toast.error('Error updating account.')
+      return
+    } else {
+      toast.success('Account updated successfully.')
+    }
 
     setEditAccount(null)
     router.refresh()
@@ -285,6 +293,7 @@ export default function AccountList({
                 >
                   <option value="active">Active</option>
                   <option value="left">Left</option>
+                  <option value="inactive">Inactive</option>
                 </select>
               </div>
 
