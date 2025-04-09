@@ -24,7 +24,6 @@ export default async function ManagePodsPage({ searchParams }) {
     .from('pod')
     .select('id, name, discord_id, user_id')
     .order('name')
-
   const { data: podAccounts } = await db
     .from('pod')
     .select('name, clients (id, brand, status, pod)')
@@ -35,10 +34,22 @@ export default async function ManagePodsPage({ searchParams }) {
     status: string
     pod: string
   }[] = []
+
+  const inactiveClients: {
+    id: number
+    brand: string
+    status: string
+    pod: string
+  }[] = []
+
   const activePodAccounts = podAccounts?.map((pod) => {
     const activeClients = pod.clients.filter((client) => {
       if (client.status === 'left') {
         churnedClients.push(client)
+        return false
+      }
+      if (client.status === 'inactive') {
+        inactiveClients.push(client)
         return false
       }
       return true
@@ -46,11 +57,11 @@ export default async function ManagePodsPage({ searchParams }) {
     return { ...pod, clients: activeClients }
   })
 
-  activePodAccounts?.push({ name: 'churned', clients: churnedClients })
-
   const sortedByClientCount = activePodAccounts?.sort(
     (a, b) => b.clients.length - a.clients.length,
   )
+  sortedByClientCount?.unshift({ name: 'inactive', clients: inactiveClients })
+  sortedByClientCount?.unshift({ name: 'churned', clients: churnedClients })
 
   return (
     <main className="space-y-7 p-7">
@@ -160,7 +171,7 @@ export default async function ManagePodsPage({ searchParams }) {
             {sortedByClientCount?.map(({ name, clients }, index) => (
               <div key={index} className="">
                 <h3
-                  className={`border-y border-zinc-800 bg-night-starlit p-2.5 text-center text-lg font-semibold ${name === 'churned' && 'text-red-500'}`}
+                  className={`border-y border-zinc-800 bg-night-starlit p-2.5 text-center text-lg font-semibold ${name === 'churned' && 'text-red-500'} ${name === 'inactive' && 'text-yellow-500'}`}
                 >
                   {name}
                 </h3>

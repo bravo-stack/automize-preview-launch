@@ -3,6 +3,7 @@
 import { updateItem } from '@/lib/actions/db'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 export default function UpdateClientPod({ client, pods }) {
   const [open, setOpen] = useState(false)
@@ -10,14 +11,15 @@ export default function UpdateClientPod({ client, pods }) {
   const [status, setStatus] = useState(client.status || 'active')
   const router = useRouter()
 
-  const handleSave = async () => {
+  const handleSave = async (e) => {
+    e.preventDefault()
     const { error } = await updateItem('clients', { pod, status }, client.id)
 
     if (error) {
-      alert('Error updating pod.')
+      toast.error('Error updating pod.')
     } else {
+      toast.success('Pod updated successfully.')
       router.refresh()
-      alert('Pod updated successfully.')
     }
 
     setPod('')
@@ -66,6 +68,7 @@ export default function UpdateClientPod({ client, pods }) {
                 >
                   <option value="active">Active</option>
                   <option value="left">Left</option>
+                  <option value="inactive">Inactive</option>
                 </select>
               </div>
 
