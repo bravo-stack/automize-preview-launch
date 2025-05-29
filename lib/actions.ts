@@ -5,7 +5,7 @@ import { createClient } from './db/server'
 import { authorizeDrive, authorizeSheets } from './google'
 import { getTemplateById } from '@/content/templates'
 import { decrypt, encrypt } from './crypto'
-import { toNumber } from './utils'
+import { parseRebillDateToISO, toNumber } from './utils'
 import {
   appendDataToSheet,
   createSpreadsheet,
@@ -236,10 +236,19 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
   ) => {
     const endpoint = `https://${store_id}.myshopify.com/admin/api/2024-07/graphql.json`
 
-    const queryDate = rebill && last_rebill ? new Date(last_rebill) : new Date()
-    if (!rebill) {
+    function parseRebillDateToDate(dateString: string): Date {
+      return new Date(dateString + 'T00:00:00Z')
+    }
+
+    let queryDate: Date
+
+    if (rebill && last_rebill) {
+      queryDate = parseRebillDateToDate(last_rebill)
+    } else {
+      queryDate = new Date()
       queryDate.setDate(queryDate.getDate() - 30)
     }
+
     const queryDateISO = queryDate.toISOString()
 
     let hasNextPage = true
