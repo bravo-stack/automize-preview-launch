@@ -10,6 +10,11 @@ export function toNumber(value: any): number | null {
   return typeof value === 'number' ? value : null
 }
 
+export function parseRebillDateToISO(dateString: string) {
+  // Append T00:00:00Z to treat as UTC midnight start of that day
+  return new Date(dateString + 'T00:00:00Z')
+}
+
 export function generateRandomString(length) {
   const characters =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@_'

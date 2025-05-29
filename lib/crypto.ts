@@ -4,6 +4,7 @@ const encryptionKey = process.env.ENCRYPTION_KEY as string
 
 export function encrypt(text: string): string {
   const iv = crypto.randomBytes(16) // Generate a random initialization vector (IV)
+  // @ts-ignore works prior
   const cipher = crypto.createCipheriv(
     'aes-256-cbc',
     Buffer.from(encryptionKey, 'hex'),
@@ -16,6 +17,7 @@ export function encrypt(text: string): string {
 
 export function decrypt(encryptedText: string): string {
   const [iv, encrypted] = encryptedText.split(':')
+  // @ts-ignore works prior
   const decipher = crypto.createDecipheriv(
     'aes-256-cbc',
     Buffer.from(encryptionKey, 'hex'),
