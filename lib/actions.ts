@@ -5,7 +5,7 @@ import { createClient } from './db/server'
 import { authorizeDrive, authorizeSheets } from './google'
 import { getTemplateById } from '@/content/templates'
 import { decrypt, encrypt } from './crypto'
-import { parseRebillDateToISO, toNumber } from './utils'
+import { toNumber } from './utils'
 import {
   appendDataToSheet,
   createSpreadsheet,
