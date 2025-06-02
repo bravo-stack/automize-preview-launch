@@ -38,8 +38,9 @@ export default function OnboardingForm({ clientID }) {
   const [isFocused, setIsFocused] = useState(false)
 
   const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email) // Return true if email is valid
+    // Regex to specifically match @gmail.com addresses, case-insensitive
+    const gmailRegex = /^[^\s@]+@gmail\.com$/i
+    return gmailRegex.test(email)
   }
 
   const handleChange = (
@@ -79,7 +80,9 @@ export default function OnboardingForm({ clientID }) {
 
     if (!validateEmail(formData.email)) {
       setIsEmailValid(false)
-      setMissingFields(['Email: incorrect format'])
+      setMissingFields([
+        'Email: Must be a valid Gmail address (e.g., example@gmail.com)',
+      ])
       setShowPopup(true)
       return
     }
@@ -231,11 +234,12 @@ export default function OnboardingForm({ clientID }) {
             />
             {!isEmailValid && !isFocused && formData.email && (
               <span className="mt-1 block text-sm font-medium text-red-600">
-                Invalid email format. Please enter a valid email.
+                Please enter a valid Gmail address (e.g., example@gmail.com).{' '}
+                {/* <<< Updated message */}
               </span>
             )}
             <label className="mt-1.5 block text-xs text-neutral-500 md:text-sm">
-              example@example.com
+              example@gmail.com {/* <<< Updated hint */}
             </label>
           </div>
 
