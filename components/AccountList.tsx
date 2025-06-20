@@ -13,6 +13,8 @@ interface Account {
   fb_key: string
   pod: string
   status: string
+  full_name: string
+  phone_number: string
 }
 
 export default function AccountList({
@@ -29,10 +31,16 @@ export default function AccountList({
   const router = useRouter()
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value)
-    const filtered = accounts.filter((account) =>
-      account.brand.toLowerCase().includes(e.target.value.toLowerCase()),
+    const term = e.target.value.toLowerCase()
+    setSearchTerm(term)
+
+    const filtered = accounts.filter(
+      (account) =>
+        account.brand.toLowerCase().includes(term) ||
+        (account.full_name?.toLowerCase().includes(term) ?? false) ||
+        (account.phone_number?.toLowerCase().includes(term) ?? false),
     )
+
     setFilteredAccounts(filtered)
   }
 
@@ -73,7 +81,7 @@ export default function AccountList({
   }
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col justify-center 2xl:max-w-6xl">
+    <main className="mx-auto flex w-full max-w-[1600px] flex-col justify-center px-4">
       <div className="mb-10 flex gap-2">
         <search className="flex w-full items-center gap-2 rounded-md border border-zinc-800 bg-night-starlit px-2 outline-none transition-colors hover:border-zinc-700 focus:ring focus:ring-zinc-800">
           <svg
@@ -102,87 +110,117 @@ export default function AccountList({
         <CreateAccount pods={pods} />
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                scope="col"
-                className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-              >
-                Name
-              </th>
-              <th
-                scope="col"
-                className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-              >
-                ID
-              </th>
-              <th
-                scope="col"
-                className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-              >
-                Pod
-              </th>
-              {/* <th
-                scope="col"
-                className="whitespace-nowrap py-3 pl-6 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-              >
-                Portfolio
-              </th>
-              */}
-              <th scope="col" className="relative px-3 py-3">
-                <span className="sr-only">Edit</span>
-              </th>
-              <th scope="col" className="relative px-3 py-3">
-                <span className="sr-only">Edit</span>
-              </th>
-              <th scope="col" className="relative py-3 pr-6">
-                <span className="sr-only">Delete</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {filteredAccounts.map((account, index) => (
-              <tr key={index}>
-                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                  {account.brand}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                  {account.fb_key}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                  {account.pod}
-                </td>
+      <div className="relative w-full">
+        <div className="mx-auto max-w-screen-2xl overflow-x-auto overflow-y-hidden rounded border border-zinc-200 bg-white pb-4 pt-2">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  Brand
+                </th>
+                <th
+                  scope="col"
+                  className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  Phone
+                </th>
+                <th
+                  scope="col"
+                  className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  ID
+                </th>
+                <th
+                  scope="col"
+                  className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  Pod
+                </th>
 
-                <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium">
-                  <Link
-                    href={`/dashboard/notes/${account.id}`}
-                    className="inline-block text-gray-500 underline"
-                  >
-                    Portfolio
-                  </Link>
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium">
-                  <button
-                    onClick={() => setEditAccount(account)}
-                    className="text-indigo-600 hover:text-indigo-900"
-                  >
-                    Edit
-                  </button>
-                </td>
-                <td className="whitespace-nowrap py-4 pr-6 text-right text-sm font-medium">
-                  <button
-                    onClick={() => setConfirmDelete(account.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
-                </td>
+                <th scope="col" className="relative px-3 py-3">
+                  <span className="sr-only">Edit</span>
+                </th>
+                <th scope="col" className="relative px-3 py-3">
+                  <span className="sr-only">Edit</span>
+                </th>
+                <th scope="col" className="relative py-3 pr-6">
+                  <span className="sr-only">Delete</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {filteredAccounts.map((account, index) => (
+                <tr key={index}>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                    {account.brand ? (
+                      account.brand
+                    ) : (
+                      <span className="text-red-700">Missing</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                    {account.full_name ? (
+                      account.full_name
+                    ) : (
+                      <span className="text-red-700">Missing</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                    {account.phone_number ? (
+                      account.phone_number
+                    ) : (
+                      <span className="text-red-700">Missing</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                    {account.fb_key ? (
+                      account.fb_key
+                    ) : (
+                      <span className="text-red-700">Missing</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                    {account.pod ? account.pod : <span>n/a</span>}
+                  </td>
+
+                  <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium">
+                    <Link
+                      href={`/dashboard/notes/${account.id}`}
+                      className="inline-block text-gray-500 underline"
+                    >
+                      Portfolio
+                    </Link>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium">
+                    <button
+                      onClick={() => setEditAccount(account)}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                  <td className="whitespace-nowrap py-4 pr-6 text-right text-sm font-medium">
+                    <button
+                      onClick={() => setConfirmDelete(account.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {confirmDelete && (

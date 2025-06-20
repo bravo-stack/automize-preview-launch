@@ -6,7 +6,9 @@ export default async function AccountsPage() {
 
   const { data: accounts } = await db
     .from('clients')
-    .select('id, brand, fb_key, pod, status, closed_at')
+    .select(
+      'id, full_name, phone_number, brand, fb_key, pod, status, closed_at',
+    )
   // .is('onboarded', true)
 
   const { data: pods } = await db.from('pod').select('name')
