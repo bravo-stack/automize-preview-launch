@@ -237,7 +237,7 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
     const endpoint = `https://${store_id}.myshopify.com/admin/api/2024-07/graphql.json`
 
     function parseRebillDateToDate(dateString: string): Date {
-      return new Date(dateString + 'T00:00:00Z')
+      return new Date(dateString + 'T00:00:00.000Z')
     }
 
     let queryDate: Date

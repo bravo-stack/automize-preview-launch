@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         .sort((a, b) => b.roas - a.roas)
         .map((item) => item.data)
 
-      await appendDataToSheet(sheetID, sheetData)
+      await appendDataToSheet(sheetID, sheetData, 'Weekly Sheet')
 
       return NextResponse.json({
         ok: true,
