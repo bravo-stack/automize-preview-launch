@@ -2,6 +2,24 @@ import { createClient } from '@/lib/db/server'
 import SheetInfo from './SheetInfo'
 import FinancialX from '@/components/FinancialX'
 
+export async function generateMetadata({ params, searchParams }) {
+  const db = createClient()
+
+  const { data: pod } = await db
+    .from('sheets')
+    .select('pod')
+    .eq('sheet_id', params.sheet)
+    .single()
+
+  const podName = pod?.pod
+    ? pod.pod.charAt(0).toUpperCase() + pod.pod.slice(1)
+    : 'Pod'
+
+  return {
+    title: `${podName} Pod - Automize`,
+  }
+}
+
 export default async function Sheet({ params }: { params: { sheet: string } }) {
   const db = createClient()
 
