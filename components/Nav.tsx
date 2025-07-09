@@ -1,101 +1,149 @@
 'use client'
 
-import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+
+// You can manage your navigation links centrally
+const navLinks = [
+  { href: '/features', label: 'Features' },
+  { href: '/solutions', label: 'Solutions' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/company', label: 'Company' },
+]
 
 export default function Nav() {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const links = []
+  const pathname = usePathname()
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [lastYPos, setLastYPos] = useState(0)
+
+  // Effect to handle scroll detection
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentYPos = window.scrollY
+      // Show nav if scrolling up or at the top
+      setIsScrolled(currentYPos > lastYPos && currentYPos > 100)
+      setLastYPos(currentYPos)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [lastYPos])
+
   return (
-    <>
-      <nav className="sticky left-0 right-0 top-0 z-50 mx-auto max-w-6xl px-3 py-2 lg:px-5 lg:py-3">
-        <div className="z-10 flex rounded-2xl border border-night-dusk bg-night-twilight px-7 py-5 shadow-md shadow-zinc-700/15 md:px-0 md:py-0">
-          <Link
-            href="/"
-            className="flex items-center font-mono text-xl font-bold uppercase tracking-wider md:mr-auto md:px-5"
-          >
-            Automize
+    <header
+      className={`fixed left-0 right-0 top-4 z-50 mx-auto max-w-[89dvw] transition-transform duration-300 ease-in-out lg:max-w-5xl
+      ${isScrolled ? '-translate-y-24' : 'translate-y-0'}`}
+    >
+      <div className="container mx-auto flex h-16 items-center justify-between rounded-2xl border border-zinc-800/80 bg-black/50 p-4 backdrop-blur-md">
+        {/* Logo and Desktop Navigation */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="text-xl font-bold tracking-tight text-zinc-50">
+              Automize
+            </span>
           </Link>
-
-          <ul className="relative hidden items-stretch text-sm text-zinc-500/80 md:flex md:flex-grow md:justify-center">
-            {/* {links.map((link, index) => (
-              <li
-                key={index}
-                className="group flex cursor-pointer items-stretch px-3"
+          <nav className="hidden items-center gap-6 md:flex">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`text-sm font-medium transition-colors hover:text-zinc-50 ${
+                  pathname === link.href ? 'text-zinc-50' : 'text-zinc-400'
+                }`}
               >
-                <Link
-                  href={link.href}
-                  className="flex items-center text-base transition-colors group-hover:text-white"
-                >
-                  {link.text}
-                </Link>
-              </li>
-            ))} */}
-          </ul>
-
-          <div className="hidden items-stretch space-x-2 md:flex">
-            <Link
-              href="/login"
-              className="flex items-stretch rounded-md border border-zinc-800 px-3 py-2 text-center font-semibold text-white/80 transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-900 hover:text-white hover:shadow hover:shadow-white/15 md:mx-5 md:my-3"
-            >
-              Login
-            </Link>
-          </div>
-
-          <button
-            className="ml-auto text-white md:hidden"
-            onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              className="h-6 w-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16m-7 6h7"
-              />
-            </svg>
-          </button>
-        </div>
-      </nav>
-
-      <nav
-        className={`fixed inset-0 z-50 transform bg-night-dusk px-6 py-6 transition-transform duration-300 lg:hidden ${
-          isDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div className="mb-10 flex justify-between">
-          <h1 className="font-mono text-xl font-semibold tracking-wide">
-            Automize
-          </h1>
-          <button
-            className="rounded-sm border border-white text-white"
-            onClick={() => setIsDrawerOpen(false)}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              className="h-6 w-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+                {link.label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
-        <ul className="text flex flex-col gap-5"></ul>
-      </nav>
-    </>
+        {/* Desktop CTAs */}
+        <div className="hidden items-center gap-4 md:flex">
+          <Button variant="ghost" asChild>
+            <Link href="/login">Login</Link>
+          </Button>
+          <Button asChild className="bg-blue-600 hover:bg-blue-700">
+            <Link href="/signup">Request a Demo</Link>
+          </Button>
+        </div>
+
+        {/* Mobile Navigation (Sheet) */}
+        <div className="md:hidden">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                className="hover:bg-gray-500/50 hover:text-white"
+                variant="ghost"
+                size="icon"
+              >
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              disableInternalCloseBtn
+              side="bottom"
+              className="h-[60dvh] rounded-t-2xl border-t border-zinc-800 bg-black"
+            >
+              <div className="flex h-full flex-col">
+                {/* Mobile Nav Header */}
+                <div className="mb-8 flex items-center justify-between">
+                  <Link href="/" className="flex items-center gap-2">
+                    <span className="text-lg font-bold tracking-tight text-zinc-50">
+                      Automize
+                    </span>
+                  </Link>
+                  <SheetClose asChild>
+                    <Button
+                      className="hover:bg-gray-500/50 hover:text-white"
+                      variant="ghost"
+                      size="icon"
+                    >
+                      <X className="h-5 w-5 text-white" />
+                      <span className="sr-only">Close menu</span>
+                    </Button>
+                  </SheetClose>
+                </div>
+
+                {/* Mobile Nav Links */}
+                <nav className="flex flex-col gap-6">
+                  {navLinks.map((link) => (
+                    <SheetClose asChild key={link.href}>
+                      <Link
+                        href={link.href}
+                        className={`text-lg font-medium transition-colors hover:text-zinc-50 ${
+                          pathname === link.href
+                            ? 'text-zinc-50'
+                            : 'text-zinc-400'
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    </SheetClose>
+                  ))}
+                </nav>
+
+                {/* Mobile CTAs */}
+                <div className="mt-auto flex flex-col gap-4 pt-8">
+                  <Button variant="outline" size="lg" asChild>
+                    <Link href="/login">Login</Link>
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+    </header>
   )
 }

@@ -1,11 +1,11 @@
 'use client'
 import { cn } from '@/lib/utils'
 import React, {
-  useState,
-  useEffect,
-  useRef,
   RefObject,
   useCallback,
+  useEffect,
+  useRef,
+  useState,
 } from 'react'
 
 interface StarProps {
@@ -137,7 +137,7 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
   return (
     <canvas
       ref={canvasRef}
-      className={cn('absolute inset-0 h-full w-full', className)}
+      className={cn('fixed inset-0 h-full w-full opacity-25', className)}
     />
   )
 }
