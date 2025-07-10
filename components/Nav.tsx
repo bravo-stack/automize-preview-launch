@@ -41,7 +41,7 @@ export default function Nav() {
 
   return (
     <header
-      className={`fixed left-0 right-0 top-4 z-50 mx-auto max-w-[89dvw] transition-transform duration-300 ease-in-out lg:max-w-5xl
+      className={`fixed left-0 right-0 top-4 z-[15280] mx-auto max-w-[89dvw] transition-transform duration-300 ease-in-out lg:max-w-5xl
       ${isScrolled ? '-translate-y-24' : 'translate-y-0'}`}
     >
       <div className="container mx-auto flex h-16 items-center justify-between rounded-2xl border border-zinc-800/80 bg-black/50 p-4 backdrop-blur-md">
