@@ -14,10 +14,10 @@ import { useEffect, useState } from 'react'
 
 // You can manage your navigation links centrally
 const navLinks = [
-  { href: '/features', label: 'Features' },
-  { href: '/solutions', label: 'Solutions' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/company', label: 'Company' },
+  { href: '#features', label: 'Features' },
+  { href: '#solutions', label: 'Solutions' },
+  { href: '#pricing', label: 'Pricing' },
+  { href: '#company', label: 'Company' },
 ]
 
 export default function Nav() {

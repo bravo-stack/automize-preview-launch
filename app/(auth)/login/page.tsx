@@ -54,7 +54,7 @@ export default function LoginPage() {
 
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center justify-center bg-black p-4 text-zinc-50">
-      <Card className="z-10 w-full max-w-sm border-zinc-800 bg-black/50 backdrop-blur-md">
+      <Card className="z-50 w-full max-w-sm border-zinc-800 bg-black/50 backdrop-blur-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold tracking-tight text-zinc-200">
             Welcome Back
@@ -66,7 +66,9 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-zinc-100">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -74,12 +76,15 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="text-zinc-100"
                 disabled={isPending}
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-zinc-100">
+                  Password
+                </Label>
                 <Link
                   href="/forgot-password"
                   className="text-xs font-medium text-zinc-400 hover:text-zinc-50 hover:underline"
@@ -94,6 +99,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="text-zinc-100"
                 disabled={isPending}
               />
             </div>
