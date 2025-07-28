@@ -29,7 +29,7 @@ export default function LoginPage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError(null) // Clear previous errors
+    setError(null)
 
     if (!email || !password) {
       setError('Please fill in both email and password.')
