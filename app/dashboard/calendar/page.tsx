@@ -1,9 +1,9 @@
-import { DateTime } from 'luxon'
 import { createClient } from '@/lib/db/server'
-import CalendarApp from './calendar'
-import ManageMeetingsButton from './manage-meetings'
-import EditMeeting from './edit-meeting'
+import { DateTime } from 'luxon'
 import AddMeeting from './add-meeting'
+import CalendarApp from './calendar'
+import EditMeeting from './edit-meeting'
+import ManageMeetingsButton from './manage-meetings'
 
 export default async function Page() {
   const db = createClient()
@@ -22,7 +22,7 @@ export default async function Page() {
     return <p>Failed to load bookings.</p>
   }
 
-  // Convert EST time to UTC ISO string
+  // EST time to UTC ISO string
   const parseEstToUTC = (dateStr: string) => {
     return DateTime.fromISO(dateStr, { zone: 'America/New_York' })
       .toUTC()
