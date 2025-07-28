@@ -1,55 +1,12 @@
 'use client'
 
+import Footer from '@/components/Footer'
+import Hero from '@/components/Hero'
 import Nav from '@/components/Nav' // Assuming Nav component
 import { ShootingStars } from '@/components/shooting-stars'
 import { StarsBackground } from '@/components/stars-background'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { ArrowRight, BarChart, Bot, Check, Zap } from 'lucide-react'
-import Link from 'next/link'
 
-// It's best practice to break these sections into their own components.
-// For this example, they are defined within the same file for simplicity.
-
-const FeatureCard = ({ icon, title, description }) => (
-  <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
-    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600/10 text-blue-400">
-      {icon}
-    </div>
-    <h3 className="mb-2 text-xl font-semibold text-zinc-100">{title}</h3>
-    <p className="text-zinc-400">{description}</p>
-  </div>
-)
-
-const TestimonialCard = ({ quote, author, title, company }) => (
-  <figure className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-sm">
-    <blockquote className="text-lg italic text-zinc-300">
-      &quot;{quote}&quot;
-    </blockquote>
-    <figcaption className="mt-4 border-t border-zinc-800 pt-4">
-      <div className="font-semibold text-zinc-100">{author}</div>
-      <div className="text-sm text-zinc-400">
-        {title}, {company}
-      </div>
-    </figcaption>
-  </figure>
-)
-
-// Data for the new sections
+// DATA INIT
 const services = [
   {
     name: 'Autometrics',
@@ -91,7 +48,6 @@ const services = [
     isPopular: false,
   },
 ]
-
 const faqs = [
   {
     question: 'What is Autometrics?',
@@ -117,51 +73,15 @@ const faqs = [
 
 export default function EnterpriseLandingPage() {
   return (
-    <div className="min-h-screen bg-black text-zinc-50">
+    <div className="min-h-screen bg-gradient-to-tr from-night-twilight via-night-starlit to-night-dusk text-zinc-50">
       <Nav />
 
       <main className="container relative z-50 mx-auto px-4">
         {/* Section 1: Hero */}
-        <section
-          id="hero"
-          className="py-24 text-center sm:py-32 md:py-40 lg:py-[26dvh]"
-        >
-          <Badge
-            variant="secondary"
-            className="mx-auto mb-6 w-fit border-blue-500/30 bg-blue-950/40 text-sm font-medium text-blue-300"
-          >
-            An Enterprise-Grade Solution by Automize
-          </Badge>
-          <h1 className="text-4xl font-extrabold tracking-tighter text-zinc-100 sm:text-5xl md:text-6xl lg:text-7xl">
-            The New Standard in
-            <span className="block bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent">
-              Business Automation
-            </span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-400 sm:text-xl">
-            Leverage our cutting-edge AI platform to streamline complex
-            workflows, drive efficiency, and unlock unprecedented growth. Built
-            for scale, security, and performance.
-          </p>
-          <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-            <Button
-              asChild
-              size="lg"
-              className="gap-2 bg-blue-600 hover:bg-blue-700"
-            >
-              <Link href="/dashboard">
-                Request a Demo
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button variant="outline" className="text-black" size="lg" asChild>
-              <Link href="#pricing">Contact Sales</Link>
-            </Button>
-          </div>
-        </section>
+        <Hero />
 
         {/* Section 2: Features */}
-        <section id="features" className="py-16 sm:py-24">
+        {/* <section id="features" className="py-16 sm:py-24">
           <div className="mx-auto max-w-xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-zinc-100 sm:text-4xl">
               Transform Your Operations
@@ -189,10 +109,10 @@ export default function EnterpriseLandingPage() {
               description="Gain deep insights into your operations with real-time dashboards and predictive analytics, turning data into strategic advantage."
             />
           </div>
-        </section>
+        </section> */}
 
         {/* Section 3: Pricing - NEWLY ADDED */}
-        <section id="pricing" className="py-16 sm:py-24">
+        {/* <section id="pricing" className="py-16 sm:py-24">
           <div className="mx-auto max-w-xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-zinc-100 sm:text-4xl">
               Flexible Pricing for Teams of All Sizes
@@ -212,7 +132,7 @@ export default function EnterpriseLandingPage() {
               >
                 <CardHeader className="relative">
                   {service.isPopular && (
-                    <Badge className="absolute -top-7 right-6 bg-blue-600">
+                    <Badge className="absolute -top-7 right-4 hover:opacity-80 bg-blue-600 text-white">
                       Most Popular
                     </Badge>
                   )}
@@ -240,7 +160,7 @@ export default function EnterpriseLandingPage() {
                 <CardFooter>
                   <Button
                     asChild
-                    className={`w-full ${
+                    className={`w-full text-white ${
                       service.isPopular
                         ? 'bg-blue-600 hover:bg-blue-700'
                         : 'bg-zinc-800 hover:bg-zinc-700'
@@ -252,10 +172,10 @@ export default function EnterpriseLandingPage() {
               </Card>
             ))}
           </div>
-        </section>
+        </section> */}
 
         {/* Section 4: Social Proof / Testimonials */}
-        <section id="testimonials" className="py-16 sm:py-24">
+        {/* <section id="testimonials" className="py-16 sm:py-24">
           <div className="mx-auto max-w-xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-zinc-100 sm:text-4xl">
               Trusted by Industry Leaders
@@ -278,10 +198,10 @@ export default function EnterpriseLandingPage() {
               company="Innovate Solutions"
             />
           </div>
-        </section>
+        </section> */}
 
         {/* Section 5: FAQ - NEWLY ADDED */}
-        <section id="faq" className="mx-auto my-16 max-w-3xl sm:my-24">
+        {/* <section id="faq" className="mx-auto my-16 max-w-3xl sm:my-24">
           <div className="text-center">
             <h2 className="text-3xl font-bold tracking-tight text-zinc-100 sm:text-4xl">
               Frequently Asked Questions
@@ -303,10 +223,10 @@ export default function EnterpriseLandingPage() {
               </AccordionItem>
             ))}
           </Accordion>
-        </section>
+        </section> */}
 
         {/* Section 6: Final CTA */}
-        <section
+        {/* <section
           id="finalCTA"
           className="my-24 rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-black py-16 text-center"
         >
@@ -322,31 +242,15 @@ export default function EnterpriseLandingPage() {
             <Button
               asChild
               size="lg"
-              className="bg-blue-600 px-8 hover:bg-blue-700"
+              className="bg-blue-600 px-8 text-white hover:bg-blue-700"
             >
               <Link href="/dashboard">Get Started Now</Link>
             </Button>
           </div>
-        </section>
+        </section> */}
       </main>
 
-      <footer className="relative z-50 border-t border-zinc-800 py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-zinc-500">
-          <p>
-            &copy; {new Date().getFullYear()} InsightX Media. All Rights
-            Reserved.
-          </p>
-          <p className="mt-1">
-            A service proudly developed by{' '}
-            <a
-              href="https://www.arekos.com/"
-              className="font-medium text-zinc-400 underline-offset-4 hover:text-zinc-200 hover:underline"
-            >
-              Arekos
-            </a>
-          </p>
-        </div>
-      </footer>
+      <Footer />
 
       <ShootingStars />
       <StarsBackground />
