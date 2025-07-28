@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 interface ShootingStar {
   id: number
@@ -145,3 +145,5 @@ export const ShootingStars: React.FC<ShootingStarsProps> = ({
     </svg>
   )
 }
+
+export default ShootingStars

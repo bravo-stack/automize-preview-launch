@@ -1,5 +1,5 @@
-import { ShootingStars } from '@/components/ui/shooting-stars'
-import { StarsBackground } from '@/components/ui/stars-background'
+import { ShootingStars } from '@/components/shooting-stars'
+import { StarsBackground } from '@/components/stars-background'
 import { createClient } from '@/lib/db/server'
 import dynamic from 'next/dynamic'
 const MeetingCountdown = dynamic(
