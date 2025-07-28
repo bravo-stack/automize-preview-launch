@@ -1,7 +1,8 @@
-import type { Metadata } from 'next'
-import './globals.css'
+import { ThemeProvider } from '@/components/ThemeProvider'
 import { GeistSans } from 'geist/font/sans'
+import type { Metadata } from 'next'
 import { Toaster } from 'react-hot-toast'
+import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Automize',
@@ -10,13 +11,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body className={GeistSans.className}>
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          forcedTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
         <Toaster position="top-right" />
       </body>
     </html>
