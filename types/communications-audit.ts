@@ -14,10 +14,10 @@ export interface CommunicationReport {
   category_name: string | null
   last_client_user_id: string | null
   last_client_username: string | null
-  last_client_is_orphaned: boolean | null
+  last_client_is_former_member: boolean | null
   last_team_user_id: string | null
   last_team_username: string | null
-  last_team_is_orphaned: boolean | null
+  last_team_is_former_member: boolean | null
   status_notes: string | null
   guild_id: string | null
   channel_id: string | null
@@ -42,6 +42,7 @@ export type SortOption =
   | 'not_replied'
   | 'replied'
   | 'alphabetical'
+  | 'category'
   | 'inactive'
   | 'transferred'
   | 'left_pod'
