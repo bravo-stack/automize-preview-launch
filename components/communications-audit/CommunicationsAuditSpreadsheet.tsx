@@ -313,6 +313,62 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         </div>
       </div>
 
+      {/* Summary Stats */}
+      {data.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+          {[
+            {
+              status: 'responded',
+              label: 'Client Responded',
+              color: 'bg-white text-black',
+            },
+            {
+              status: 'not_replied_48h',
+              label: 'No Outreach 48h',
+              color: 'bg-red-500 text-white',
+            },
+            {
+              status: 'inactive',
+              label: 'Inactive',
+              color: 'bg-orange-500 text-white',
+            },
+            {
+              status: 'transferred',
+              label: 'Transferred',
+              color: 'bg-green-500 text-white',
+            },
+            {
+              status: 'left_pod',
+              label: 'Left Pod',
+              color: 'bg-purple-500 text-white',
+            },
+          ].map(({ status, label, color }) => {
+            const count = data.filter(
+              (report) => getStatus(report) === status,
+            ).length
+            return (
+              <Card
+                key={status}
+                className="border-zinc-800/50 bg-zinc-900/30 p-4 text-center"
+              >
+                <div
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${color} mb-2`}
+                >
+                  {label}
+                </div>
+                <div className="text-2xl font-bold text-white">{count}</div>
+                <div className="text-xs text-zinc-400">
+                  {data.length > 0
+                    ? Math.round((count / data.length) * 100)
+                    : 0}
+                  %
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex min-h-[400px] items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
