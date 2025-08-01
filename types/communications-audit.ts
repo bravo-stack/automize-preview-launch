@@ -39,19 +39,24 @@ export interface CommunicationsAuditData {
 }
 
 export type SortOption =
-  | 'not_replied'
-  | 'replied'
+  | 'high_priority'
+  | 'medium_priority'
+  | 'low_priority'
   | 'alphabetical'
   | 'category'
   | 'inactive'
   | 'transferred'
-  | 'left_pod'
+  | 'churned'
 
 export type StatusFilter =
   | 'all'
-  | 'not_replied_48h'
-  | 'not_messaged_7d'
-  | 'responded'
+  | 'ixm_no_reach_48h'
+  | 'client_silent_5d'
+  | 'client_awaiting_team'
+  | 'active_communication'
+  | 'no_messages'
+  | 'team_only'
+  | 'client_only_no_team'
   | 'inactive'
   | 'transferred'
-  | 'left_pod'
+  | 'churned'

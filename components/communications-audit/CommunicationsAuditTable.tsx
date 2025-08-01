@@ -17,7 +17,7 @@ interface Props {
 export default function CommunicationsAuditTable({ initialData }: Props) {
   const [selectedDate, setSelectedDate] = useState(initialData.latestDate || '')
   const [selectedPod, setSelectedPod] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<SortOption>('not_replied')
+  const [sortBy, setSortBy] = useState<SortOption>('high_priority')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [data, setData] = useState<CommunicationReport[]>(initialData.reports)
@@ -72,64 +72,106 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
   }, [searchTerm, statusFilter, categoryFilter, sortBy, selectedPod])
 
   // Get status based on the color coding from the sheet
+  // Get status directly from the report status field
   const getStatus = (report: CommunicationReport): string => {
-    // Check explicit status first (based on priority order)
-    if (report.status === 'clients responded to') return 'responded'
-    if (report.status === "didn't reach out for 48 hours")
-      return 'not_replied_48h'
-    if (report.status === 'Client silent for 7+ days') return 'not_replied_48h'
-    if (report.status === 'OK') return 'responded'
-    if (report.status === 'transfered') return 'transferred'
-    if (report.status === 'inactive') return 'inactive'
-    if (report.status === 'churned') return 'left_pod'
-    if (report.status === 'left') return 'left_pod'
+    if (!report.status) return 'unknown'
 
-    // Fallback to legacy logic if status is null or unrecognized
-    const ixmDays = report.days_since_ixm_message || 0
-    const teamDays = report.days_since_team_message || 0
-    const clientDays = report.days_since_client_message || 0
+    const status = report.status.toLowerCase()
 
-    // IXM/Team hasn't reached out for 48 hours (2 days)
-    if (Math.min(ixmDays, teamDays) >= 2) return 'not_replied_48h'
+    // Map the actual status values from the communication_reports.status field
+    // Category-based statuses (high priority)
+    if (status === 'inactive') return 'inactive'
+    if (status === 'transferred') return 'transferred'
+    if (status === 'churned') return 'churned' // churned translates as left
 
-    // Client responded (white in sheet)
-    if (clientDays <= 1) return 'responded'
+    // Message analysis statuses
+    if (
+      status.includes("didn't reach out for 48 hours") ||
+      status.includes("ixm didn't reach out")
+    )
+      return 'ixm_no_reach_48h'
+    if (
+      status.includes('client silent for 5+ days') ||
+      status.includes('client silent')
+    )
+      return 'client_silent_5d'
+    if (
+      status.includes('client responded - awaiting team reply') ||
+      status.includes('awaiting team reply')
+    )
+      return 'client_awaiting_team'
+    if (status.includes('active communication')) return 'active_communication'
+    if (status.includes('no messages found')) return 'no_messages'
+    if (
+      status.includes('team only - no client messages') ||
+      status.includes('team only')
+    )
+      return 'team_only'
+    if (
+      status.includes('client only - no team response') ||
+      status.includes('client only')
+    )
+      return 'client_only_no_team'
 
-    // Default to not replied
-    return 'not_replied_48h'
+    return 'unknown'
   }
 
   const getStatusColor = (status: string): string => {
     switch (status) {
-      case 'not_replied_48h':
+      // Red: didn't reach out for 48 hours
+      case 'ixm_no_reach_48h':
+      case 'client_only_no_team':
         return 'bg-red-500 text-white border-red-500'
-      case 'responded':
+
+      // White: clients responded to
+      case 'client_silent_5d':
+      case 'client_awaiting_team':
+      case 'active_communication':
+      case 'no_messages':
+      case 'team_only':
         return 'bg-white text-black border-white'
+
+      // Orange: Inactive
       case 'inactive':
         return 'bg-orange-500 text-white border-orange-500'
+
+      // Green: Transferred
       case 'transferred':
         return 'bg-green-500 text-white border-green-500'
-      case 'left_pod':
+
+      // Purple: Left Pod (Churned)
+      case 'churned':
         return 'bg-purple-500 text-white border-purple-500'
+
       default:
-        return 'bg-gray-500 text-white border-gray-500'
+        return 'bg-gray-400 text-white border-gray-400'
     }
   }
 
   const getStatusLabel = (status: string): string => {
     switch (status) {
-      case 'not_replied_48h':
-        return "Didn't reach out (48h) / Client silent 7+ days"
-      case 'responded':
-        return 'OK / Client responded'
+      case 'ixm_no_reach_48h':
+        return "IXM didn't reach out for 48 hours"
+      case 'client_silent_5d':
+        return 'Client silent for 5+ days'
+      case 'client_awaiting_team':
+        return 'Client responded - awaiting team reply'
+      case 'active_communication':
+        return 'Active communication'
+      case 'no_messages':
+        return 'No messages found'
+      case 'team_only':
+        return 'Team only - no client messages'
+      case 'client_only_no_team':
+        return 'Client only - no team response'
       case 'inactive':
         return 'Inactive'
       case 'transferred':
         return 'Transferred'
-      case 'left_pod':
-        return 'Left pod / Churned'
+      case 'churned':
+        return 'Churned'
       default:
-        return 'Unknown'
+        return 'Unknown Status'
     }
   }
 
@@ -165,14 +207,26 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
         let matchesStatus = false
 
         switch (statusFilter) {
-          case 'not_replied_48h':
-            matchesStatus = status === 'not_replied_48h'
+          case 'ixm_no_reach_48h':
+            matchesStatus = status === 'ixm_no_reach_48h'
             break
-          case 'not_messaged_7d':
-            matchesStatus = (report.days_since_client_message || 0) >= 7
+          case 'client_silent_5d':
+            matchesStatus = status === 'client_silent_5d'
             break
-          case 'responded':
-            matchesStatus = status === 'responded'
+          case 'client_awaiting_team':
+            matchesStatus = status === 'client_awaiting_team'
+            break
+          case 'active_communication':
+            matchesStatus = status === 'active_communication'
+            break
+          case 'no_messages':
+            matchesStatus = status === 'no_messages'
+            break
+          case 'team_only':
+            matchesStatus = status === 'team_only'
+            break
+          case 'client_only_no_team':
+            matchesStatus = status === 'client_only_no_team'
             break
           case 'inactive':
             matchesStatus = status === 'inactive'
@@ -180,8 +234,8 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
           case 'transferred':
             matchesStatus = status === 'transferred'
             break
-          case 'left_pod':
-            matchesStatus = status === 'left_pod'
+          case 'churned':
+            matchesStatus = status === 'churned'
             break
           default:
             matchesStatus = true
@@ -197,21 +251,45 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
     // Sort the filtered data
     return filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'not_replied':
+        case 'high_priority':
           const statusA = getStatus(a)
           const statusB = getStatus(b)
-          if (statusA === 'not_replied_48h' && statusB !== 'not_replied_48h')
-            return -1
-          if (statusB === 'not_replied_48h' && statusA !== 'not_replied_48h')
-            return 1
+          const highPriorityStatuses = [
+            'ixm_no_reach_48h',
+            'client_only_no_team',
+          ]
+          const isHighPriorityA = highPriorityStatuses.includes(statusA)
+          const isHighPriorityB = highPriorityStatuses.includes(statusB)
+
+          if (isHighPriorityA && !isHighPriorityB) return -1
+          if (isHighPriorityB && !isHighPriorityA) return 1
           return (
             (a.days_since_ixm_message || 0) - (b.days_since_ixm_message || 0)
           )
 
-        case 'replied':
-          const repliedA = getStatus(a) === 'responded' ? 0 : 1
-          const repliedB = getStatus(b) === 'responded' ? 0 : 1
-          return repliedA - repliedB
+        case 'medium_priority':
+          const statusMedA = getStatus(a)
+          const statusMedB = getStatus(b)
+          const mediumPriorityStatuses = [
+            'client_silent_5d',
+            'client_awaiting_team',
+            'no_messages',
+          ]
+          const isMediumPriorityA = mediumPriorityStatuses.includes(statusMedA)
+          const isMediumPriorityB = mediumPriorityStatuses.includes(statusMedB)
+          return isMediumPriorityA === isMediumPriorityB
+            ? 0
+            : isMediumPriorityA
+              ? -1
+              : 1
+
+        case 'low_priority':
+          const statusLowA = getStatus(a)
+          const statusLowB = getStatus(b)
+          const lowPriorityStatuses = ['active_communication', 'team_only']
+          const isLowPriorityA = lowPriorityStatuses.includes(statusLowA)
+          const isLowPriorityB = lowPriorityStatuses.includes(statusLowB)
+          return isLowPriorityA === isLowPriorityB ? 0 : isLowPriorityA ? -1 : 1
 
         case 'alphabetical':
           return (a.channel_name || '').localeCompare(b.channel_name || '')
@@ -229,10 +307,10 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
           const transferredB = getStatus(b) === 'transferred' ? 0 : 1
           return transferredA - transferredB
 
-        case 'left_pod':
-          const leftA = getStatus(a) === 'left_pod' ? 0 : 1
-          const leftB = getStatus(b) === 'left_pod' ? 0 : 1
-          return leftA - leftB
+        case 'churned':
+          const churnedA = getStatus(a) === 'churned' ? 0 : 1
+          const churnedB = getStatus(b) === 'churned' ? 0 : 1
+          return churnedA - churnedB
 
         default:
           return 0
@@ -454,13 +532,14 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
                     className="w-full rounded-lg border border-zinc-700/50 bg-zinc-800/50 px-3 py-2.5 text-white transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   >
-                    <option value="not_replied">Not Replied</option>
-                    <option value="replied">Replied</option>
+                    <option value="high_priority">High Priority</option>
+                    <option value="medium_priority">Medium Priority</option>
+                    <option value="low_priority">Low Priority</option>
                     <option value="alphabetical">Alphabetical</option>
                     <option value="category">Category</option>
                     <option value="inactive">Inactive</option>
                     <option value="transferred">Transferred</option>
-                    <option value="left_pod">Left Pod</option>
+                    <option value="churned">Churned</option>
                   </select>
                 </div>
 
@@ -490,12 +569,24 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                     className="w-full rounded-lg border border-zinc-700/50 bg-zinc-800/50 px-3 py-2.5 text-white transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   >
                     <option value="all">All Status</option>
-                    <option value="not_replied_48h">Not replied (48h)</option>
-                    <option value="not_messaged_7d">Not messaged (7d)</option>
-                    <option value="responded">Client responded</option>
+                    <option value="ixm_no_reach_48h">IXM No Reach 48h</option>
+                    <option value="client_silent_5d">
+                      Client Silent 5+ Days
+                    </option>
+                    <option value="client_awaiting_team">
+                      Client Awaiting Team
+                    </option>
+                    <option value="active_communication">
+                      Active Communication
+                    </option>
+                    <option value="no_messages">No Messages</option>
+                    <option value="team_only">Team Only</option>
+                    <option value="client_only_no_team">
+                      Client Only - No Team
+                    </option>
                     <option value="inactive">Inactive</option>
                     <option value="transferred">Transferred</option>
-                    <option value="left_pod">Left pod</option>
+                    <option value="churned">Churned</option>
                   </select>
                 </div>
 
@@ -690,8 +781,8 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
             {[
               {
-                label: 'Not Replied (48h)',
-                status: 'not_replied_48h',
+                label: 'Didn&apos;t reach out 48h',
+                status: 'ixm_no_reach_48h',
                 color: 'bg-red-500',
                 icon: (
                   <svg
@@ -710,9 +801,9 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                 ),
               },
               {
-                label: 'Client Responded',
-                status: 'responded',
-                color: 'bg-emerald-500',
+                label: 'Clients responded to',
+                status: 'active_communication',
+                color: 'bg-white',
                 icon: (
                   <svg
                     className="h-5 w-5"
@@ -752,7 +843,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
               {
                 label: 'Transferred',
                 status: 'transferred',
-                color: 'bg-blue-500',
+                color: 'bg-green-500',
                 icon: (
                   <svg
                     className="h-5 w-5"
@@ -770,8 +861,8 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                 ),
               },
               {
-                label: 'Left Pod',
-                status: 'left_pod',
+                label: 'Left Pod (Churned)',
+                status: 'churned',
                 color: 'bg-purple-500',
                 icon: (
                   <svg
@@ -790,9 +881,34 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                 ),
               },
             ].map(({ label, status, color, icon }) => {
-              const count = filteredAndSortedData.filter(
-                (report) => getStatus(report) === status,
-              ).length
+              // Apply the same grouping logic as in the spreadsheet
+              let count = 0
+              if (status === 'active_communication') {
+                // For "clients responded", count all the white statuses
+                count = filteredAndSortedData.filter((report) => {
+                  const reportStatus = getStatus(report)
+                  return [
+                    'client_silent_5d',
+                    'client_awaiting_team',
+                    'active_communication',
+                    'no_messages',
+                    'team_only',
+                  ].includes(reportStatus)
+                }).length
+              } else if (status === 'ixm_no_reach_48h') {
+                // For "didn't reach out", count all red statuses
+                count = filteredAndSortedData.filter((report) => {
+                  const reportStatus = getStatus(report)
+                  return ['ixm_no_reach_48h', 'client_only_no_team'].includes(
+                    reportStatus,
+                  )
+                }).length
+              } else {
+                count = filteredAndSortedData.filter(
+                  (report) => getStatus(report) === status,
+                ).length
+              }
+
               const percentage =
                 filteredAndSortedData.length > 0
                   ? ((count / filteredAndSortedData.length) * 100).toFixed(1)

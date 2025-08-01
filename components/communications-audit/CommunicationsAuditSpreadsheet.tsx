@@ -60,59 +60,106 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     }
   }, [selectedDate, fetchData, initialData.latestDate])
 
-  // Get status based on the color coding requirements
+  // Get status directly from the report status field
   const getStatus = (report: CommunicationReport): string => {
-    const ixmDays = report.days_since_ixm_message || 0
-    const teamDays = report.days_since_team_message || 0
-    const clientDays = report.days_since_client_message || 0
+    if (!report.status) return 'unknown'
 
-    // Check explicit status first
-    if (report.status?.toLowerCase().includes('transferred'))
-      return 'transferred'
-    if (report.status?.toLowerCase().includes('left')) return 'left_pod'
-    if (report.status?.toLowerCase().includes('inactive')) return 'inactive'
+    const status = report.status.toLowerCase()
 
-    // IXM/Team hasn't reached out for 48 hours (2 days)
-    if (Math.min(ixmDays, teamDays) >= 2) return 'not_replied_48h'
+    // Map the actual status values from the communication_reports.status field
+    // Category-based statuses (high priority)
+    if (status === 'inactive') return 'inactive'
+    if (status === 'transferred') return 'transferred'
+    if (status === 'churned') return 'churned' // churned translates as left
 
-    // Client responded (white in sheet)
-    if (clientDays <= 1) return 'responded'
+    // Message analysis statuses
+    if (
+      status.includes("didn't reach out for 48 hours") ||
+      status.includes("ixm didn't reach out")
+    )
+      return 'ixm_no_reach_48h'
+    if (
+      status.includes('client silent for 5+ days') ||
+      status.includes('client silent')
+    )
+      return 'client_silent_5d'
+    if (
+      status.includes('client responded - awaiting team reply') ||
+      status.includes('awaiting team reply')
+    )
+      return 'client_awaiting_team'
+    if (status.includes('active communication')) return 'active_communication'
+    if (status.includes('no messages found')) return 'no_messages'
+    if (
+      status.includes('team only - no client messages') ||
+      status.includes('team only')
+    )
+      return 'team_only'
+    if (
+      status.includes('client only - no team response') ||
+      status.includes('client only')
+    )
+      return 'client_only_no_team'
 
-    // Default to not replied
-    return 'not_replied_48h'
+    return 'unknown'
   }
 
   const getStatusColor = (status: string): string => {
     switch (status) {
-      case 'not_replied_48h':
-        return 'bg-red-500 text-white' // Red
-      case 'responded':
-        return 'bg-white text-black' // White
+      // Red: didn't reach out for 48 hours
+      case 'ixm_no_reach_48h':
+      case 'client_only_no_team':
+        return 'bg-red-500 text-white'
+
+      // White: clients responded to
+      case 'client_silent_5d':
+      case 'client_awaiting_team':
+      case 'active_communication':
+      case 'no_messages':
+      case 'team_only':
+        return 'bg-white text-black'
+
+      // Orange: Inactive
       case 'inactive':
-        return 'bg-orange-500 text-white' // Orange
+        return 'bg-orange-500 text-white'
+
+      // Green: Transferred
       case 'transferred':
-        return 'bg-green-500 text-white' // Green
-      case 'left_pod':
-        return 'bg-purple-500 text-white' // Purple
+        return 'bg-green-500 text-white'
+
+      // Purple: Left Pod (Churned)
+      case 'churned':
+        return 'bg-purple-500 text-white'
+
       default:
-        return 'bg-gray-500 text-white'
+        return 'bg-gray-400 text-white'
     }
   }
 
   const getStatusLabel = (status: string): string => {
     switch (status) {
-      case 'not_replied_48h':
-        return 'No Outreach 48h'
-      case 'responded':
-        return 'Client Responded'
+      case 'ixm_no_reach_48h':
+        return 'IXM No Reach 48h'
+      case 'client_silent_5d':
+        return 'Client Silent 5+ Days'
+      case 'client_awaiting_team':
+        return 'Client Awaiting Team'
+      case 'active_communication':
+        return 'Active Communication'
+      case 'no_messages':
+        return 'No Messages Found'
+      case 'team_only':
+        return 'Team Only'
+      case 'client_only_no_team':
+        return 'Client Only - No Team'
       case 'inactive':
         return 'Inactive'
       case 'transferred':
         return 'Transferred'
-      case 'left_pod':
-        return 'Left Pod'
+      case 'churned':
+        return 'Churned'
       default:
-        return 'Unknown'
+        return 'Unknown Status'
     }
   }
 
@@ -228,13 +275,13 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-zinc-400">Legend:</span>
-          <Badge className="bg-white text-black">OK / Client Responded</Badge>
           <Badge className="bg-red-500 text-white">
-            No Outreach 48h / Client Silent 7+ Days
+            Didn&apos;t reach out for 48 hours
           </Badge>
+          <Badge className="bg-white text-black">Clients responded to</Badge>
           <Badge className="bg-orange-500 text-white">Inactive</Badge>
           <Badge className="bg-green-500 text-white">Transferred</Badge>
-          <Badge className="bg-purple-500 text-white">Left Pod / Churned</Badge>
+          <Badge className="bg-purple-500 text-white">Left Pod (Churned)</Badge>
         </div>
       </div>
 
@@ -347,14 +394,14 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
           {[
             {
-              status: 'responded',
-              label: 'Client Responded',
-              color: 'bg-white text-black',
+              status: 'ixm_no_reach_48h',
+              label: 'Didn&apos;t reach out',
+              color: 'bg-red-500 text-white',
             },
             {
-              status: 'not_replied_48h',
-              label: 'No Outreach 48h',
-              color: 'bg-red-500 text-white',
+              status: 'active_communication',
+              label: 'Clients responded',
+              color: 'bg-white text-black',
             },
             {
               status: 'inactive',
@@ -367,14 +414,38 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
               color: 'bg-green-500 text-white',
             },
             {
-              status: 'left_pod',
+              status: 'churned',
               label: 'Left Pod',
               color: 'bg-purple-500 text-white',
             },
           ].map(({ status, label, color }) => {
-            const count = data.filter(
-              (report) => getStatus(report) === status,
-            ).length
+            // For "clients responded", count all the white statuses
+            let count = 0
+            if (status === 'active_communication') {
+              count = data.filter((report) => {
+                const reportStatus = getStatus(report)
+                return [
+                  'client_silent_5d',
+                  'client_awaiting_team',
+                  'active_communication',
+                  'no_messages',
+                  'team_only',
+                ].includes(reportStatus)
+              }).length
+            } else if (status === 'ixm_no_reach_48h') {
+              // For "didn't reach out", count all red statuses
+              count = data.filter((report) => {
+                const reportStatus = getStatus(report)
+                return ['ixm_no_reach_48h', 'client_only_no_team'].includes(
+                  reportStatus,
+                )
+              }).length
+            } else {
+              count = data.filter(
+                (report) => getStatus(report) === status,
+              ).length
+            }
+
             return (
               <Card
                 key={status}
