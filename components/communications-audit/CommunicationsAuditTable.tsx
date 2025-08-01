@@ -781,7 +781,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
             {[
               {
-                label: 'Didn&apos;t reach out 48h',
+                label: `Didn't reach out 48h`,
                 status: 'ixm_no_reach_48h',
                 color: 'bg-red-500',
                 icon: (

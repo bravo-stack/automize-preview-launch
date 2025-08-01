@@ -395,7 +395,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
           {[
             {
               status: 'ixm_no_reach_48h',
-              label: 'Didn&apos;t reach out',
+              label: `Didn't reach out`,
               color: 'bg-red-500 text-white',
             },
             {
