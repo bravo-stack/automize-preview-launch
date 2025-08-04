@@ -179,25 +179,25 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
   const getStatusLabel = (status: string): string => {
     switch (status) {
       case 'ixm_no_reach_48h':
-        return "IXM didn't reach out for 48 hours"
+        return "Didn't reach out for 48 hours"
       case 'client_silent_5d':
-        return 'Client silent for 5+ days'
+        return 'Client Silent 5+ Days'
       case 'client_awaiting_team':
-        return 'Client responded - awaiting team reply'
+        return 'Client Awaiting Team'
       case 'active_communication':
-        return 'Active communication'
+        return 'Clients responded to'
       case 'no_messages':
-        return 'No messages found'
+        return 'No Messages Found'
       case 'team_only':
-        return 'Team only - no client messages'
+        return 'Team Only'
       case 'client_only_no_team':
-        return 'Client only - no team response'
+        return 'Client Only - No Team'
       case 'inactive':
         return 'Inactive'
       case 'transferred':
         return 'Transferred'
       case 'churned':
-        return 'Churned'
+        return 'Left Pod (Churned)'
       default:
         return 'Unknown Status'
     }
