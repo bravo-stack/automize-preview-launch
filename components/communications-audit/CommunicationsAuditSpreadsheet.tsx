@@ -66,6 +66,34 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
     const status = report.status.toLowerCase()
 
+    // Special handling for categories containing "-IXM"
+    if (report.category_name && report.category_name.includes('-IXM')) {
+      // For -IXM categories, compute status based on actual timestamp data
+      const daysIxmSilent = report.days_since_ixm_message || 0
+      const daysTeamSilent = report.days_since_team_message || 0
+      const hasClientMessage = report.last_client_message_at !== null
+      const hasIxmMessage = report.last_ixm_message_at !== null
+      const hasTeamMessage = report.last_team_message_at !== null
+
+      // RED: Didn't reach out for 48 hours (2 days)
+      // Check if IXM/team hasn't messaged for 2+ days AND there are client messages
+      if (
+        hasClientMessage &&
+        (daysIxmSilent >= 2 || daysTeamSilent >= 2) &&
+        (!hasIxmMessage ||
+          !hasTeamMessage ||
+          daysIxmSilent >= 2 ||
+          daysTeamSilent >= 2)
+      ) {
+        return 'ixm_no_reach_48h' // RED: Didn't reach out for 48 hours
+      }
+      // WHITE: Clients responded to
+      // IXM/team has responded within 48 hours OR active communication
+      else {
+        return 'active_communication' // WHITE: Clients responded to
+      }
+    }
+
     // Map the actual status values from the communication_reports.status field
     // Category-based statuses (high priority)
     if (status === 'inactive') return 'inactive'
