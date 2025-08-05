@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge'
 import {
   Card,
   CardContent,
@@ -123,7 +122,7 @@ export default async function Page() {
                 Manage your meetings, schedules, and client interactions
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            {/* <div className="flex flex-wrap gap-3">
               <Badge variant="secondary" className="px-3 py-1">
                 <Calendar className="mr-2 h-3 w-3" />
                 {validEvents.length} Meetings
@@ -138,7 +137,7 @@ export default async function Page() {
                   {incompleteMeetings.length} Pending
                 </Badge>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

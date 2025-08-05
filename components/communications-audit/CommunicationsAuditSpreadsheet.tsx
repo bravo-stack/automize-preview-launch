@@ -318,14 +318,14 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
           {[
             {
-              status: 'responded',
-              label: 'Client Responded',
-              color: 'bg-white text-black',
+              status: 'ixm_no_reach_48h',
+              label: `Didn't reach out`,
+              color: 'bg-red-500 text-white',
             },
             {
-              status: 'not_replied_48h',
-              label: 'No Outreach 48h',
-              color: 'bg-red-500 text-white',
+              status: 'active_communication',
+              label: 'Clients responded',
+              color: 'bg-white text-black',
             },
             {
               status: 'inactive',
@@ -338,14 +338,38 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
               color: 'bg-green-500 text-white',
             },
             {
-              status: 'left_pod',
+              status: 'churned',
               label: 'Left Pod',
               color: 'bg-purple-500 text-white',
             },
           ].map(({ status, label, color }) => {
-            const count = data.filter(
-              (report) => getStatus(report) === status,
-            ).length
+            // For "clients responded", count all the white statuses
+            let count = 0
+            if (status === 'active_communication') {
+              count = data.filter((report) => {
+                const reportStatus = getStatus(report)
+                return [
+                  'client_silent_5d',
+                  'client_awaiting_team',
+                  'active_communication',
+                  'no_messages',
+                  'team_only',
+                ].includes(reportStatus)
+              }).length
+            } else if (status === 'ixm_no_reach_48h') {
+              // For "didn't reach out", count all red statuses
+              count = data.filter((report) => {
+                const reportStatus = getStatus(report)
+                return ['ixm_no_reach_48h', 'client_only_no_team'].includes(
+                  reportStatus,
+                )
+              }).length
+            } else {
+              count = data.filter(
+                (report) => getStatus(report) === status,
+              ).length
+            }
+
             return (
               <Card
                 key={status}
@@ -457,7 +481,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                                   className="truncate text-center text-xs font-medium"
                                   title={category}
                                 >
-                                  {category}
+                                  {category.replace('-IXM', '')}
                                 </div>
                               </div>
                             </td>
@@ -471,86 +495,6 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
             </table>
           </div>
         </Card>
-      )}
-
-      {/* Summary Stats */}
-      {data.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-          {[
-            {
-              status: 'ixm_no_reach_48h',
-              label: `Didn't reach out`,
-              color: 'bg-red-500 text-white',
-            },
-            {
-              status: 'active_communication',
-              label: 'Clients responded',
-              color: 'bg-white text-black',
-            },
-            {
-              status: 'inactive',
-              label: 'Inactive',
-              color: 'bg-orange-500 text-white',
-            },
-            {
-              status: 'transferred',
-              label: 'Transferred',
-              color: 'bg-green-500 text-white',
-            },
-            {
-              status: 'churned',
-              label: 'Left Pod',
-              color: 'bg-purple-500 text-white',
-            },
-          ].map(({ status, label, color }) => {
-            // For "clients responded", count all the white statuses
-            let count = 0
-            if (status === 'active_communication') {
-              count = data.filter((report) => {
-                const reportStatus = getStatus(report)
-                return [
-                  'client_silent_5d',
-                  'client_awaiting_team',
-                  'active_communication',
-                  'no_messages',
-                  'team_only',
-                ].includes(reportStatus)
-              }).length
-            } else if (status === 'ixm_no_reach_48h') {
-              // For "didn't reach out", count all red statuses
-              count = data.filter((report) => {
-                const reportStatus = getStatus(report)
-                return ['ixm_no_reach_48h', 'client_only_no_team'].includes(
-                  reportStatus,
-                )
-              }).length
-            } else {
-              count = data.filter(
-                (report) => getStatus(report) === status,
-              ).length
-            }
-
-            return (
-              <Card
-                key={status}
-                className="border-zinc-800/50 bg-zinc-900/30 p-4 text-center"
-              >
-                <div
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${color} mb-2`}
-                >
-                  {label}
-                </div>
-                <div className="text-2xl font-bold text-white">{count}</div>
-                <div className="text-xs text-zinc-400">
-                  {data.length > 0
-                    ? Math.round((count / data.length) * 100)
-                    : 0}
-                  %
-                </div>
-              </Card>
-            )
-          })}
-        </div>
       )}
     </div>
   )
