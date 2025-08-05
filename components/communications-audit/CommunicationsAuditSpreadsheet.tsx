@@ -173,7 +173,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       case 'client_awaiting_team':
         return 'Client Awaiting Team'
       case 'active_communication':
-        return 'Channels responded to'
+        return 'Clients responded to'
       case 'no_messages':
         return 'No Messages Found'
       case 'team_only':
@@ -306,7 +306,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
           <Badge className="bg-red-500 text-white">
             Didn&apos;t reach out for 48 hours
           </Badge>
-          <Badge className="bg-white text-black">Channels responded</Badge>
+          <Badge className="bg-white text-black">Clients responded</Badge>
           <Badge className="bg-orange-500 text-white">Inactive</Badge>
           <Badge className="bg-green-500 text-white">Transferred</Badge>
           <Badge className="bg-purple-500 text-white">Left Pod (Churned)</Badge>
@@ -324,7 +324,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
             },
             {
               status: 'active_communication',
-              label: 'Channels responded',
+              label: 'Clients responded',
               color: 'bg-white text-black',
             },
             {
