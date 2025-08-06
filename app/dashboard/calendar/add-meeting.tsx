@@ -1,8 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createItem, updateItem } from '@/lib/actions/db'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { createItem } from '@/lib/actions/db'
+import { Calendar, Clock, FileText, Plus, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 export default function AddMeeting({ pods, closing = false }) {
   const [isEditing, setIsEditing] = useState(false)
@@ -63,118 +68,129 @@ export default function AddMeeting({ pods, closing = false }) {
 
   return (
     <>
-      <button
+      <Button
         onClick={handleRescheduleClick}
-        className="my-2 ml-2.5 rounded-md bg-neutral-800/50 px-5 py-3 text-neutral-400 transition-all hover:bg-neutral-800"
+        variant="outline"
+        className="gap-2 bg-card/50 backdrop-blur-sm hover:bg-card/80"
       >
+        <Plus className="h-4 w-4" />
         New {closing && 'Closing'} Meeting
-      </button>
+      </Button>
 
       {isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-1/2 max-w-xl rounded-lg bg-night-dusk p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-bold text-white">
-              Reschedule Meeting
-            </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-lg border-border/50 bg-card/95 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Create {closing ? 'Closing' : 'Regular'} Meeting
+              </CardTitle>
+            </CardHeader>
 
-            <div className="mb-4">
-              <label
-                htmlFor="newEndTime"
-                className="block text-sm font-semibold text-gray-400"
-              >
-                Meeting Title
-              </label>
-              <input
-                id="meetingTitle"
-                value={meetingTitle}
-                onChange={(e) => setMeetingTitle(e.target.value)}
-                placeholder="E.g. Filler"
-                className="mt-2 w-full rounded border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
-              />
-            </div>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="meetingTitle"
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Meeting Title
+                </Label>
+                <Input
+                  id="meetingTitle"
+                  value={meetingTitle}
+                  onChange={(e) => setMeetingTitle(e.target.value)}
+                  placeholder="E.g. Client Onboarding Call"
+                  className="bg-background/50"
+                />
+              </div>
 
-            <div className="mb-4">
-              <label
-                htmlFor="newStartTime"
-                className="block text-sm font-semibold text-gray-400"
-              >
-                New Start Date and Time
-              </label>
-              <input
-                type="datetime-local"
-                id="newStartTime"
-                value={newStartTime}
-                onChange={(e) => setNewStartTime(e.target.value)}
-                min={minDateTime}
-                className="mt-2 w-full rounded border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
-              />
-            </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="newStartTime"
+                    className="flex items-center gap-2"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Start Time
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    id="newStartTime"
+                    value={newStartTime}
+                    onChange={(e) => setNewStartTime(e.target.value)}
+                    min={minDateTime}
+                    className="bg-background/50"
+                  />
+                </div>
 
-            <div className="mb-4">
-              <label
-                htmlFor="newEndTime"
-                className="block text-sm font-semibold text-gray-400"
-              >
-                New End Date and Time
-              </label>
-              <input
-                type="datetime-local"
-                id="newEndTime"
-                value={newEndTime}
-                onChange={(e) => setNewEndTime(e.target.value)}
-                min={newStartTime}
-                className="mt-2 w-full rounded border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="newEndTime"
+                    className="flex items-center gap-2"
+                  >
+                    <Clock className="h-4 w-4" />
+                    End Time
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    id="newEndTime"
+                    value={newEndTime}
+                    onChange={(e) => setNewEndTime(e.target.value)}
+                    min={newStartTime}
+                    className="bg-background/50"
+                  />
+                </div>
+              </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-gray-400">
-                Pod
-              </label>
-              <select
-                value={pod}
-                onChange={(e) => setPod(e.target.value)}
-                className="mt-2 w-full rounded border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
-              >
-                <option value="none">None</option>
-                {pods.map((pod, index) => (
-                  <option key={index} value={pod.name}>
-                    {pod.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Assigned Pod
+                </Label>
+                <select
+                  value={pod}
+                  onChange={(e) => setPod(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="none">No pod assigned</option>
+                  {pods.map((pod, index) => (
+                    <option key={index} value={pod.name}>
+                      {pod.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="mb-4">
-              <label
-                htmlFor="newNotes"
-                className="block text-sm font-semibold text-gray-400"
-              >
-                Notes (Optional)
-              </label>
-              <textarea
-                id="newNotes"
-                value={newNotes}
-                onChange={(e) => setNewNotes(e.target.value)}
-                rows={3}
-                className="mt-2 w-full rounded border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
-              />
-            </div>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={handleCancel}
-                className="rounded bg-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                className="rounded bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="newNotes" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Notes (Optional)
+                </Label>
+                <textarea
+                  id="newNotes"
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Add any additional notes or details..."
+                  className="flex w-full rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <Button
+                  onClick={handleCancel}
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleConfirm} className="w-full sm:w-auto">
+                  Create Meeting
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </>

@@ -1,5 +1,9 @@
 'use client'
 
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Calendar, Clock, Settings, User, X } from 'lucide-react'
 import { useState } from 'react'
 import CancelMeetingButton from './cancel-meeting'
 import EditMeeting from './edit-meeting'
@@ -38,78 +42,106 @@ export default function ManageMeetingsButton({
 
   return (
     <>
-      <button
+      <Button
         onClick={handleOpen}
-        className="my-2 rounded-md bg-neutral-800/50 px-5 py-3 text-neutral-400 transition-all hover:bg-neutral-800"
+        variant="outline"
+        className="gap-2 bg-card/50 backdrop-blur-sm hover:bg-card/80"
       >
+        <Settings className="h-4 w-4" />
         Manage {closing && 'Closing'} Meetings
-      </button>
+      </Button>
 
       {isManagingMeetings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="relative w-11/12 max-w-2xl rounded-lg bg-night-dusk shadow-lg">
-            {/* Close Button */}
-            <button
-              className="absolute right-4 top-4 text-xl font-bold text-gray-500 hover:text-gray-800"
-              onClick={handleClose}
-            >
-              &times;
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <Card className="relative w-full max-w-4xl border-border/50 bg-card/95 backdrop-blur-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Manage {closing ? 'Closing' : 'Regular'} Meetings
+                </CardTitle>
+                <Button
+                  onClick={handleClose}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
 
-            <div className="flex flex-col space-y-4 p-6">
-              <h2 className="text-lg font-bold text-white">Manage Meetings</h2>
-
-              <div className="max-h-96 overflow-y-auto">
-                {events.length > 0 ? (
-                  <ul>
-                    {events.map((meeting, index) => (
-                      <li
-                        key={meeting.id}
-                        className={`pb-4 ${index !== events.length - 1 ? 'mb-3 border-b border-gray-600  ' : ''}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="text-md font-semibold text-white">
-                              {meeting.title}
-                            </p>
-                            <p className="text-sm text-gray-400">
-                              Start: {formatDateTime(meeting.start)}
-                            </p>
-                            <p className="text-sm text-gray-400">
-                              End: {formatDateTime(meeting.end)}
-                            </p>
-                            {meeting.people.length > 0 && (
-                              <p className="text-sm text-gray-400">
-                                Participants: {meeting.people.join(', ')}
+            <CardContent>
+              {events.length === 0 ? (
+                <div className="py-12 text-center">
+                  <Calendar className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-4 text-lg font-medium">
+                    No meetings found
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    There are no {closing ? 'closing' : 'regular'} meetings
+                    scheduled yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="max-h-96 space-y-4 overflow-y-auto">
+                  {events.map((event) => (
+                    <Card
+                      key={event.id}
+                      className="border-border/50 bg-muted/20"
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-medium">{event.title}</h4>
+                              <Badge variant="secondary" className="text-xs">
+                                <User className="mr-1 h-3 w-3" />
+                                {event.people}
+                              </Badge>
+                              {event.pod && (
+                                <Badge variant="outline" className="text-xs">
+                                  Pod: {event.pod}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {formatDateTime(event.start)} -{' '}
+                              {formatDateTime(event.end)}
+                            </div>
+                            {event.notes && event.notes !== 'N/A' && (
+                              <p className="text-sm text-muted-foreground">
+                                {event.notes}
                               </p>
                             )}
                           </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <EditMeeting
+                              meetingId={event.id}
+                              meetingTitle={event.title}
+                              startTime={event.start}
+                              endTime={event.end}
+                              notes={event.notes}
+                              mediabuyer={event.pod}
+                              pods={pods}
+                              normal
+                            />
+                            <CancelMeetingButton
+                              meetingId={event.id}
+                              meetingTitle={event.title}
+                              meetingTime={formatDateTime(event.start)}
+                            />
+                          </div>
                         </div>
-                        <div className="mt-3 flex space-x-4">
-                          <CancelMeetingButton
-                            meetingId={meeting.id}
-                            meetingTitle={meeting.title}
-                            meetingTime={formatDateTime(meeting.start)}
-                          />
-                          <EditMeeting
-                            meetingId={meeting.id}
-                            meetingTitle={meeting.title}
-                            startTime={meeting.start}
-                            endTime={meeting.end}
-                            notes={meeting.notes}
-                            mediabuyer={meeting.pod}
-                            pods={pods}
-                          />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-500">No upcoming meetings.</p>
-                )}
-              </div>
-            </div>
-          </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </>

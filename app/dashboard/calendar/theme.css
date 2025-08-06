@@ -11,24 +11,83 @@
   --sx-color-on-tertiary: #fff;
   --sx-color-tertiary-container: #ffd8e4;
   --sx-color-on-tertiary-container: #370b1e;
-  --sx-color-surface: #fff7f7;
+  --sx-color-surface: #0c0c0c;
   --sx-color-surface-dim: #525252;
-  --sx-color-surface-bright: #fff7f7;
-  --sx-color-on-surface: #1f1b1b;
-  --sx-color-surface-container: #383838;
-  --sx-color-surface-container-low: #525252;
-  --sx-color-surface-container-high: #525252;
-  --sx-color-background: #0f0f0f;
+  --sx-color-surface-bright: #1a1a1a;
+  --sx-color-on-surface: #fff;
+  --sx-color-surface-container: #1a1a1a;
+  --sx-color-surface-container-low: #141414;
+  --sx-color-surface-container-high: #202020;
+  --sx-color-background: #0a0a0a;
   --sx-color-on-background: #fff;
   --sx-color-outline: #79747e;
-  --sx-color-outline-variant: #9c9c9c;
+  --sx-color-outline-variant: #4a4a4a;
   --sx-color-shadow: #000;
   --sx-color-surface-tint: #6750a4;
   --sx-color-neutral: var(--sx-color-outline);
   --sx-color-neutral-variant: var(--sx-color-outline-variant);
-  --sx-internal-color-gray-ripple-background: #e0e0e0;
-  --sx-internal-color-light-gray: #222222;
+  --sx-internal-color-gray-ripple-background: #2a2a2a;
+  --sx-internal-color-light-gray: #333333;
   --sx-internal-color-text: #fff;
+}
+
+/* Responsive Calendar Styles */
+.calender .sx__calendar {
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--sx-color-background);
+}
+
+.calender .sx__calendar-header {
+  padding: 1rem;
+  background: var(--sx-color-surface-container);
+  border-bottom: 1px solid var(--sx-color-outline-variant);
+}
+
+.calender .sx__calendar-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--sx-color-on-surface);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .calender .sx__calendar-header {
+    padding: 0.75rem;
+  }
+
+  .calender .sx__calendar-header h1 {
+    font-size: 1.125rem;
+  }
+
+  .calender .sx__week-grid {
+    font-size: 0.875rem;
+  }
+
+  .calender .sx__event {
+    font-size: 0.75rem;
+    padding: 0.25rem;
+  }
+}
+
+/* Tablet Responsive */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .calender .sx__calendar-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .calender .sx__week-grid {
+    font-size: 0.9rem;
+  }
+}
+
+/* Event Modal Improvements */
+.sx__event-modal {
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(16px);
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sx__event-modal .sx__event-icon {

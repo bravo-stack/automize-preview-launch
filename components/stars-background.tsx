@@ -82,13 +82,14 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
     updateStars()
 
     const resizeObserver = new ResizeObserver(updateStars)
-    if (canvasRef.current) {
-      resizeObserver.observe(canvasRef.current)
+    const currentCanvas = canvasRef.current
+    if (currentCanvas) {
+      resizeObserver.observe(currentCanvas)
     }
 
     return () => {
-      if (canvasRef.current) {
-        resizeObserver.unobserve(canvasRef.current)
+      if (currentCanvas) {
+        resizeObserver.unobserve(currentCanvas)
       }
     }
   }, [
@@ -137,7 +138,9 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
   return (
     <canvas
       ref={canvasRef}
-      className={cn('absolute inset-0 h-full w-full', className)}
+      className={cn('fixed inset-0 z-10 h-full w-full opacity-25', className)}
     />
   )
 }
+
+export default StarsBackground

@@ -1,153 +1,140 @@
 'use client'
 
-import NotificationModal from '@/components/NotificationModal'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { ShootingStars } from '@/components/shooting-stars'
+import { StarsBackground } from '@/components/stars-background'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { signInUser } from '@/lib/actions'
-import { StarsBackground } from '@/components/ui/stars-background'
-import { ShootingStars } from '@/components/ui/shooting-stars'
+import { Loader2, Terminal } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
 
-export default function Login() {
+export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
 
-  const [showModal, setShowModal] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState(false)
-
-  const router = useRouter()
-
-  const formFields = [
-    {
-      label: 'Email',
-      type: 'email',
-      id: 'email',
-      name: 'email',
-      placeholder: 'Enter your email',
-      required: true,
-      value: email,
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-        setEmail(e.target.value),
-    },
-    {
-      label: 'Password',
-      type: 'password',
-      id: 'password',
-      name: 'password',
-      placeholder: 'Enter your password',
-      required: true,
-      value: password,
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-        setPassword(e.target.value),
-    },
-  ]
-
-  const handleSignUp = async (event: any) => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setError(null)
 
     if (!email || !password) {
-      setShowModal(true)
+      setError('Please fill in both email and password.')
       return
     }
 
-    setLoading(true)
+    startTransition(async () => {
+      try {
+        const errorMessage = await signInUser(email, password)
 
-    try {
-      const error = await signInUser(email, password)
-
-      if (!error) {
-        setSuccess(true)
-        router.push('/dashboard')
-      } else {
-        setSuccess(false)
-        setError(true)
+        if (errorMessage) {
+          setError('Invalid email or password. Please try again.')
+        } else {
+          router.push('/dashboard')
+        }
+      } catch (e) {
+        setError('An unexpected network error occurred.')
+        console.error(e)
       }
-    } catch (error) {
-      console.error('Network error:', error)
-      setSuccess(false)
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6 pb-24 pt-10 md:px-24">
-      <>
-        <form
-          onSubmit={handleSignUp}
-          className="z-50 w-full rounded-xl border border-zinc-800 bg-night-starlit px-7 py-7 md:w-96"
-        >
-          <header className="mb-12 text-center">
-            {/* <h2 className="text-xps-orange text-lg font-semibold tracking-wide"></h2> */}
-            <h1 className="mb-3 text-3xl font-bold tracking-tighter">
-              Automize Login
-            </h1>
-            {/* <h3 className="text-lg">
-          Don&apos;t have an account? Create a new one{' '}
-          <Link href="/sign-up" className="text-xps-orange underline">
-            here
-          </Link>
-          .
-        </h3> */}
-          </header>
-
-          {formFields.map((field) => (
-            <div className="mb-3" key={field.id}>
-              <label
-                htmlFor={field.id}
-                className="mb-1.5 block font-semibold tracking-wide text-white"
-              >
-                {field.label}
-              </label>
-
-              <input
-                type={field.type}
-                id={field.id}
-                name={field.name}
-                className="w-full rounded-md border border-zinc-800 bg-night-starlit px-1.5 py-1.5 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-zinc-700"
-                placeholder={field.placeholder}
-                onChange={field.onChange}
-                value={field.value}
-                required={field.required}
+    <main className="relative flex min-h-screen w-full flex-col items-center justify-center bg-black p-4 text-zinc-50">
+      <Card className="z-50 w-full max-w-sm border-zinc-800 bg-black/50 backdrop-blur-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold tracking-tight text-zinc-200">
+            Welcome Back
+          </CardTitle>
+          <CardDescription className="text-zinc-400">
+            Enter your credentials to access your dashboard.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-zinc-100">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="text-zinc-100"
+                disabled={isPending}
               />
             </div>
-          ))}
-
-          <button
-            type="submit"
-            className="mt-3 w-full rounded-md border bg-white px-3 py-1.5 font-semibold tracking-wide text-black shadow-md transition-all hover:font-bold"
-          >
-            Sign In
-          </button>
-        </form>
-
-        {(loading || error) && (
-          <NotificationModal
-            state={loading ? 'loading' : success ? 'signin' : 'password'}
-            onClose={() => {
-              setLoading(false)
-              setSuccess(false)
-              setError(false)
-            }}
-          />
-        )}
-
-        {showModal && (
-          <div className="fixed left-0 top-0 flex h-full w-full items-center justify-center p-3 text-black sm:p-0">
-            <div className="flex flex-col justify-center rounded-md border-2 bg-white p-5 shadow-lg">
-              <p>Please fill out all required fields, thank you.</p>
-              <button
-                className="bg-xps-orange mt-3 rounded-md px-4 py-2 text-white transition-colors hover:saturate-150"
-                onClick={() => setShowModal(false)}
-              >
-                OK
-              </button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-zinc-100">
+                  Password
+                </Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-zinc-400 hover:text-zinc-50 hover:underline"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="text-zinc-100"
+                disabled={isPending}
+              />
             </div>
-          </div>
-        )}
-      </>
 
+            {error && (
+              <Alert variant="destructive" className="bg-red-950/50">
+                <Terminal className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 text-white hover:bg-blue-700"
+              disabled={isPending}
+            >
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sign In
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-zinc-400">
+            Don&apos;t have an account?{' '}
+            <Link
+              href="/signup"
+              className="font-semibold text-zinc-50 underline-offset-4 hover:underline"
+            >
+              Sign Up
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
+
+      {/* Background Effects */}
       <ShootingStars />
       <StarsBackground />
     </main>

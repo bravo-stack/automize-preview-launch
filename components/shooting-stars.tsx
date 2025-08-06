@@ -145,3 +145,5 @@ export const ShootingStars: React.FC<ShootingStarsProps> = ({
     </svg>
   )
 }
+
+export default ShootingStars
