@@ -1,19 +1,19 @@
 'use server'
 
-import { google } from 'googleapis'
-import { createClient } from './db/server'
-import { authorizeDrive, authorizeSheets } from './google'
 import { getTemplateById } from '@/content/templates'
-import { decrypt, encrypt } from './crypto'
-import { toNumber } from './utils'
+import { google } from 'googleapis'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import {
   appendDataToSheet,
   createSpreadsheet,
   getPermissionId,
   updatePermission,
 } from './api'
-import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+import { decrypt, encrypt } from './crypto'
+import { createClient } from './db/server'
+import { authorizeDrive, authorizeSheets } from './google'
+import { toNumber } from './utils'
 
 interface RevenueData {
   name: string
@@ -427,11 +427,11 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
 
   return await fetchAllInsights()
 }
-
 export async function financialize(
   stores: any[],
   sheetId?: string,
   subsheet = false,
+  batch = false,
 ) {
   const [revenueLast30, revenueSinceRebill, fbLast30, fbSinceRebill] =
     await Promise.all([
@@ -543,6 +543,10 @@ export async function financialize(
       '',
       '',
     ])
+
+    if (batch) {
+      return sortedSheetData // Return the batch to be written by the caller
+    }
 
     subsheet
       ? await appendDataToSheet(id, sortedSheetData, 'Revenue')

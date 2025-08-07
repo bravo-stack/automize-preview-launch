@@ -1,5 +1,7 @@
-import { authorizeSheets } from './google'
+'use server'
+
 import { google } from 'googleapis'
+import { authorizeSheets } from './google'
 
 export async function appendFinancials(id: string, data: any) {
   const auth = await authorizeSheets()

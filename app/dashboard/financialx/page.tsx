@@ -3,7 +3,7 @@ import FinancialX from '@/components/FinancialX'
 import StoreList from '@/components/StoreList'
 import { createClient } from '@/lib/db/server'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 export default async function FinancialXPage() {
   const db = createClient()
@@ -30,7 +30,7 @@ export default async function FinancialXPage() {
             >
               Visit Financials Sheet
             </a>
-            <FinancialX stores={stores ?? []} />
+            <FinancialX stores={stores ?? []} batchStores />
             <AddStore />
           </div>
         </div>
