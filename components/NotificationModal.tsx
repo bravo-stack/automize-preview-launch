@@ -39,14 +39,18 @@ const NotificationModal = ({
       <div
         className={`mt-20 flex items-center justify-between rounded-md bg-night-dusk p-3 shadow-md`}
       >
-        {state === 'loading' && (
-          <span className="mr-2 h-6 w-6 animate-spin rounded-full border-b-2 border-t-2" />
-        )}
-        <p>{final}</p>
-        {state !== 'loading' && (
-          <button onClick={onClose} className="ml-2">
-            &times;
-          </button>
+        {state === 'loading' ? (
+          <>
+            <span className="mr-2 h-6 w-6 animate-spin rounded-full border-b-2 border-t-2" />
+            <p className="text-sm">{final}</p>
+          </>
+        ) : (
+          <>
+            <p>{final}</p>
+            <button onClick={onClose} className="ml-2">
+              &times;
+            </button>
+          </>
         )}
       </div>
     </div>
