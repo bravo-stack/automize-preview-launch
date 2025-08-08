@@ -427,6 +427,7 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
 
   return await fetchAllInsights()
 }
+
 export async function financialize(
   stores: any[],
   sheetId?: string,
@@ -530,6 +531,10 @@ export async function financialize(
         ? fbSinceRebillRoasSum / fbSinceRebillRoasCount
         : 0
 
+    if (batch) {
+      return sortedSheetData // Return the batch to be written by the caller
+    }
+
     sortedSheetData.push([
       'TOTAL/AVG',
       new Date().toDateString(),
@@ -543,10 +548,6 @@ export async function financialize(
       '',
       '',
     ])
-
-    if (batch) {
-      return sortedSheetData // Return the batch to be written by the caller
-    }
 
     subsheet
       ? await appendDataToSheet(id, sortedSheetData, 'Revenue')
