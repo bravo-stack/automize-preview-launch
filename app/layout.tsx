@@ -1,6 +1,7 @@
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { GeistSans } from 'geist/font/sans'
 import type { Metadata } from 'next'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
@@ -22,7 +23,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <NuqsAdapter>{children}</NuqsAdapter>
         </ThemeProvider>
         <Toaster position="top-right" />
       </body>
