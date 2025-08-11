@@ -24,6 +24,9 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   const [selectedDate, setSelectedDate] = useState(initialData.latestDate || '')
   const [data, setData] = useState<CommunicationReport[]>(initialData.reports)
   const [loading, setLoading] = useState(false)
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<
+    string | null
+  >(null)
 
   const dates = initialData.availableDates
   const pods = initialData.availablePods
@@ -67,32 +70,32 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     const status = report.status.toLowerCase()
 
     // Special handling for categories containing "-IXM"
-    if (report.category_name && report.category_name.includes('-IXM')) {
-      // For -IXM categories, compute status based on actual timestamp data
-      const daysIxmSilent = report.days_since_ixm_message || 0
-      const daysTeamSilent = report.days_since_team_message || 0
-      const hasClientMessage = report.last_client_message_at !== null
-      const hasIxmMessage = report.last_ixm_message_at !== null
-      const hasTeamMessage = report.last_team_message_at !== null
+    // if (report.category_name && report.category_name.includes('-IXM')) {
+    //   // For -IXM categories, compute status based on actual timestamp data
+    //   const daysIxmSilent = report.days_since_ixm_message || 0
+    //   const daysTeamSilent = report.days_since_team_message || 0
+    //   const hasClientMessage = report.last_client_message_at !== null
+    //   const hasIxmMessage = report.last_ixm_message_at !== null
+    //   const hasTeamMessage = report.last_team_message_at !== null
 
-      // RED: Didn't reach out for 48 hours (2 days)
-      // Check if IXM/team hasn't messaged for 2+ days AND there are client messages
-      if (
-        hasClientMessage &&
-        (daysIxmSilent >= 2 || daysTeamSilent >= 2) &&
-        (!hasIxmMessage ||
-          !hasTeamMessage ||
-          daysIxmSilent >= 2 ||
-          daysTeamSilent >= 2)
-      ) {
-        return 'ixm_no_reach_48h' // RED: Didn't reach out for 48 hours
-      }
-      // WHITE: Clients responded to
-      // IXM/team has responded within 48 hours OR active communication
-      else {
-        return 'active_communication' // WHITE: Clients responded to
-      }
-    }
+    //   // RED: Didn't reach out for 48 hours (2 days)
+    //   // Check if IXM/team hasn't messaged for 2+ days AND there are client messages
+    //   if (
+    //     hasClientMessage &&
+    //     (daysIxmSilent >= 2 || daysTeamSilent >= 2) &&
+    //     (!hasIxmMessage ||
+    //       !hasTeamMessage ||
+    //       daysIxmSilent >= 2 ||
+    //       daysTeamSilent >= 2)
+    //   ) {
+    //     return 'ixm_no_reach_48h' // RED: Didn't reach out for 48 hours
+    //   }
+    //   // WHITE: Clients responded to
+    //   // IXM/team has responded within 48 hours OR active communication
+    //   else {
+    //     return 'active_communication' // WHITE: Clients responded to
+    //   }
+    // }
 
     // Map the actual status values from the communication_reports.status field
     // Category-based statuses (high priority)
@@ -129,7 +132,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     )
       return 'client_only_no_team'
 
-    return 'unknown'
+    return 'active_communication'
   }
 
   const getStatusColor = (status: string): string => {
@@ -141,6 +144,8 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
       // White: clients responded to
       case 'client_silent_5d':
+        return 'bg-amber-400 text-black'
+
       case 'client_awaiting_team':
       case 'active_communication':
       case 'no_messages':
@@ -239,6 +244,12 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     }
   }, [data])
 
+  // right after spreadsheetData
+  const uniqueCategoryCells = useMemo(
+    () => Array.from(spreadsheetData.cells.values()),
+    [spreadsheetData],
+  )
+
   if (!hasData) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -301,26 +312,69 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         </div>
 
         {/* Legend */}
+        {/* Legend */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-zinc-400">Legend:</span>
-          <Badge className="bg-red-500 text-white">
-            Didn&apos;t reach out for 48 hours
-          </Badge>
-          <Badge className="bg-white text-black">Clients responded</Badge>
-          <Badge className="bg-orange-500 text-white">Inactive</Badge>
-          <Badge className="bg-green-500 text-white">Transferred</Badge>
-          <Badge className="bg-purple-500 text-white">Left Pod (Churned)</Badge>
+          {[
+            {
+              status: 'ixm_no_reach_48h',
+              label: "Didn't reach out for 48 hours",
+              color: 'bg-red-500 text-white',
+            },
+            {
+              status: 'client_silent_5d',
+              label: 'Client Silent 5+ Days',
+              color: 'bg-amber-400 text-black',
+            },
+            {
+              status: 'active_communication',
+              label: 'Clients responded',
+              color: 'bg-white text-black',
+            },
+            {
+              status: 'inactive',
+              label: 'Inactive',
+              color: 'bg-orange-500 text-white',
+            },
+            {
+              status: 'transferred',
+              label: 'Transferred',
+              color: 'bg-green-500 text-white',
+            },
+            {
+              status: 'churned',
+              label: 'Left Pod (Churned)',
+              color: 'bg-purple-500 text-white',
+            },
+          ].map(({ status, label, color }) => (
+            <Badge
+              key={status}
+              className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
+              onClick={() =>
+                setSelectedStatusFilter(
+                  selectedStatusFilter === status ? null : status,
+                )
+              }
+            >
+              {label}
+            </Badge>
+          ))}
         </div>
       </div>
 
       {/* Summary Stats */}
-      {data.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+      {uniqueCategoryCells.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-6">
           {[
             {
               status: 'ixm_no_reach_48h',
               label: `Didn't reach out`,
               color: 'bg-red-500 text-white',
+            },
+            {
+              status: 'client_silent_5d',
+              label: 'Client Silent 5+ Days',
+              color: 'bg-amber-400 text-black',
             },
             {
               status: 'active_communication',
@@ -343,32 +397,34 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
               color: 'bg-purple-500 text-white',
             },
           ].map(({ status, label, color }) => {
-            // For "clients responded", count all the white statuses
             let count = 0
+
             if (status === 'active_communication') {
-              count = data.filter((report) => {
-                const reportStatus = getStatus(report)
-                return [
-                  'client_silent_5d',
+              // white bucket by unique category
+              count = uniqueCategoryCells.filter((cell) =>
+                [
                   'client_awaiting_team',
                   'active_communication',
                   'no_messages',
                   'team_only',
-                ].includes(reportStatus)
-              }).length
+                ].includes(cell.status),
+              ).length
             } else if (status === 'ixm_no_reach_48h') {
-              // For "didn't reach out", count all red statuses
-              count = data.filter((report) => {
-                const reportStatus = getStatus(report)
-                return ['ixm_no_reach_48h', 'client_only_no_team'].includes(
-                  reportStatus,
-                )
-              }).length
+              // red bucket by unique category
+              count = uniqueCategoryCells.filter((cell) =>
+                ['ixm_no_reach_48h', 'client_only_no_team'].includes(
+                  cell.status,
+                ),
+              ).length
             } else {
-              count = data.filter(
-                (report) => getStatus(report) === status,
+              // exact-match statuses by unique category
+              count = uniqueCategoryCells.filter(
+                (cell) => cell.status === status,
               ).length
             }
+
+            const total = uniqueCategoryCells.length
+            const pct = total > 0 ? Math.round((count / total) * 100) : 0
 
             return (
               <Card
@@ -381,12 +437,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                   {label}
                 </div>
                 <div className="text-2xl font-bold text-white">{count}</div>
-                <div className="text-xs text-zinc-400">
-                  {data.length > 0
-                    ? Math.round((count / data.length) * 100)
-                    : 0}
-                  %
-                </div>
+                <div className="text-xs text-zinc-400">{pct}%</div>
               </Card>
             )
           })}
@@ -464,6 +515,25 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
                           const cellKey = `${pod}-${category}`
                           const cell = spreadsheetData.cells.get(cellKey)
+
+                          if (
+                            selectedStatusFilter &&
+                            cell &&
+                            cell.status !== selectedStatusFilter
+                          ) {
+                            return (
+                              <td
+                                key={`${pod}-${category}`}
+                                className="border-r border-zinc-800/50 bg-zinc-900/50 px-2 py-2 text-center"
+                              >
+                                <div className="flex items-center justify-center">
+                                  <span className="text-xs text-zinc-500">
+                                    —
+                                  </span>
+                                </div>
+                              </td>
+                            )
+                          }
 
                           return (
                             <td

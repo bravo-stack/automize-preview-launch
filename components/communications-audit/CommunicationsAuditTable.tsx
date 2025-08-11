@@ -809,7 +809,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
             {[
               {
-                label: `Didn't reach out 48h`,
+                label: `Channels pending for 48h`,
                 status: 'ixm_no_reach_48h',
                 color: 'bg-red-500',
                 icon: (
@@ -829,7 +829,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                 ),
               },
               {
-                label: 'Clients responded to',
+                label: 'Channels responded to',
                 status: 'active_communication',
                 color: 'bg-white',
                 icon: (
@@ -849,7 +849,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                 ),
               },
               {
-                label: 'Inactive',
+                label: 'Inactive channels',
                 status: 'inactive',
                 color: 'bg-orange-500',
                 icon: (
@@ -869,7 +869,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                 ),
               },
               {
-                label: 'Transferred',
+                label: 'Transferred channels',
                 status: 'transferred',
                 color: 'bg-green-500',
                 icon: (
@@ -889,7 +889,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                 ),
               },
               {
-                label: 'Left Pod (Churned)',
+                label: 'Left Pod (Churned) channels',
                 status: 'churned',
                 color: 'bg-purple-500',
                 icon: (

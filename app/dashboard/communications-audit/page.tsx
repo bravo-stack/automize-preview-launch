@@ -10,8 +10,8 @@ import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 
 export default async function CommunicationsAudit() {
-  // Check authentication with regular client
   const authDb = createClient()
+  const db = await createAdminClient()
 
   const {
     data: { user },
@@ -21,35 +21,25 @@ export default async function CommunicationsAudit() {
     redirect('/login')
   }
 
-  // Use admin client for data queries
-  const db = await createAdminClient()
-
-  // Get all available report dates
-  const { data: reportDates } = await db
-    .from('communication_reports')
-    .select('report_date')
+  const { data: dates } = await db
+    .from('report_dates')
+    .select('*')
     .order('report_date', { ascending: false })
 
+  const latestDate = dates && dates.length > 0 ? dates[0].report_date : null
+
   const uniqueDates = Array.from(
-    new Set(reportDates?.map((r) => r.report_date).filter(Boolean) || []),
+    new Set(dates?.map((d) => d.report_date).filter(Boolean)),
   )
 
-  // Get all available pods/guilds
-  const { data: pods } = await db
-    .from('communication_reports')
-    .select('guild_name, guild_id')
-    .not('guild_name', 'is', null)
-    .not('guild_id', 'is', null)
-    .order('guild_name')
+  const uniquePods: Pod[] =
+    dates
+      ?.map((d) => {
+        return { guild_name: d.guild_name, guild_id: d.guild_id }
+      })
+      .filter(Boolean)
+      .sort() || []
 
-  const uniquePods: Pod[] = Array.from(
-    new Map(pods?.map((p) => [p.guild_id, p]) || []).values(),
-  )
-
-  // Get the latest date
-  const latestDate = uniqueDates.length > 0 ? uniqueDates[0] : null
-
-  // If we have a latest date, fetch the initial data for that date
   let initialReports: CommunicationReport[] = []
   if (latestDate) {
     const { data: reports } = await db
@@ -93,7 +83,7 @@ export default async function CommunicationsAudit() {
             </div>
           }
         >
-          {uniqueDates.length > 0 ? (
+          {uniqueDates && uniqueDates.length > 0 ? (
             <CommunicationsAuditWrapper initialData={auditData} />
           ) : (
             <div className="flex min-h-[400px] items-center justify-center">
