@@ -977,6 +977,15 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
             })}
           </div>
 
+          {/* Total Clients Count */}
+          {totalItems > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="text-lg font-semibold text-white">
+                Clients: {totalItems}
+              </div>
+            </div>
+          )}
+
           {/* Enhanced Data Table */}
           <Card className="border-zinc-800/50 bg-gradient-to-br from-night-starlit to-night-moonlit shadow-xl">
             {loading ? (

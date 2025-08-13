@@ -215,6 +215,28 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     data.forEach((report) => {
       if (!report.category_name || !report.guild_name) return
 
+      const status = getStatus(report)
+
+      // Filter by selected status if one is selected
+      if (selectedStatusFilter) {
+        const matchesFilter = (() => {
+          if (selectedStatusFilter === 'active_communication') {
+            return [
+              'client_awaiting_team',
+              'active_communication',
+              'no_messages',
+              'team_only',
+            ].includes(status)
+          } else if (selectedStatusFilter === 'ixm_no_reach_48h') {
+            return ['ixm_no_reach_48h', 'client_only_no_team'].includes(status)
+          } else {
+            return status === selectedStatusFilter
+          }
+        })()
+
+        if (!matchesFilter) return
+      }
+
       // Add category to pod's category list
       if (!podCategories.has(report.guild_name)) {
         podCategories.set(report.guild_name, [])
@@ -226,7 +248,6 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       }
 
       const key = `${report.guild_name}-${report.category_name}`
-      const status = getStatus(report)
 
       cells.set(key, {
         categoryName: report.category_name,
@@ -237,12 +258,19 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       })
     })
 
+    // Filter out pods that have no categories after filtering
+    const filteredPods = podsWithData.filter((pod) => {
+      if (!pod) return false
+      const categories = podCategories.get(pod) || []
+      return categories.length > 0
+    })
+
     return {
-      pods: podsWithData,
+      pods: filteredPods,
       podCategories,
       cells,
     }
-  }, [data])
+  }, [data, selectedStatusFilter])
 
   // right after spreadsheetData
   const uniqueCategoryCells = useMemo(
@@ -443,6 +471,15 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         </div>
       )}
 
+      {/* Total Clients Count */}
+      {uniqueCategoryCells.length > 0 && (
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-semibold text-white">
+            Clients: {uniqueCategoryCells.length}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex min-h-[400px] items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
@@ -503,9 +540,9 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                                 key={`${pod}-empty-${rowIndex}`}
                                 className="border-r border-zinc-800/50 bg-zinc-900/30 px-2 py-2 text-center"
                               >
-                                <div className="flex h-8 items-center justify-center">
+                                <div className="flex h-8 items-center justify-center opacity-0">
                                   <span className="text-xs text-zinc-500">
-                                    —
+                                    {' '}
                                   </span>
                                 </div>
                               </td>
@@ -514,25 +551,6 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
                           const cellKey = `${pod}-${category}`
                           const cell = spreadsheetData.cells.get(cellKey)
-
-                          if (
-                            selectedStatusFilter &&
-                            cell &&
-                            cell.status !== selectedStatusFilter
-                          ) {
-                            return (
-                              <td
-                                key={`${pod}-${category}`}
-                                className="border-r border-zinc-800/50 bg-zinc-900/50 px-2 py-2 text-center"
-                              >
-                                <div className="flex items-center justify-center">
-                                  <span className="text-xs text-zinc-500">
-                                    —
-                                  </span>
-                                </div>
-                              </td>
-                            )
-                          }
 
                           return (
                             <td
