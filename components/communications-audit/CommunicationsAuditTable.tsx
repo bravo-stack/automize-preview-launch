@@ -61,10 +61,10 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
   }, [selectedDate]) // Removed selectedPod from dependencies since we're not using it in API call
 
   useEffect(() => {
-    if (selectedDate && selectedDate !== initialData.latestDate) {
+    if (selectedDate) {
       fetchData()
     }
-  }, [selectedDate, fetchData, initialData.latestDate])
+  }, [selectedDate, fetchData])
 
   // Reset pagination when filters change
   useEffect(() => {

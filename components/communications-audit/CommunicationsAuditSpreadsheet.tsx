@@ -58,10 +58,10 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   }, [selectedDate])
 
   useEffect(() => {
-    if (selectedDate && selectedDate !== initialData.latestDate) {
+    if (selectedDate) {
       fetchData()
     }
-  }, [selectedDate, fetchData, initialData.latestDate])
+  }, [selectedDate, fetchData])
 
   // Get status directly from the report status field
   const getStatus = (report: CommunicationReport): string => {
@@ -311,7 +311,6 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
           </select>
         </div>
 
-        {/* Legend */}
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-zinc-400">Legend:</span>
