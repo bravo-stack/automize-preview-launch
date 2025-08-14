@@ -358,21 +358,21 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
               label: 'Clients responded',
               color: 'bg-white text-black',
             },
-            {
-              status: 'inactive',
-              label: 'Inactive',
-              color: 'bg-orange-500 text-white',
-            },
-            {
-              status: 'transferred',
-              label: 'Transferred',
-              color: 'bg-green-500 text-white',
-            },
-            {
-              status: 'churned',
-              label: 'Left Pod (Churned)',
-              color: 'bg-purple-500 text-white',
-            },
+            // {
+            //   status: 'inactive',
+            //   label: 'Inactive',
+            //   color: 'bg-orange-500 text-white',
+            // },
+            // {
+            //   status: 'transferred',
+            //   label: 'Transferred',
+            //   color: 'bg-green-500 text-white',
+            // },
+            // {
+            //   status: 'churned',
+            //   label: 'Left Pod (Churned)',
+            //   color: 'bg-purple-500 text-white',
+            // },
           ].map(({ status, label, color }) => (
             <Badge
               key={status}
@@ -391,7 +391,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
       {/* Summary Stats */}
       {uniqueCategoryCells.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {[
             {
               status: 'ixm_no_reach_48h',
@@ -408,21 +408,21 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
               label: 'Clients responded',
               color: 'bg-white text-black',
             },
-            {
-              status: 'inactive',
-              label: 'Inactive',
-              color: 'bg-orange-500 text-white',
-            },
-            {
-              status: 'transferred',
-              label: 'Transferred',
-              color: 'bg-green-500 text-white',
-            },
-            {
-              status: 'churned',
-              label: 'Left Pod',
-              color: 'bg-purple-500 text-white',
-            },
+            // {
+            //   status: 'inactive',
+            //   label: 'Inactive',
+            //   color: 'bg-orange-500 text-white',
+            // },
+            // {
+            //   status: 'transferred',
+            //   label: 'Transferred',
+            //   color: 'bg-green-500 text-white',
+            // },
+            // {
+            //   status: 'churned',
+            //   label: 'Left Pod',
+            //   color: 'bg-purple-500 text-white',
+            // },
           ].map(({ status, label, color }) => {
             let count = 0
 
