@@ -61,10 +61,10 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
   }, [selectedDate]) // Removed selectedPod from dependencies since we're not using it in API call
 
   useEffect(() => {
-    if (selectedDate && selectedDate !== initialData.latestDate) {
+    if (selectedDate) {
       fetchData()
     }
-  }, [selectedDate, fetchData, initialData.latestDate])
+  }, [selectedDate, fetchData])
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -361,6 +361,19 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
     return categories
   }, [data])
 
+  // Calculate unique category cells (same logic as spreadsheet)
+  const uniqueCategoryCells = useMemo(() => {
+    const cells = new Map<string, boolean>()
+
+    filteredAndSortedData.forEach((report) => {
+      if (!report.category_name || !report.guild_name) return
+      const key = `${report.guild_name}-${report.category_name}`
+      cells.set(key, true)
+    })
+
+    return Array.from(cells.keys())
+  }, [filteredAndSortedData])
+
   // Pagination logic
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
@@ -369,7 +382,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
   }, [filteredAndSortedData, currentPage, itemsPerPage])
 
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage)
-  const totalItems = filteredAndSortedData.length
+  const totalItems = uniqueCategoryCells.length
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -976,6 +989,15 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
               )
             })}
           </div>
+
+          {/* Total Clients Count */}
+          {totalItems > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="text-lg font-semibold text-white">
+                Clients: {totalItems}
+              </div>
+            </div>
+          )}
 
           {/* Enhanced Data Table */}
           <Card className="border-zinc-800/50 bg-gradient-to-br from-night-starlit to-night-moonlit shadow-xl">
