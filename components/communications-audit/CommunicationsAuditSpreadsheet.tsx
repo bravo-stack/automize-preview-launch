@@ -6,7 +6,7 @@ import type {
   CommunicationReport,
   CommunicationsAuditData,
 } from '@/types/communications-audit'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 interface Props {
   initialData: CommunicationsAuditData
@@ -20,6 +20,18 @@ interface SpreadsheetCell {
   report?: CommunicationReport
 }
 
+interface SelectedCell {
+  podIndex: number
+  rowIndex: number
+  pod: string
+  category: string
+}
+
+interface SelectionRange {
+  start: SelectedCell | null
+  end: SelectedCell | null
+}
+
 export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   const [selectedDate, setSelectedDate] = useState(initialData.latestDate || '')
   const [data, setData] = useState<CommunicationReport[]>(initialData.reports)
@@ -27,6 +39,12 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<
     string | null
   >(null)
+  const [selectionRange, setSelectionRange] = useState<SelectionRange>({
+    start: null,
+    end: null,
+  })
+  const [isSelecting, setIsSelecting] = useState(false)
+  const tableRef = useRef<HTMLTableElement>(null)
 
   const dates = initialData.availableDates
   const pods = initialData.availablePods
@@ -278,6 +296,134 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     [spreadsheetData],
   )
 
+  const handleCellMouseDown = useCallback(
+    (podIndex: number, rowIndex: number, pod: string, category: string) => {
+      setIsSelecting(true)
+      const selectedCell = { podIndex, rowIndex, pod, category }
+      setSelectionRange({ start: selectedCell, end: selectedCell })
+    },
+    [],
+  )
+
+  const handleCellMouseEnter = useCallback(
+    (podIndex: number, rowIndex: number, pod: string, category: string) => {
+      if (isSelecting && selectionRange.start) {
+        const selectedCell = { podIndex, rowIndex, pod, category }
+        setSelectionRange((prev) => ({ ...prev, end: selectedCell }))
+      }
+    },
+    [isSelecting, selectionRange.start],
+  )
+
+  const handleMouseUp = useCallback(() => {
+    setIsSelecting(false)
+  }, [])
+
+  const isCellSelected = useCallback(
+    (podIndex: number, rowIndex: number): boolean => {
+      if (!selectionRange.start || !selectionRange.end) return false
+
+      const minPodIndex = Math.min(
+        selectionRange.start.podIndex,
+        selectionRange.end.podIndex,
+      )
+      const maxPodIndex = Math.max(
+        selectionRange.start.podIndex,
+        selectionRange.end.podIndex,
+      )
+      const minRowIndex = Math.min(
+        selectionRange.start.rowIndex,
+        selectionRange.end.rowIndex,
+      )
+      const maxRowIndex = Math.max(
+        selectionRange.start.rowIndex,
+        selectionRange.end.rowIndex,
+      )
+
+      return (
+        podIndex >= minPodIndex &&
+        podIndex <= maxPodIndex &&
+        rowIndex >= minRowIndex &&
+        rowIndex <= maxRowIndex
+      )
+    },
+    [selectionRange],
+  )
+
+  const copySelectedCells = useCallback(() => {
+    if (!selectionRange.start || !selectionRange.end) return
+
+    const minPodIndex = Math.min(
+      selectionRange.start.podIndex,
+      selectionRange.end.podIndex,
+    )
+    const maxPodIndex = Math.max(
+      selectionRange.start.podIndex,
+      selectionRange.end.podIndex,
+    )
+    const minRowIndex = Math.min(
+      selectionRange.start.rowIndex,
+      selectionRange.end.rowIndex,
+    )
+    const maxRowIndex = Math.max(
+      selectionRange.start.rowIndex,
+      selectionRange.end.rowIndex,
+    )
+
+    const copyData: string[][] = []
+
+    for (let rowIndex = minRowIndex; rowIndex <= maxRowIndex; rowIndex++) {
+      const row: string[] = []
+      for (let podIndex = minPodIndex; podIndex <= maxPodIndex; podIndex++) {
+        const pod = spreadsheetData.pods[podIndex]
+        if (pod) {
+          const categories = spreadsheetData.podCategories.get(pod) || []
+          const category = categories[rowIndex]
+
+          if (category) {
+            row.push(category.replace('-IXM', ''))
+          } else {
+            row.push('')
+          }
+        }
+      }
+      copyData.push(row)
+    }
+
+    const textToCopy = copyData.map((row) => row.join('\t')).join('\n')
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(textToCopy)
+    } else {
+      const textArea = document.createElement('textarea')
+      textArea.value = textToCopy
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+    }
+  }, [selectionRange, spreadsheetData])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectionRange.start) {
+        e.preventDefault()
+        copySelectedCells()
+      }
+      if (e.key === 'Escape') {
+        setSelectionRange({ start: null, end: null })
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [copySelectedCells, handleMouseUp, selectionRange.start])
+
   if (!hasData) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -340,52 +486,57 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-zinc-400">Legend:</span>
-          {[
-            {
-              status: 'ixm_no_reach_48h',
-              label: "Didn't reach out for 48 hours",
-              color: 'bg-red-500 text-white',
-            },
-            {
-              status: 'client_silent_5d',
-              label: 'Client Silent 5+ Days',
-              color: 'bg-amber-400 text-black',
-            },
-            {
-              status: 'active_communication',
-              label: 'Clients responded',
-              color: 'bg-white text-black',
-            },
-            // {
-            //   status: 'inactive',
-            //   label: 'Inactive',
-            //   color: 'bg-orange-500 text-white',
-            // },
-            // {
-            //   status: 'transferred',
-            //   label: 'Transferred',
-            //   color: 'bg-green-500 text-white',
-            // },
-            // {
-            //   status: 'churned',
-            //   label: 'Left Pod (Churned)',
-            //   color: 'bg-purple-500 text-white',
-            // },
-          ].map(({ status, label, color }) => (
-            <Badge
-              key={status}
-              className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
-              onClick={() =>
-                setSelectedStatusFilter(
-                  selectedStatusFilter === status ? null : status,
-                )
-              }
-            >
-              {label}
-            </Badge>
-          ))}
+        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-6 sm:space-y-0">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-zinc-400">Legend:</span>
+            {[
+              {
+                status: 'ixm_no_reach_48h',
+                label: "Didn't reach out for 48 hours",
+                color: 'bg-red-500 text-white',
+              },
+              {
+                status: 'client_silent_5d',
+                label: 'Client Silent 5+ Days',
+                color: 'bg-amber-400 text-black',
+              },
+              {
+                status: 'active_communication',
+                label: 'Clients responded',
+                color: 'bg-white text-black',
+              },
+              // {
+              //   status: 'inactive',
+              //   label: 'Inactive',
+              //   color: 'bg-orange-500 text-white',
+              // },
+              // {
+              //   status: 'transferred',
+              //   label: 'Transferred',
+              //   color: 'bg-green-500 text-white',
+              // },
+              // {
+              //   status: 'churned',
+              //   label: 'Left Pod (Churned)',
+              //   color: 'bg-purple-500 text-white',
+              // },
+            ].map(({ status, label, color }) => (
+              <Badge
+                key={status}
+                className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
+                onClick={() =>
+                  setSelectedStatusFilter(
+                    selectedStatusFilter === status ? null : status,
+                  )
+                }
+              >
+                {label}
+              </Badge>
+            ))}
+          </div>
+          <div className="text-xs text-zinc-400">
+            Drag to select cells, Ctrl+C to copy
+          </div>
         </div>
       </div>
 
@@ -490,7 +641,11 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       ) : (
         <Card className="overflow-hidden border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm">
           <div className="max-h-[80vh] overflow-auto">
-            <table className="w-full min-w-max">
+            <table
+              ref={tableRef}
+              className="w-full min-w-max"
+              style={{ userSelect: 'none' }}
+            >
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-zinc-700">
                   {spreadsheetData.pods.map((pod) => (
@@ -529,7 +684,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                             : 'bg-zinc-900/10'
                         }`}
                       >
-                        {spreadsheetData.pods.map((pod) => {
+                        {spreadsheetData.pods.map((pod, podIndex) => {
                           const categories =
                             spreadsheetData.podCategories.get(pod) || []
                           const category = categories[rowIndex]
@@ -551,19 +706,35 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
                           const cellKey = `${pod}-${category}`
                           const cell = spreadsheetData.cells.get(cellKey)
+                          const isSelected = isCellSelected(podIndex, rowIndex)
 
                           return (
                             <td
                               key={`${pod}-${category}`}
-                              className={`border-r border-zinc-800/50 px-2 py-2 ${cell ? getStatusColor(cell.status) : 'bg-zinc-900/50'}`}
+                              className={`cursor-pointer border-r border-zinc-800/50 px-2 py-2 ${cell ? getStatusColor(cell.status) : 'bg-zinc-900/50'} ${isSelected ? 'ring-2 ring-inset ring-blue-400' : ''}`}
                               title={
                                 cell
                                   ? `Category: ${category}\nChannel: ${cell.channelName || 'No channel name'}\nStatus: ${getStatusLabel(cell.status)}\nLast Client Message: ${cell.report?.days_since_client_message || 0} days ago\nLast Team Message: ${cell.report?.days_since_team_message || 0} days ago`
                                   : `Category: ${category}\nNo data available`
                               }
+                              onMouseDown={() =>
+                                handleCellMouseDown(
+                                  podIndex,
+                                  rowIndex,
+                                  pod,
+                                  category,
+                                )
+                              }
+                              onMouseEnter={() =>
+                                handleCellMouseEnter(
+                                  podIndex,
+                                  rowIndex,
+                                  pod,
+                                  category,
+                                )
+                              }
                             >
                               <div className="py-1">
-                                {/* Category name only */}
                                 <div
                                   className="truncate text-center text-xs font-medium"
                                   title={category}
