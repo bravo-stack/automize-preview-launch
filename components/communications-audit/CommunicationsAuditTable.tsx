@@ -510,8 +510,8 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                     className="w-full rounded-lg border border-zinc-700/50 bg-zinc-800/50 px-3 py-2.5 text-white transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   >
                     <option value="">Select Date</option>
-                    {dates.map((date) => (
-                      <option key={date} value={date}>
+                    {dates.map((date, index) => (
+                      <option key={index} value={date}>
                         {new Date(date).toLocaleDateString()}
                       </option>
                     ))}
@@ -542,8 +542,8 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                     className="w-full rounded-lg border border-zinc-700/50 bg-zinc-800/50 px-3 py-2.5 text-white transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   >
                     <option value="all">All Pods</option>
-                    {pods.map((pod) => (
-                      <option key={pod.guild_id} value={pod.guild_id}>
+                    {pods.map((pod, index) => (
+                      <option key={index} value={pod.guild_id}>
                         {pod.guild_name}
                       </option>
                     ))}
@@ -655,8 +655,8 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                     className="w-full rounded-lg border border-zinc-700/50 bg-zinc-800/50 px-3 py-2.5 text-white transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   >
                     <option value="all">All Categories</option>
-                    {uniqueCategories.map((category) => (
-                      <option key={category} value={category}>
+                    {uniqueCategories.map((category, index) => (
+                      <option key={index} value={category}>
                         {category}
                       </option>
                     ))}
@@ -921,7 +921,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                   </svg>
                 ),
               },
-            ].map(({ label, status, color, icon }) => {
+            ].map(({ label, status, color, icon }, index) => {
               // Apply the same grouping logic as in the spreadsheet
               let count = 0
               if (status === 'active_communication') {
@@ -957,7 +957,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
 
               return (
                 <Card
-                  key={status}
+                  key={index}
                   className="group border-zinc-800/50 bg-gradient-to-br from-night-starlit to-night-moonlit transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-white/5"
                 >
                   <div className="p-4">
@@ -1022,11 +1022,11 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                       </span>
                     </div>
                     <div className="space-y-4">
-                      {paginatedData.map((report) => {
+                      {paginatedData.map((report, index) => {
                         const status = getStatus(report)
                         return (
                           <div
-                            key={report.id}
+                            key={index}
                             className="rounded-lg border border-zinc-700/50 bg-zinc-800/30 p-4 transition-colors hover:bg-zinc-700/30"
                           >
                             <div className="mb-3 flex items-start justify-between">
@@ -1346,7 +1346,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
                           const status = getStatus(report)
                           return (
                             <tr
-                              key={report.id}
+                              key={index}
                               className={`border-b border-zinc-800/30 transition-all duration-200 hover:bg-zinc-700/20 ${
                                 index % 2 === 0
                                   ? 'bg-zinc-800/10'
@@ -1603,7 +1603,7 @@ export default function CommunicationsAuditTable({ initialData }: Props) {
 
                           return (
                             <button
-                              key={pageNum}
+                              key={i}
                               onClick={() => handlePageChange(pageNum)}
                               className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 ${
                                 currentPage === pageNum

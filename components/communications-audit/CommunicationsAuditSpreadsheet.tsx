@@ -712,11 +712,11 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                             <td
                               key={`${pod}-${category}`}
                               className={`cursor-pointer border-r border-zinc-800/50 px-2 py-2 ${cell ? getStatusColor(cell.status) : 'bg-zinc-900/50'} ${isSelected ? 'ring-2 ring-inset ring-blue-400' : ''}`}
-                              title={
-                                cell
-                                  ? `Category: ${category}\nChannel: ${cell.channelName || 'No channel name'}\nStatus: ${getStatusLabel(cell.status)}\nLast Client Message: ${cell.report?.days_since_client_message || 0} days ago\nLast Team Message: ${cell.report?.days_since_team_message || 0} days ago`
-                                  : `Category: ${category}\nNo data available`
-                              }
+                              // title={
+                              //   cell
+                              //     ? `Category: ${category}\nChannel: ${cell.channelName || 'No channel name'}\nStatus: ${getStatusLabel(cell.status)}\nLast Client Message: ${cell.report?.days_since_client_message || 0} days ago\nLast Team Message: ${cell.report?.days_since_team_message || 0} days ago`
+                              //     : `Category: ${category}\nNo data available`
+                              // }
                               onMouseDown={() =>
                                 handleCellMouseDown(
                                   podIndex,
