@@ -76,21 +76,6 @@ export default function SpreadsheetView({ initialData }: Props) {
   const hasData = dates.length > 0
 
   //   HOOKS
-  const fetchData = useCallback(async () => {
-    if (!selectedDate) return
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ report_date: selectedDate })
-      const res = await fetch(`/api/communications-audit?${params}`)
-      if (!res.ok) throw new Error('fetch_failed')
-      const json = await res.json()
-      setReports(json.data || [])
-    } catch {
-      setReports([])
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedDate])
   const normalizeStatus = useCallback((raw?: string | null): AuditStatus => {
     if (!raw) return 'unknown'
     const key = raw.trim().toLowerCase()
@@ -105,39 +90,33 @@ export default function SpreadsheetView({ initialData }: Props) {
             : 'unknown')
     )
   }, [])
-  const spreadsheet = useMemo(() => {
-    const podOrderUnsorted = Array.from(
-      new Set(
-        reports.map((r) => r.guild_name).filter((g): g is string => Boolean(g)),
-      ),
-    ).sort()
-    const PREFERRED_ORDER = [
-      'SHALIN & RAY // IXM',
-      'RAY & AUN POD // IXM',
-      'ZUHAIR & RAY // IXM',
-      'YOUSUF & RAY // IXM',
-      'ANDREW & RAY // IXM',
-      'SAAD & RAY // IXM',
-      'BRIXTON & RAY // IXM',
-      'RAY & BRIXTON // IXM',
-      'INTI & RAY // IXM',
-    ]
-    const preferredMapped: string[] = []
-    for (const pref of PREFERRED_ORDER) {
-      const match = podOrderUnsorted.find(
-        (x) => x && x.toLowerCase() === pref.toLowerCase(),
+  const fetchData = useCallback(async () => {
+    if (!selectedDate) return
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ report_date: selectedDate })
+      const res = await fetch(`/api/communications-audit?${params}`)
+      if (!res.ok) throw new Error('fetch_failed')
+      const json = await res.json()
+      const normalizedReports = (json.data || []).map(
+        (report: CommunicationReport) => ({
+          ...report,
+          status: normalizeStatus(report.status),
+        }),
       )
-      if (match) preferredMapped.push(match)
+      setReports(normalizedReports)
+    } catch {
+      setReports([])
+    } finally {
+      setLoading(false)
     }
-    const podOrder = [
-      ...preferredMapped,
-      ...podOrderUnsorted.filter((p) => !preferredMapped.includes(p)),
-    ]
+  }, [selectedDate, normalizeStatus])
+  const spreadsheet = useMemo(() => {
     const podCategories = new Map<string, string[]>()
     const cells = new Map<string, SpreadsheetCell>()
     for (const r of reports) {
       if (!r.category_name || !r.guild_name) continue
-      const status = normalizeStatus(r.status)
+      const status = r.status
       if (!VISIBLE_CANONICAL.has(status)) continue
       if (!podCategories.has(r.guild_name)) podCategories.set(r.guild_name, [])
       const cats = podCategories.get(r.guild_name)!
@@ -154,11 +133,11 @@ export default function SpreadsheetView({ initialData }: Props) {
         report: r,
       })
     }
-    const filteredPods = podOrder.filter(
+    const filteredPods = Array.from(podCategories.keys()).filter(
       (p) => (podCategories.get(p) || []).length > 0,
     )
     return { pods: filteredPods, podCategories, cells }
-  }, [reports, normalizeStatus])
+  }, [reports])
   const uniqueCategoryCells = useMemo(
     () => Array.from(spreadsheet.cells.values()),
     [spreadsheet],

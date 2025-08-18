@@ -7,11 +7,25 @@ import type {
   CommunicationsAuditData,
 } from '@/types/communications-audit'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import EmptyData from './empty-data'
+import LoadingView from './loading-view'
 
+type NormalizedStatus =
+  | 'unknown'
+  | 'inactive'
+  | 'transferred'
+  | 'churned'
+  | 'ixm_no_reach_48h'
+  | 'client_silent_5d'
+  | 'client_awaiting_team'
+  | 'active_communication'
+  | 'no_messages'
+  | 'team_only'
+  | 'client_only_no_team'
+type StatusColorMap = Record<NormalizedStatus | 'default', string>
 interface Props {
   initialData: CommunicationsAuditData
 }
-
 interface SpreadsheetCell {
   categoryName: string
   podName: string
@@ -19,102 +33,108 @@ interface SpreadsheetCell {
   channelName?: string
   report?: CommunicationReport
 }
-
 interface SelectedCell {
   podIndex: number
   rowIndex: number
   pod: string
   category: string
 }
-
 interface SelectionRange {
   start: SelectedCell | null
   end: SelectedCell | null
 }
 
-type CategoryLevel = 1 | 2 | 3 | undefined
+const STATUS_PATTERNS: Array<[NormalizedStatus, RegExp[]]> = [
+  ['inactive', [/^inactive$/i]],
+  ['transferred', [/^transferred$/i]],
+  ['churned', [/^churned$/i]],
 
-const getStatusValue: (input: string) => CategoryLevel = (
-  input: string,
-): CategoryLevel => {
-  switch (input) {
-    case "IXM didn't reach out for 48 hours":
-      return 1
-    case 'Client silent for 5+ days':
-      return 2
-    case 'Client responded - awaiting team reply':
-      return 3
-    default:
-      return undefined
+  [
+    'ixm_no_reach_48h',
+    [/didn'?t reach out for 48 hours/i, /ixm didn'?t reach out/i],
+  ],
+  ['client_silent_5d', [/client silent for 5\+ days/i, /client silent/i]],
+  [
+    'client_awaiting_team',
+    [/client responded - awaiting team reply/i, /awaiting team reply/i],
+  ],
+  ['active_communication', [/active communication/i]],
+  ['no_messages', [/no messages found/i]],
+  ['team_only', [/team only - no client messages/i, /team only/i]],
+  ['client_only_no_team', [/client only - no team response/i, /client only/i]],
+]
+const STATUS_COLORS: StatusColorMap = {
+  ixm_no_reach_48h: 'bg-red-500 text-white',
+  client_only_no_team: 'bg-red-500 text-white', // optional alias if needed
+
+  client_silent_5d: 'bg-amber-400 text-black',
+
+  client_awaiting_team: 'bg-white text-black',
+  active_communication: 'bg-white text-black',
+  no_messages: 'bg-white text-black',
+  team_only: 'bg-white text-black',
+
+  inactive: 'bg-orange-500 text-white',
+  transferred: 'bg-green-500 text-white',
+  churned: 'bg-purple-500 text-white',
+
+  unknown: 'bg-gray-400 text-white', // from getStatus fallback
+  default: 'bg-gray-400 text-white',
+}
+function resolveStatus(rawStatus: string | null | undefined): NormalizedStatus {
+  const normalized = rawStatus?.trim().toLowerCase()
+  if (!normalized) return 'unknown'
+
+  for (const [mappedStatus, patterns] of STATUS_PATTERNS) {
+    if (patterns.some((p) => p.test(normalized))) {
+      return mappedStatus
+    }
   }
+
+  return 'active_communication' // default fallback
 }
-const COLORS = {
-  1: 'bg-red-500 text-white',
-  2: 'bg-amber-400 text-black',
-  3: 'bg-white text-black',
-  4: 'bg-gray-500 text-gray-100',
+function getStatusColor(status: NormalizedStatus): string {
+  return STATUS_COLORS[status] ?? STATUS_COLORS.default
 }
-const getStatusColor = (status: string): string => {
-  switch (status) {
-    // Red: didn't reach out for 48 hours
-    case 'ixm_no_reach_48h':
-    case 'client_only_no_team':
-      return 'bg-red-500 text-white'
+const POD_PRIORITY_LIST = [
+  'SHALIN & RAY // IXM',
+  'SHALIN // IXM',
+  'RAY & AUN POD // IXM',
+  'ZUHAIR & RAY // IXM',
+  'ZUHAIR // IXM',
+  'YOUSUF & RAY // IXM',
+  'YOUSUF',
+  'ANDREW & RAY // IXM',
+  'ANDREW // IXM',
+  'SAAD & RAY // IXM',
+  'SAAD // IXM',
+  'BRIXTON & RAY // IXM',
+  'RAY & BRIXTON // IXM',
+  'BRIXTON // IXM',
+  'INTI & RAY // IXM',
+  'INTI // IXM',
+]
+function customPodSort(a: string, b: string): number {
+  const indexA = POD_PRIORITY_LIST.indexOf(a)
+  const indexB = POD_PRIORITY_LIST.indexOf(b)
 
-    // White: clients responded to
-    case 'client_silent_5d':
-      return 'bg-amber-400 text-black'
+  const aInList = indexA !== -1
+  const bInList = indexB !== -1
 
-    case 'client_awaiting_team':
-    case 'active_communication':
-    case 'no_messages':
-    case 'team_only':
-      return 'bg-white text-black'
-
-    // Orange: Inactive
-    case 'inactive':
-      return 'bg-orange-500 text-white'
-
-    // Green: Transferred
-    case 'transferred':
-      return 'bg-green-500 text-white'
-
-    // Purple: Left Pod (Churned)
-    case 'churned':
-      return 'bg-purple-500 text-white'
-
-    default:
-      return 'bg-gray-400 text-white'
+  if (aInList && bInList) {
+    return indexA - indexB // Both in the list, sort by index
   }
-}
-const getStatusLabel = (status: string): string => {
-  switch (status) {
-    case 'ixm_no_reach_48h':
-      return "Didn't reach out for 48 hours"
-    case 'client_silent_5d':
-      return 'Client Silent 5+ Days'
-    case 'client_awaiting_team':
-      return 'Client Awaiting Team'
-    case 'active_communication':
-      return 'Clients responded to'
-    case 'no_messages':
-      return 'No Messages Found'
-    case 'team_only':
-      return 'Team Only'
-    case 'client_only_no_team':
-      return 'Client Only - No Team'
-    case 'inactive':
-      return 'Inactive'
-    case 'transferred':
-      return 'Transferred'
-    case 'churned':
-      return 'Left Pod (Churned)'
-    default:
-      return 'Unknown Status'
+  if (aInList) {
+    return -1 // a is in the list, b is not. a comes first.
   }
+  if (bInList) {
+    return 1 // b is in the list, a is not. b comes first.
+  }
+
+  return a.localeCompare(b) // Neither is in the list, sort alphabetically
 }
 
-export default function AuditSpreadsheet({ initialData }: Props) {
+export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   // STATES
   const [selectedDate, setSelectedDate] = useState(initialData.latestDate || '')
   const [data, setData] = useState<CommunicationReport[]>(initialData.reports)
@@ -127,10 +147,8 @@ export default function AuditSpreadsheet({ initialData }: Props) {
     end: null,
   })
   const [isSelecting, setIsSelecting] = useState(false)
-  const tableRef = useRef<HTMLTableElement>(null)
 
   // DATA INIT
-  console.log('data: ', initialData)
   const dates = initialData.availableDates
   const hasData = initialData.availableDates.length > 0
 
@@ -159,173 +177,97 @@ export default function AuditSpreadsheet({ initialData }: Props) {
       setLoading(false)
     }
   }, [selectedDate])
-  const getStatus = (report: CommunicationReport): string => {
-    if (!report.status) return 'unknown'
+  const tableRef = useRef<HTMLTableElement>(null)
 
-    const status = report.status.toLowerCase()
-
-    // Map the actual status values from the communication_reports.status field
-    // Category-based statuses (high priority)
-    if (status === 'inactive') return 'inactive'
-    if (status === 'transferred') return 'transferred'
-    if (status === 'churned') return 'churned' // churned translates as left
-
-    // Message analysis statuses
-    if (
-      status.includes("didn't reach out for 48 hours") ||
-      status.includes("ixm didn't reach out")
-    )
-      return 'ixm_no_reach_48h'
-    if (
-      status.includes('client silent for 5+ days') ||
-      status.includes('client silent')
-    )
-      return 'client_silent_5d'
-    if (
-      status.includes('client responded - awaiting team reply') ||
-      status.includes('awaiting team reply')
-    )
-      return 'client_awaiting_team'
-    if (status.includes('active communication')) return 'active_communication'
-    if (status.includes('no messages found')) return 'no_messages'
-    if (
-      status.includes('team only - no client messages') ||
-      status.includes('team only')
-    )
-      return 'team_only'
-    if (
-      status.includes('client only - no team response') ||
-      status.includes('client only')
-    )
-      return 'client_only_no_team'
-
-    return 'active_communication'
-  }
-  const spreadsheetData = useMemo(() => {
-    if (!data.length)
-      return { pods: [], podCategories: new Map(), cells: new Map() }
-
-    // Get unique pods
-    const podsWithData = Array.from(
-      new Set(data.map((report) => report.guild_name).filter(Boolean)),
-    ).sort()
-
-    // Create a map of pod -> categories for that pod
-    const podCategories = new Map<string, string[]>()
-
-    // Create cells map
-    const cells = new Map<string, SpreadsheetCell>()
-
-    data.forEach((report) => {
-      if (!report.category_name || !report.guild_name) return
-
-      const status = getStatus(report)
-
-      // Filter by selected status if one is selected
-      if (selectedStatusFilter) {
-        const matchesFilter = (() => {
-          if (selectedStatusFilter === 'active_communication') {
-            return [
-              'client_awaiting_team',
-              'active_communication',
-              'no_messages',
-              'team_only',
-            ].includes(status)
-          } else if (selectedStatusFilter === 'ixm_no_reach_48h') {
-            return ['ixm_no_reach_48h', 'client_only_no_team'].includes(status)
-          } else {
-            return status === selectedStatusFilter
-          }
-        })()
-
-        if (!matchesFilter) return
+  const baseSpreadsheetData = useMemo(() => {
+    if (!data || data.length === 0) {
+      return {
+        pods: [],
+        podCategories: new Map<string, string[]>(),
+        cells: new Map<string, SpreadsheetCell>(),
       }
-
-      // Add category to pod's category list
-      if (!podCategories.has(report.guild_name)) {
-        podCategories.set(report.guild_name, [])
-      }
-      const categories = podCategories.get(report.guild_name)!
-      if (!categories.includes(report.category_name)) {
-        categories.push(report.category_name)
-        categories.sort()
-      }
-
-      const key = `${report.guild_name}-${report.category_name}`
-
-      cells.set(key, {
-        categoryName: report.category_name,
-        podName: report.guild_name,
-        status,
-        channelName: report.channel_name || undefined,
-        report,
-      })
-    })
-
-    // Filter out pods that have no categories after filtering
-    const filteredPods = podsWithData.filter((pod) => {
-      if (!pod) return false
-      const categories = podCategories.get(pod) || []
-      return categories.length > 0
-    })
-
-    return {
-      pods: filteredPods,
-      podCategories,
-      cells,
     }
-  }, [data, selectedStatusFilter])
-  const spreadsheetDataAll = useMemo(() => {
-    if (!data.length)
-      return { pods: [], podCategories: new Map(), cells: new Map() }
 
-    const podsWithData = Array.from(
-      new Set(data.map((report) => report.guild_name).filter(Boolean)),
-    ).sort()
-
-    const podCategories = new Map<string, string[]>()
+    const podSet = new Set<string>()
+    const podCategories = new Map<string, Set<string>>()
     const cells = new Map<string, SpreadsheetCell>()
 
-    data.forEach((report) => {
-      if (!report.category_name || !report.guild_name) return
+    for (const report of data) {
+      const { guild_name, category_name, status, channel_name } = report
 
-      const status = getStatus(report)
-
-      if (!podCategories.has(report.guild_name)) {
-        podCategories.set(report.guild_name, [])
-      }
-      const categories = podCategories.get(report.guild_name)!
-      if (!categories.includes(report.category_name)) {
-        categories.push(report.category_name)
-        categories.sort()
+      if (!guild_name || !category_name) {
+        continue
       }
 
-      const key = `${report.guild_name}-${report.category_name}`
+      // 1. Collect unique pods and their categories
+      podSet.add(guild_name)
+      if (!podCategories.has(guild_name)) {
+        podCategories.set(guild_name, new Set())
+      }
+      podCategories.get(guild_name)!.add(category_name)
 
+      // 2. Create the cell data
+      const key = `${guild_name}-${category_name}`
       cells.set(key, {
-        categoryName: report.category_name,
-        podName: report.guild_name,
-        status,
-        channelName: report.channel_name || undefined,
+        podName: guild_name,
+        categoryName: category_name,
+        status: resolveStatus(status),
+        channelName: channel_name || undefined,
         report,
       })
-    })
+    }
 
-    const filteredPods = podsWithData.filter((pod) => {
-      if (!pod) return false
-      const categories = podCategories.get(pod) || []
-      return categories.length > 0
+    // 3. Convert Sets to sorted arrays *after* the loop for efficiency
+    const sortedPods = Array.from(podSet).sort(customPodSort)
+    const sortedPodCategories = new Map<string, string[]>()
+    podCategories.forEach((categories, pod) => {
+      sortedPodCategories.set(pod, Array.from(categories).sort())
     })
 
     return {
-      pods: filteredPods,
-      podCategories,
+      pods: sortedPods,
+      podCategories: sortedPodCategories,
       cells,
     }
   }, [data])
+  const spreadsheetData = useMemo(() => {
+    if (!selectedStatusFilter) {
+      return baseSpreadsheetData
+    }
+
+    const filteredCells = new Map<string, SpreadsheetCell>()
+    const filteredPodCategories = new Map<string, Set<string>>()
+    const filteredPodSet = new Set<string>()
+
+    baseSpreadsheetData.cells.forEach((cell, key) => {
+      if (cell.status === selectedStatusFilter) {
+        filteredCells.set(key, cell)
+
+        // Rebuild the list of pods and categories that are still visible
+        filteredPodSet.add(cell.podName)
+        if (!filteredPodCategories.has(cell.podName)) {
+          filteredPodCategories.set(cell.podName, new Set())
+        }
+        filteredPodCategories.get(cell.podName)!.add(cell.categoryName)
+      }
+    })
+
+    // Convert the filtered sets to sorted arrays
+    const sortedFilteredPods = Array.from(filteredPodSet).sort(customPodSort)
+    const sortedFilteredPodCategories = new Map<string, string[]>()
+    filteredPodCategories.forEach((categories, pod) => {
+      sortedFilteredPodCategories.set(pod, Array.from(categories).sort())
+    })
+
+    return {
+      pods: sortedFilteredPods,
+      podCategories: sortedFilteredPodCategories,
+      cells: filteredCells,
+    }
+  }, [baseSpreadsheetData, selectedStatusFilter])
   const uniqueCategoryCells = useMemo(
-    () => Array.from(spreadsheetDataAll.cells.values()),
-    [spreadsheetDataAll],
+    () => Array.from(baseSpreadsheetData.cells.values()),
+    [baseSpreadsheetData],
   )
   const handleCellMouseDown = useCallback(
     (podIndex: number, rowIndex: number, pod: string, category: string) => {
@@ -458,40 +400,12 @@ export default function AuditSpreadsheet({ initialData }: Props) {
   }, [copySelectedCells, handleMouseUp, selectionRange.start])
 
   if (!hasData) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="max-w-lg rounded-xl border border-zinc-800/50 bg-gradient-to-br from-night-starlit to-night-moonlit p-8 text-center shadow-2xl">
-          <div className="mb-6 flex justify-center">
-            <div className="rounded-full bg-zinc-800/50 p-3">
-              <svg
-                className="h-8 w-8 text-zinc-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-            </div>
-          </div>
-          <h3 className="mb-4 text-xl font-semibold text-white">
-            No Communication Reports Found
-          </h3>
-          <p className="mb-4 text-zinc-300">
-            There are no communication audit reports in the database yet.
-          </p>
-        </div>
-      </div>
-    )
+    return <EmptyData />
   }
 
   return (
     <div className="space-y-6">
-      {/* Date Selector */}
+      {/* Date Selector & Legend */}
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
           <label
@@ -518,35 +432,39 @@ export default function AuditSpreadsheet({ initialData }: Props) {
           </select>
         </div>
 
-        {/* Legend */}
         <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-6 sm:space-y-0">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-zinc-400">Legend:</span>
             {[
               {
                 status: 'ixm_no_reach_48h',
+                raw: `IXM didn't reach out for 48 hours`,
                 label: "Didn't reach out for 48 hours",
                 color: 'bg-red-500 text-white',
               },
               {
                 status: 'client_silent_5d',
+                raw: 'Client silent for 5+ days',
                 label: 'Client Silent 5+ Days',
                 color: 'bg-amber-400 text-black',
               },
               {
                 status: 'active_communication',
+                raw: 'Active communication',
                 label: 'Clients responded',
                 color: 'bg-white text-black',
               },
-            ].map(({ status, label, color }) => (
+            ].map(({ status, raw, label, color }) => (
               <Badge
                 key={status}
                 className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
-                onClick={() => {
+                onClick={() =>
                   setSelectedStatusFilter(
-                    selectedStatusFilter === status ? null : status,
+                    selectedStatusFilter === resolveStatus(raw)
+                      ? null
+                      : resolveStatus(raw),
                   )
-                }}
+                }
               >
                 {label}
               </Badge>
@@ -577,21 +495,6 @@ export default function AuditSpreadsheet({ initialData }: Props) {
               label: 'Clients responded',
               color: 'bg-white text-black',
             },
-            // {
-            //   status: 'inactive',
-            //   label: 'Inactive',
-            //   color: 'bg-orange-500 text-white',
-            // },
-            // {
-            //   status: 'transferred',
-            //   label: 'Transferred',
-            //   color: 'bg-green-500 text-white',
-            // },
-            // {
-            //   status: 'churned',
-            //   label: 'Left Pod',
-            //   color: 'bg-purple-500 text-white',
-            // },
           ].map(({ status, label, color }) => {
             let count = 0
 
@@ -641,21 +544,14 @@ export default function AuditSpreadsheet({ initialData }: Props) {
       )}
 
       {/* Total Clients Count */}
-      {uniqueCategoryCells.length > 0 && (
-        <div className="flex items-center justify-between">
-          <div className="text-lg font-semibold text-white">
-            Clients: {uniqueCategoryCells.length}
-          </div>
+      <div className="flex items-center justify-between">
+        <div className="text-lg font-semibold text-white">
+          Clients: {spreadsheetData.cells.size}
         </div>
-      )}
+      </div>
 
       {loading ? (
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="h-12 w-12 animate-spin rounded-full border-2 border-zinc-600 border-t-white"></div>
-            <p className="text-sm text-zinc-400">Loading audit data...</p>
-          </div>
-        </div>
+        <LoadingView />
       ) : (
         <Card className="overflow-hidden border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm">
           <div className="max-h-[80vh] overflow-auto">
@@ -675,7 +571,7 @@ export default function AuditSpreadsheet({ initialData }: Props) {
                         className="truncate font-bold text-white"
                         title={pod || ''}
                       >
-                        {pod}
+                        {`${pod} (${spreadsheetData.podCategories.get(pod)?.length || 0})`}
                       </div>
                     </th>
                   ))}
@@ -729,7 +625,7 @@ export default function AuditSpreadsheet({ initialData }: Props) {
                           return (
                             <td
                               key={`${pod}-${category}`}
-                              className={`cursor-pointer border-r border-zinc-800/50 px-2 py-2 ${cell ? getStatusColor(cell.status) : 'bg-zinc-900/50'} ${isSelected ? 'ring-2 ring-inset ring-blue-400' : ''}`}
+                              className={`cursor-pointer border-r border-zinc-800/50 px-2 py-2 ${cell ? getStatusColor(cell.status as NormalizedStatus) : 'bg-zinc-900/50'} ${isSelected ? 'ring-2 ring-inset ring-blue-400' : ''}`}
                               onMouseDown={() =>
                                 handleCellMouseDown(
                                   podIndex,
