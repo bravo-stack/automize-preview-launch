@@ -112,15 +112,15 @@ export default function SpreadsheetView({ initialData }: Props) {
       ),
     ).sort()
     const PREFERRED_ORDER = [
-      'shalin // IXM',
+      'shalin & ray // IXM',
       'RAY & AUN POD // IXM',
-      'zuhair // IXM',
-      'yousuf // IXM',
-      'andrew // IXM',
-      'saad // IXM',
-      'brixton // IXM',
+      'zuhair & ray // IXM',
+      'yousuf & ray // IXM',
+      'andrew & ray // IXM',
+      'saad & ray // IXM',
+      'brixton & ray // IXM',
       'ray & brixton // IXM',
-      'inti // IXM',
+      'inti & ray // IXM',
     ]
     const podOrder = [
       ...PREFERRED_ORDER.filter((p) =>
