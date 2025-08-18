@@ -112,23 +112,26 @@ export default function SpreadsheetView({ initialData }: Props) {
       ),
     ).sort()
     const PREFERRED_ORDER = [
-      'shalin & ray // IXM',
+      'SHALIN & RAY // IXM',
       'RAY & AUN POD // IXM',
-      'zuhair & ray // IXM',
-      'yousuf & ray // IXM',
-      'andrew & ray // IXM',
-      'saad & ray // IXM',
-      'brixton & ray // IXM',
-      'ray & brixton // IXM',
-      'inti & ray // IXM',
+      'ZUHAIR & RAY // IXM',
+      'YOUSUF & RAY // IXM',
+      'ANDREW & RAY // IXM',
+      'SAAD & RAY // IXM',
+      'BRIXTON & RAY // IXM',
+      'RAY & BRIXTON // IXM',
+      'INTI & RAY // IXM',
     ]
+    const preferredMapped: string[] = []
+    for (const pref of PREFERRED_ORDER) {
+      const match = podOrderUnsorted.find(
+        (x) => x && x.toLowerCase() === pref.toLowerCase(),
+      )
+      if (match) preferredMapped.push(match)
+    }
     const podOrder = [
-      ...PREFERRED_ORDER.filter((p) =>
-        podOrderUnsorted.some((x) => x && x.toLowerCase() === p),
-      ),
-      ...podOrderUnsorted.filter(
-        (p) => !PREFERRED_ORDER.includes(p.toLowerCase()),
-      ),
+      ...preferredMapped,
+      ...podOrderUnsorted.filter((p) => !preferredMapped.includes(p)),
     ]
     const podCategories = new Map<string, string[]>()
     const cells = new Map<string, SpreadsheetCell>()
