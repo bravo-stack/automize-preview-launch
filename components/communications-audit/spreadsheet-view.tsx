@@ -106,11 +106,30 @@ export default function SpreadsheetView({ initialData }: Props) {
     )
   }, [])
   const spreadsheet = useMemo(() => {
-    const podOrder = Array.from(
+    const podOrderUnsorted = Array.from(
       new Set(
         reports.map((r) => r.guild_name).filter((g): g is string => Boolean(g)),
       ),
     ).sort()
+    const PREFERRED_ORDER = [
+      'shalin // IXM',
+      'RAY & AUN POD // IXM',
+      'zuhair // IXM',
+      'yousuf // IXM',
+      'andrew // IXM',
+      'saad // IXM',
+      'brixton // IXM',
+      'ray & brixton // IXM',
+      'inti // IXM',
+    ]
+    const podOrder = [
+      ...PREFERRED_ORDER.filter((p) =>
+        podOrderUnsorted.some((x) => x && x.toLowerCase() === p),
+      ),
+      ...podOrderUnsorted.filter(
+        (p) => !PREFERRED_ORDER.includes(p.toLowerCase()),
+      ),
+    ]
     const podCategories = new Map<string, string[]>()
     const cells = new Map<string, SpreadsheetCell>()
     for (const r of reports) {
