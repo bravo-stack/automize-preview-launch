@@ -290,10 +290,58 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     }
   }, [data, selectedStatusFilter])
 
-  // right after spreadsheetData
+  const spreadsheetDataAll = useMemo(() => {
+    if (!data.length)
+      return { pods: [], podCategories: new Map(), cells: new Map() }
+
+    const podsWithData = Array.from(
+      new Set(data.map((report) => report.guild_name).filter(Boolean)),
+    ).sort()
+
+    const podCategories = new Map<string, string[]>()
+    const cells = new Map<string, SpreadsheetCell>()
+
+    data.forEach((report) => {
+      if (!report.category_name || !report.guild_name) return
+
+      const status = getStatus(report)
+
+      if (!podCategories.has(report.guild_name)) {
+        podCategories.set(report.guild_name, [])
+      }
+      const categories = podCategories.get(report.guild_name)!
+      if (!categories.includes(report.category_name)) {
+        categories.push(report.category_name)
+        categories.sort()
+      }
+
+      const key = `${report.guild_name}-${report.category_name}`
+
+      cells.set(key, {
+        categoryName: report.category_name,
+        podName: report.guild_name,
+        status,
+        channelName: report.channel_name || undefined,
+        report,
+      })
+    })
+
+    const filteredPods = podsWithData.filter((pod) => {
+      if (!pod) return false
+      const categories = podCategories.get(pod) || []
+      return categories.length > 0
+    })
+
+    return {
+      pods: filteredPods,
+      podCategories,
+      cells,
+    }
+  }, [data])
+
   const uniqueCategoryCells = useMemo(
-    () => Array.from(spreadsheetData.cells.values()),
-    [spreadsheetData],
+    () => Array.from(spreadsheetDataAll.cells.values()),
+    [spreadsheetDataAll],
   )
 
   const handleCellMouseDown = useCallback(
