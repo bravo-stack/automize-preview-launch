@@ -571,7 +571,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                         className="truncate font-bold text-white"
                         title={pod || ''}
                       >
-                        {`${pod} (${spreadsheetData.podCategories.get(pod)?.length || 0})`}
+                        {`${pod?.replace(' // IXM', '')} (${spreadsheetData.podCategories.get(pod)?.length || 0})`}
                       </div>
                     </th>
                   ))}
