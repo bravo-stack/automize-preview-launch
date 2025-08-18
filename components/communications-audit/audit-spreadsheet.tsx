@@ -32,7 +32,90 @@ interface SelectionRange {
   end: SelectedCell | null
 }
 
-export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
+type CategoryLevel = 1 | 2 | 3 | undefined
+
+const getStatusValue: (input: string) => CategoryLevel = (
+  input: string,
+): CategoryLevel => {
+  switch (input) {
+    case "IXM didn't reach out for 48 hours":
+      return 1
+    case 'Client silent for 5+ days':
+      return 2
+    case 'Client responded - awaiting team reply':
+      return 3
+    default:
+      return undefined
+  }
+}
+const COLORS = {
+  1: 'bg-red-500 text-white',
+  2: 'bg-amber-400 text-black',
+  3: 'bg-white text-black',
+  4: 'bg-gray-500 text-gray-100',
+}
+const getStatusColor = (status: string): string => {
+  switch (status) {
+    // Red: didn't reach out for 48 hours
+    case 'ixm_no_reach_48h':
+    case 'client_only_no_team':
+      return 'bg-red-500 text-white'
+
+    // White: clients responded to
+    case 'client_silent_5d':
+      return 'bg-amber-400 text-black'
+
+    case 'client_awaiting_team':
+    case 'active_communication':
+    case 'no_messages':
+    case 'team_only':
+      return 'bg-white text-black'
+
+    // Orange: Inactive
+    case 'inactive':
+      return 'bg-orange-500 text-white'
+
+    // Green: Transferred
+    case 'transferred':
+      return 'bg-green-500 text-white'
+
+    // Purple: Left Pod (Churned)
+    case 'churned':
+      return 'bg-purple-500 text-white'
+
+    default:
+      return 'bg-gray-400 text-white'
+  }
+}
+const getStatusLabel = (status: string): string => {
+  switch (status) {
+    case 'ixm_no_reach_48h':
+      return "Didn't reach out for 48 hours"
+    case 'client_silent_5d':
+      return 'Client Silent 5+ Days'
+    case 'client_awaiting_team':
+      return 'Client Awaiting Team'
+    case 'active_communication':
+      return 'Clients responded to'
+    case 'no_messages':
+      return 'No Messages Found'
+    case 'team_only':
+      return 'Team Only'
+    case 'client_only_no_team':
+      return 'Client Only - No Team'
+    case 'inactive':
+      return 'Inactive'
+    case 'transferred':
+      return 'Transferred'
+    case 'churned':
+      return 'Left Pod (Churned)'
+    default:
+      return 'Unknown Status'
+  }
+}
+
+export default function AuditSpreadsheet({ initialData }: Props) {
+  // STATES
   const [selectedDate, setSelectedDate] = useState(initialData.latestDate || '')
   const [data, setData] = useState<CommunicationReport[]>(initialData.reports)
   const [loading, setLoading] = useState(false)
@@ -46,10 +129,12 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   const [isSelecting, setIsSelecting] = useState(false)
   const tableRef = useRef<HTMLTableElement>(null)
 
+  // DATA INIT
+  console.log('data: ', initialData)
   const dates = initialData.availableDates
-  const pods = initialData.availablePods
   const hasData = initialData.availableDates.length > 0
 
+  // HOOKS
   const fetchData = useCallback(async () => {
     if (!selectedDate) return
 
@@ -74,46 +159,10 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       setLoading(false)
     }
   }, [selectedDate])
-
-  useEffect(() => {
-    if (selectedDate) {
-      fetchData()
-    }
-  }, [selectedDate, fetchData])
-
-  // Get status directly from the report status field
   const getStatus = (report: CommunicationReport): string => {
     if (!report.status) return 'unknown'
 
     const status = report.status.toLowerCase()
-
-    // Special handling for categories containing "-IXM"
-    // if (report.category_name && report.category_name.includes('-IXM')) {
-    //   // For -IXM categories, compute status based on actual timestamp data
-    //   const daysIxmSilent = report.days_since_ixm_message || 0
-    //   const daysTeamSilent = report.days_since_team_message || 0
-    //   const hasClientMessage = report.last_client_message_at !== null
-    //   const hasIxmMessage = report.last_ixm_message_at !== null
-    //   const hasTeamMessage = report.last_team_message_at !== null
-
-    //   // RED: Didn't reach out for 48 hours (2 days)
-    //   // Check if IXM/team hasn't messaged for 2+ days AND there are client messages
-    //   if (
-    //     hasClientMessage &&
-    //     (daysIxmSilent >= 2 || daysTeamSilent >= 2) &&
-    //     (!hasIxmMessage ||
-    //       !hasTeamMessage ||
-    //       daysIxmSilent >= 2 ||
-    //       daysTeamSilent >= 2)
-    //   ) {
-    //     return 'ixm_no_reach_48h' // RED: Didn't reach out for 48 hours
-    //   }
-    //   // WHITE: Clients responded to
-    //   // IXM/team has responded within 48 hours OR active communication
-    //   else {
-    //     return 'active_communication' // WHITE: Clients responded to
-    //   }
-    // }
 
     // Map the actual status values from the communication_reports.status field
     // Category-based statuses (high priority)
@@ -152,69 +201,6 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
     return 'active_communication'
   }
-
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      // Red: didn't reach out for 48 hours
-      case 'ixm_no_reach_48h':
-      case 'client_only_no_team':
-        return 'bg-red-500 text-white'
-
-      // White: clients responded to
-      case 'client_silent_5d':
-        return 'bg-amber-400 text-black'
-
-      case 'client_awaiting_team':
-      case 'active_communication':
-      case 'no_messages':
-      case 'team_only':
-        return 'bg-white text-black'
-
-      // Orange: Inactive
-      case 'inactive':
-        return 'bg-orange-500 text-white'
-
-      // Green: Transferred
-      case 'transferred':
-        return 'bg-green-500 text-white'
-
-      // Purple: Left Pod (Churned)
-      case 'churned':
-        return 'bg-purple-500 text-white'
-
-      default:
-        return 'bg-gray-400 text-white'
-    }
-  }
-
-  const getStatusLabel = (status: string): string => {
-    switch (status) {
-      case 'ixm_no_reach_48h':
-        return "Didn't reach out for 48 hours"
-      case 'client_silent_5d':
-        return 'Client Silent 5+ Days'
-      case 'client_awaiting_team':
-        return 'Client Awaiting Team'
-      case 'active_communication':
-        return 'Clients responded to'
-      case 'no_messages':
-        return 'No Messages Found'
-      case 'team_only':
-        return 'Team Only'
-      case 'client_only_no_team':
-        return 'Client Only - No Team'
-      case 'inactive':
-        return 'Inactive'
-      case 'transferred':
-        return 'Transferred'
-      case 'churned':
-        return 'Left Pod (Churned)'
-      default:
-        return 'Unknown Status'
-    }
-  }
-
-  // Create spreadsheet data structure
   const spreadsheetData = useMemo(() => {
     if (!data.length)
       return { pods: [], podCategories: new Map(), cells: new Map() }
@@ -289,7 +275,6 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       cells,
     }
   }, [data, selectedStatusFilter])
-
   const spreadsheetDataAll = useMemo(() => {
     if (!data.length)
       return { pods: [], podCategories: new Map(), cells: new Map() }
@@ -338,12 +323,10 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       cells,
     }
   }, [data])
-
   const uniqueCategoryCells = useMemo(
     () => Array.from(spreadsheetDataAll.cells.values()),
     [spreadsheetDataAll],
   )
-
   const handleCellMouseDown = useCallback(
     (podIndex: number, rowIndex: number, pod: string, category: string) => {
       setIsSelecting(true)
@@ -352,7 +335,6 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     },
     [],
   )
-
   const handleCellMouseEnter = useCallback(
     (podIndex: number, rowIndex: number, pod: string, category: string) => {
       if (isSelecting && selectionRange.start) {
@@ -362,11 +344,9 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     },
     [isSelecting, selectionRange.start],
   )
-
   const handleMouseUp = useCallback(() => {
     setIsSelecting(false)
   }, [])
-
   const isCellSelected = useCallback(
     (podIndex: number, rowIndex: number): boolean => {
       if (!selectionRange.start || !selectionRange.end) return false
@@ -397,7 +377,6 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     },
     [selectionRange],
   )
-
   const copySelectedCells = useCallback(() => {
     if (!selectionRange.start || !selectionRange.end) return
 
@@ -452,6 +431,12 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     }
   }, [selectionRange, spreadsheetData])
 
+  // SIDE EFFECTS
+  useEffect(() => {
+    if (selectedDate) {
+      fetchData()
+    }
+  }, [selectedDate, fetchData])
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectionRange.start) {
@@ -553,30 +538,15 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                 label: 'Clients responded',
                 color: 'bg-white text-black',
               },
-              // {
-              //   status: 'inactive',
-              //   label: 'Inactive',
-              //   color: 'bg-orange-500 text-white',
-              // },
-              // {
-              //   status: 'transferred',
-              //   label: 'Transferred',
-              //   color: 'bg-green-500 text-white',
-              // },
-              // {
-              //   status: 'churned',
-              //   label: 'Left Pod (Churned)',
-              //   color: 'bg-purple-500 text-white',
-              // },
             ].map(({ status, label, color }) => (
               <Badge
                 key={status}
                 className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
-                onClick={() =>
+                onClick={() => {
                   setSelectedStatusFilter(
                     selectedStatusFilter === status ? null : status,
                   )
-                }
+                }}
               >
                 {label}
               </Badge>
@@ -760,11 +730,6 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                             <td
                               key={`${pod}-${category}`}
                               className={`cursor-pointer border-r border-zinc-800/50 px-2 py-2 ${cell ? getStatusColor(cell.status) : 'bg-zinc-900/50'} ${isSelected ? 'ring-2 ring-inset ring-blue-400' : ''}`}
-                              // title={
-                              //   cell
-                              //     ? `Category: ${category}\nChannel: ${cell.channelName || 'No channel name'}\nStatus: ${getStatusLabel(cell.status)}\nLast Client Message: ${cell.report?.days_since_client_message || 0} days ago\nLast Team Message: ${cell.report?.days_since_team_message || 0} days ago`
-                              //     : `Category: ${category}\nNo data available`
-                              // }
                               onMouseDown={() =>
                                 handleCellMouseDown(
                                   podIndex,

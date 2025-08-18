@@ -1,4 +1,4 @@
-import CommunicationsAuditWrapper from '@/components/communications-audit/CommunicationsAuditWrapper'
+import SpreadsheetView from '@/components/communications-audit/spreadsheet-view'
 import { createAdminClient } from '@/lib/db/admin'
 import { createClient } from '@/lib/db/server'
 import type {
@@ -84,7 +84,8 @@ export default async function CommunicationsAudit() {
           }
         >
           {uniqueDates && uniqueDates.length > 0 ? (
-            <CommunicationsAuditWrapper initialData={auditData} />
+            // <AuditSpreadsheet initialData={auditData} />
+            <SpreadsheetView initialData={auditData} />
           ) : (
             <div className="flex min-h-[400px] items-center justify-center">
               <div className="max-w-lg rounded-xl border border-zinc-800/50 bg-gradient-to-br from-night-starlit to-night-moonlit p-8 text-center shadow-2xl">
