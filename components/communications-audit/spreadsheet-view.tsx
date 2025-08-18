@@ -141,6 +141,33 @@ export default function SpreadsheetView({ initialData }: Props) {
     () => Array.from(spreadsheet.cells.values()),
     [spreadsheet],
   )
+  const displaySpreadsheet = useMemo(() => {
+    if (!selectedStatusFilter) return spreadsheet
+    const podCategories = new Map<string, string[]>()
+    const pods: string[] = []
+    for (const pod of spreadsheet.pods) {
+      const cats = (spreadsheet.podCategories.get(pod) || []).filter((cat) => {
+        const cell = spreadsheet.cells.get(`${pod}-${cat}`)
+        return cell?.status === selectedStatusFilter
+      })
+      if (cats.length > 0) {
+        pods.push(pod)
+        podCategories.set(pod, cats)
+      }
+    }
+    return { pods, podCategories, cells: spreadsheet.cells }
+  }, [spreadsheet, selectedStatusFilter])
+  const displayUniqueCategoryCells = useMemo(() => {
+    const arr: SpreadsheetCell[] = []
+    for (const pod of displaySpreadsheet.pods) {
+      const cats = displaySpreadsheet.podCategories.get(pod) || []
+      for (const cat of cats) {
+        const cell = displaySpreadsheet.cells.get(`${pod}-${cat}`)
+        if (cell) arr.push(cell)
+      }
+    }
+    return arr
+  }, [displaySpreadsheet])
   const startSelection = useCallback(
     (podIndex: number, rowIndex: number, pod: string, category: string) => {
       setIsSelecting(true)
@@ -314,7 +341,7 @@ export default function SpreadsheetView({ initialData }: Props) {
       {uniqueCategoryCells.length > 0 && (
         <div className="flex items-center justify-between">
           <div className="text-lg font-semibold text-white">
-            Clients: {uniqueCategoryCells.length}
+            Clients: {displayUniqueCategoryCells.length}
           </div>
         </div>
       )}
@@ -331,7 +358,7 @@ export default function SpreadsheetView({ initialData }: Props) {
             >
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-zinc-700">
-                  {spreadsheet.pods.map((pod) => (
+                  {displaySpreadsheet.pods.map((pod) => (
                     <th
                       key={pod}
                       className="min-w-[200px] border-r border-zinc-700 bg-zinc-800/90 px-4 py-3 text-center text-sm font-medium text-zinc-300 backdrop-blur-sm"
@@ -349,8 +376,9 @@ export default function SpreadsheetView({ initialData }: Props) {
               <tbody>
                 {(() => {
                   const maxCategories = Math.max(
-                    ...spreadsheet.pods.map(
-                      (pod) => spreadsheet.podCategories.get(pod)?.length || 0,
+                    ...displaySpreadsheet.pods.map(
+                      (pod) =>
+                        displaySpreadsheet.podCategories.get(pod)?.length || 0,
                     ),
                     0,
                   )
@@ -361,9 +389,9 @@ export default function SpreadsheetView({ initialData }: Props) {
                         key={rowIndex}
                         className={`border-b border-zinc-800/50 ${rowIndex % 2 === 0 ? 'bg-zinc-900/30' : 'bg-zinc-900/10'}`}
                       >
-                        {spreadsheet.pods.map((pod, podIndex) => {
+                        {displaySpreadsheet.pods.map((pod, podIndex) => {
                           const categories =
-                            spreadsheet.podCategories.get(pod) || []
+                            displaySpreadsheet.podCategories.get(pod) || []
                           const category = categories[rowIndex]
                           if (!category) {
                             return (
@@ -380,7 +408,7 @@ export default function SpreadsheetView({ initialData }: Props) {
                             )
                           }
                           const cellKey = `${pod}-${category}`
-                          const cell = spreadsheet.cells.get(cellKey)
+                          const cell = displaySpreadsheet.cells.get(cellKey)
                           const isSelected = isCellSelected(podIndex, rowIndex)
                           const style = cell
                             ? STATUS_STYLE[cell.status]
