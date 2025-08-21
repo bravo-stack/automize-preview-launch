@@ -136,6 +136,7 @@ function customPodSort(a: string, b: string): number {
 
 export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   // STATES
+  const [start, setStart] = useState(true)
   const [selectedDate, setSelectedDate] = useState(initialData.latestDate || '')
   const [data, setData] = useState<CommunicationReport[]>(initialData.reports)
   const [loading, setLoading] = useState(false)
@@ -162,7 +163,13 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         report_date: selectedDate,
       })
 
-      const response = await fetch(`/api/communications-audit?${params}`)
+      const response = await fetch(
+        `/api/communications-audit?${params}&ts=${Date.now()}`,
+        {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-store' },
+        },
+      )
 
       if (!response.ok) {
         throw new Error('Failed to fetch data')
@@ -230,6 +237,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       cells,
     }
   }, [data])
+
   const spreadsheetData = useMemo(() => {
     if (!selectedStatusFilter) {
       return baseSpreadsheetData
@@ -375,8 +383,9 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
   // SIDE EFFECTS
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && (selectedDate !== initialData.latestDate || !start)) {
       fetchData()
+      setStart(false)
     }
   }, [selectedDate, fetchData])
   useEffect(() => {
