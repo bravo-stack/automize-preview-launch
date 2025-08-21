@@ -7,12 +7,18 @@ import type {
   CommunicationsAuditData,
   Pod,
 } from '@/types/communications-audit'
+import { unstable_noStore } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'default-no-store'
 
 export default async function CommunicationsAudit() {
   const authDb = createClient()
   const db = await createAdminClient()
+  unstable_noStore()
 
   const {
     data: { user },
