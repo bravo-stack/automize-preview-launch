@@ -38,13 +38,13 @@ html {
 
 ::-moz-selection {
   /* Code for Firefox */
-  color: black;
-  background: white;
+  color: #f0f0f0;
+  background: #232323;
 }
 
 ::selection {
-  color: black;
-  background: white;
+  color: #f0f0f0;
+  background: #232323;
 }
 
 input {

@@ -1,4 +1,5 @@
 import AuditSpreadsheet from '@/components/communications-audit/audit-spreadsheet'
+import RevalidateButton from '@/components/revalidate-button'
 import { createAdminClient } from '@/lib/db/admin'
 import { createClient } from '@/lib/db/server'
 import type {
@@ -70,6 +71,7 @@ export default async function CommunicationsAudit() {
               Monitor client communication status across all pods
             </p>
           </div>
+          <RevalidateButton />
           <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent"></div>
         </header>
 

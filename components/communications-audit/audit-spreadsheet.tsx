@@ -64,10 +64,10 @@ const STATUS_PATTERNS: Array<[NormalizedStatus, RegExp[]]> = [
   ['client_only_no_team', [/client only - no team response/i, /client only/i]],
 ]
 const STATUS_COLORS: StatusColorMap = {
-  ixm_no_reach_48h: 'bg-red-500 text-white',
-  client_only_no_team: 'bg-red-500 text-white', // optional alias if needed
+  ixm_no_reach_48h: 'bg-amber-500 text-black',
+  client_only_no_team: 'bg-amber-500 text-black', // optional alias if needed
 
-  client_silent_5d: 'bg-amber-400 text-black',
+  client_silent_5d: 'bg-red-500 text-black',
 
   client_awaiting_team: 'bg-white text-black',
   active_communication: 'bg-white text-black',
@@ -440,13 +440,13 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                 status: 'ixm_no_reach_48h',
                 raw: `IXM didn't reach out for 48 hours`,
                 label: "Didn't reach out for 48 hours",
-                color: 'bg-red-500 text-white',
+                color: 'bg-amber-500 text-black',
               },
               {
                 status: 'client_silent_5d',
                 raw: 'Client silent for 5+ days',
                 label: 'Client Silent 5+ Days',
-                color: 'bg-amber-400 text-black',
+                color: 'bg-red-500 text-black',
               },
               {
                 status: 'active_communication',
@@ -483,12 +483,12 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
             {
               status: 'ixm_no_reach_48h',
               label: `Didn't reach out`,
-              color: 'bg-red-500 text-white',
+              color: 'bg-amber-500 text-black',
             },
             {
               status: 'client_silent_5d',
               label: 'Client Silent 5+ Days',
-              color: 'bg-amber-400 text-black',
+              color: 'bg-red-500 text-black',
             },
             {
               status: 'active_communication',
