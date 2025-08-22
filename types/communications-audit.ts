@@ -60,3 +60,4 @@ export type StatusFilter =
   | 'inactive'
   | 'transferred'
   | 'churned'
+  | 'imessage'

@@ -22,6 +22,7 @@ type NormalizedStatus =
   | 'no_messages'
   | 'team_only'
   | 'client_only_no_team'
+  | 'imessage'
 type StatusColorMap = Record<NormalizedStatus | 'default', string>
 interface Props {
   initialData: CommunicationsAuditData
@@ -48,6 +49,8 @@ const STATUS_PATTERNS: Array<[NormalizedStatus, RegExp[]]> = [
   ['inactive', [/^inactive$/i]],
   ['transferred', [/^transferred$/i]],
   ['churned', [/^churned$/i]],
+
+  ['imessage', [/imessage/i]],
 
   [
     'ixm_no_reach_48h',
@@ -77,6 +80,8 @@ const STATUS_COLORS: StatusColorMap = {
   inactive: 'bg-orange-500 text-white',
   transferred: 'bg-green-500 text-white',
   churned: 'bg-purple-500 text-white',
+
+  imessage: 'bg-blue-500 text-white',
 
   unknown: 'bg-gray-400 text-white', // from getStatus fallback
   default: 'bg-gray-400 text-white',
