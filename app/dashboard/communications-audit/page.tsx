@@ -1,4 +1,5 @@
 import AuditSpreadsheet from '@/components/communications-audit/audit-spreadsheet'
+import RevalidateButton from '@/components/revalidate-button'
 import { createAdminClient } from '@/lib/db/admin'
 import { createClient } from '@/lib/db/server'
 import type {
@@ -6,12 +7,18 @@ import type {
   CommunicationsAuditData,
   Pod,
 } from '@/types/communications-audit'
+import { unstable_noStore } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'default-no-store'
 
 export default async function CommunicationsAudit() {
   const authDb = createClient()
   const db = await createAdminClient()
+  unstable_noStore()
 
   const {
     data: { user },
@@ -70,6 +77,7 @@ export default async function CommunicationsAudit() {
               Monitor client communication status across all pods
             </p>
           </div>
+          <RevalidateButton />
           <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent"></div>
         </header>
 

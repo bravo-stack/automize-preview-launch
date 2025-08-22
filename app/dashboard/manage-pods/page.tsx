@@ -1,9 +1,9 @@
+import UpdateItem from '@/components/actions/update-item'
+import Section from '@/components/common/section'
 import { createClient } from '@/lib/db/server'
 import Link from 'next/link'
-import UpdateItem from '@/components/actions/update-item'
 import CreateAccount from './create-user'
 import DeleteUser from './delete-user'
-import Section from '@/components/common/section'
 import UpdateClientPod from './update-pod'
 
 export default async function ManagePodsPage({ searchParams }) {
@@ -22,7 +22,7 @@ export default async function ManagePodsPage({ searchParams }) {
 
   const { data: pods } = await db
     .from('pod')
-    .select('id, name, discord_id, user_id')
+    .select('id, name, discord_id, user_id, servers')
     .order('name')
   const { data: podAccounts } = await db
     .from('pod')
@@ -96,7 +96,11 @@ export default async function ManagePodsPage({ searchParams }) {
                     <DeleteUser user_id={p.user_id} />
                     <UpdateItem
                       id={p.id}
-                      data={{ name: p.name, discord_id: p.discord_id }}
+                      data={{
+                        name: p.name,
+                        discord_id: p.discord_id,
+                        servers: p.servers,
+                      }}
                       inputs={[
                         {
                           name: 'name',
