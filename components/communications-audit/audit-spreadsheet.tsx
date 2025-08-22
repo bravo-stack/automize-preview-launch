@@ -50,7 +50,7 @@ const STATUS_PATTERNS: Array<[NormalizedStatus, RegExp[]]> = [
   ['transferred', [/^transferred$/i]],
   ['churned', [/^churned$/i]],
 
-  ['imessage', [/imessage/i]],
+  ['imessage', [/^imessage$/i]],
 
   [
     'ixm_no_reach_48h',
