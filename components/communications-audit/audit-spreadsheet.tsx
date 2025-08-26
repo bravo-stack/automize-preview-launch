@@ -461,7 +461,7 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
           match.setAttribute('data-highlight', 'false')
         }
       })
-    }, 700)
+    }, 500)
 
     return () => clearTimeout(handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
