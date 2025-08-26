@@ -392,7 +392,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       fetchData()
       setStart(false)
     }
-  }, [selectedDate, fetchData])
+  }, [selectedDate, fetchData, initialData.latestDate, start])
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectionRange.start) {
