@@ -19,8 +19,8 @@ const Highlighter = ({ text, query }: Props) => {
         query && new RegExp(query, 'gi').test(part) ? (
           <span
             key={i}
-            data-highlight="true"
-            className="inline-flex items-center justify-center bg-pink-500 px-0 py-0.5 text-white data-[highlight=true]:bg-cyan-500 data-[highlight=true]:text-white"
+            data-highlight="false"
+            className="inline-flex items-center justify-center px-0 py-0 data-[highlight=false]:bg-cyan-300 data-[highlight=true]:bg-black data-[highlight=false]:text-gray-800 data-[highlight=true]:text-gray-100"
           >
             {part}
           </span>

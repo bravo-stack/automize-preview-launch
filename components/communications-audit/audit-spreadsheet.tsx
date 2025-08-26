@@ -8,12 +8,10 @@ import type {
   CommunicationsAuditData,
 } from '@/types/communications-audit'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button } from '../ui/button'
-import { Input } from '../ui/input'
-import { Label } from '../ui/label'
 import EmptyData from './empty-data'
 import Highlighter from './highlighter'
 import LoadingView from './loading-view'
+import SearchInput from './search-input'
 
 type NormalizedStatus =
   | 'unknown'
@@ -167,8 +165,11 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   const hasData = initialData.availableDates.length > 0
 
   // HOOKS
-  useSearchNavigation(matches, currentIndex, setCurrentIndex)
-
+  const { goToNextMatch, goToPrevMatch } = useSearchNavigation(
+    matches,
+    currentIndex,
+    setCurrentIndex,
+  )
   const fetchData = useCallback(async () => {
     if (!selectedDate) return
 
@@ -423,18 +424,6 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     }
   }, [copySelectedCells, handleMouseUp, selectionRange.start])
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Works cross-platform: Ctrl on Windows/Linux, Cmd on macOS
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
-        e.preventDefault()
-        document.getElementById('custom-search-input')?.focus()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-  useEffect(() => {
     const handler = setTimeout(() => {
       if (!searchQuery) {
         setMatches([])
@@ -443,7 +432,7 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       }
 
       const found = Array.from(
-        document.querySelectorAll<HTMLElement>("span[data-highlight='true']"),
+        document.querySelectorAll<HTMLElement>("span[data-highlight='false']"),
       )
 
       setMatches(found)
@@ -451,7 +440,11 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
       if (found.length > 0) {
         found[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
-        found[0].setAttribute('data-highlight', 'true')
+      }
+
+      const el = found[0]
+      if (el instanceof HTMLElement) {
+        el.setAttribute('data-highlight', 'true')
       }
 
       matches.forEach((match, i) => {
@@ -465,7 +458,7 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
     return () => clearTimeout(handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery])
+  }, [searchQuery, selectedStatusFilter])
 
   if (!hasData) {
     return <EmptyData />
@@ -473,24 +466,17 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex w-full flex-col gap-2">
-        <Label htmlFor="custom-search-input">{`Search for Clients${matches.length > 0 ? ': found ' + matches.length + ' Clients with the matching name' : ''}`}</Label>
-        <div className="flex w-full items-center gap-2">
-          <Input
-            id="custom-search-input"
-            type="text"
-            autoComplete="off"
-            autoCorrect="off"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Enter client name..."
-            className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-white"
-          />
-          <Button onClick={() => setSearchQuery('')} disabled={!searchQuery}>
-            Clear search
-          </Button>
-        </div>
-      </div>
+      <SearchInput
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        matches={matches}
+        onPrevClick={goToPrevMatch}
+        onNextClick={goToNextMatch}
+        isPreviousDisabled={currentIndex === 0 || matches.length === 0}
+        isNextDisabled={
+          currentIndex === matches.length - 1 || matches.length === 0
+        }
+      />
 
       {/* Date Selector & Legend */}
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
