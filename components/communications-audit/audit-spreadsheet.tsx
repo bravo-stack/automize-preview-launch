@@ -2,13 +2,16 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import useSearchNavigation from '@/hooks/use-search-navigation'
 import type {
   CommunicationReport,
   CommunicationsAuditData,
 } from '@/types/communications-audit'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import EmptyData from './empty-data'
+import Highlighter from './highlighter'
 import LoadingView from './loading-view'
+import SearchInput from './search-input'
 
 type NormalizedStatus =
   | 'unknown'
@@ -139,8 +142,11 @@ function customPodSort(a: string, b: string): number {
   return a.localeCompare(b) // Neither is in the list, sort alphabetically
 }
 
-export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
+function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   // STATES
+  const [searchQuery, setSearchQuery] = useState('')
+  const [matches, setMatches] = useState<Element[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
   const [start, setStart] = useState(true)
   const [selectedDate, setSelectedDate] = useState(initialData.latestDate || '')
   const [data, setData] = useState<CommunicationReport[]>(initialData.reports)
@@ -159,6 +165,11 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   const hasData = initialData.availableDates.length > 0
 
   // HOOKS
+  const { goToNextMatch, goToPrevMatch } = useSearchNavigation(
+    matches,
+    currentIndex,
+    setCurrentIndex,
+  )
   const fetchData = useCallback(async () => {
     if (!selectedDate) return
 
@@ -392,7 +403,7 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       fetchData()
       setStart(false)
     }
-  }, [selectedDate, fetchData])
+  }, [selectedDate, fetchData, initialData.latestDate, start])
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectionRange.start) {
@@ -412,6 +423,42 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [copySelectedCells, handleMouseUp, selectionRange.start])
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (!searchQuery) {
+        setMatches([])
+        setCurrentIndex(0)
+        return
+      }
+
+      const found = Array.from(
+        document.querySelectorAll<HTMLElement>("span[data-highlight='false']"),
+      )
+
+      setMatches(found)
+      setCurrentIndex(0)
+
+      if (found.length > 0) {
+        found[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+
+      const el = found[0]
+      if (el instanceof HTMLElement) {
+        el.setAttribute('data-highlight', 'true')
+      }
+
+      matches.forEach((match, i) => {
+        if (i === 0) return
+
+        if (match instanceof HTMLElement) {
+          match.setAttribute('data-highlight', 'false')
+        }
+      })
+    }, 500)
+
+    return () => clearTimeout(handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, selectedStatusFilter])
 
   if (!hasData) {
     return <EmptyData />
@@ -419,6 +466,18 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
   return (
     <div className="space-y-6">
+      <SearchInput
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        matches={matches}
+        onPrevClick={goToPrevMatch}
+        onNextClick={goToNextMatch}
+        isPreviousDisabled={currentIndex === 0 || matches.length === 0}
+        isNextDisabled={
+          currentIndex === matches.length - 1 || matches.length === 0
+        }
+      />
+
       {/* Date Selector & Legend */}
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
@@ -662,7 +721,10 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                                   className="truncate text-center text-xs font-medium"
                                   title={category}
                                 >
-                                  {category.replace('-IXM', '')}
+                                  <Highlighter
+                                    text={category.replace('-IXM', '')}
+                                    query={searchQuery}
+                                  />
                                 </div>
                               </div>
                             </td>
@@ -680,3 +742,5 @@ export default function CommunicationsAuditSpreadsheet({ initialData }: Props) {
     </div>
   )
 }
+
+export default memo(CommunicationsAuditSpreadsheet)
