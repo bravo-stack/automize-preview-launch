@@ -621,6 +621,37 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         <div className="text-lg font-semibold text-white">
           Clients: {spreadsheetData.cells.size}
         </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {[
+            {
+              status: 'imessage',
+              raw: `imessage`,
+              label: 'IMessage Clients',
+              color: 'bg-blue-500 text-white',
+            },
+            {
+              status: 'churned',
+              raw: 'churned',
+              label: 'Churned Clients',
+              color: 'bg-purple-500 text-white',
+            },
+          ].map(({ status, raw, label, color }) => (
+            <Badge
+              key={status}
+              className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
+              onClick={() =>
+                setSelectedStatusFilter(
+                  selectedStatusFilter === resolveStatus(raw)
+                    ? null
+                    : resolveStatus(raw),
+                )
+              }
+            >
+              {label}
+            </Badge>
+          ))}
+        </div>
       </div>
 
       {loading ? (
