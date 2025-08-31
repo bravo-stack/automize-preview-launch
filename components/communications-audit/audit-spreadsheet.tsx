@@ -622,35 +622,38 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
           Clients: {spreadsheetData.cells.size}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {[
-            {
-              status: 'imessage',
-              raw: `imessage`,
-              label: 'IMessage Clients',
-              color: 'bg-blue-500 text-white',
-            },
-            {
-              status: 'churned',
-              raw: 'churned',
-              label: 'Churned Clients',
-              color: 'bg-purple-500 text-white',
-            },
-          ].map(({ status, raw, label, color }) => (
-            <Badge
-              key={status}
-              className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
-              onClick={() =>
-                setSelectedStatusFilter(
-                  selectedStatusFilter === resolveStatus(raw)
-                    ? null
-                    : resolveStatus(raw),
-                )
-              }
-            >
-              {label}
-            </Badge>
-          ))}
+        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-6 sm:space-y-0">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-zinc-400">Extra Legends:</span>
+            {[
+              {
+                status: 'imessage',
+                raw: `imessage`,
+                label: 'IMessage Clients',
+                color: 'bg-blue-500 text-white',
+              },
+              {
+                status: 'churned',
+                raw: 'churned',
+                label: 'Churned Clients',
+                color: 'bg-purple-500 text-white',
+              },
+            ].map(({ status, raw, label, color }) => (
+              <Badge
+                key={status}
+                className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
+                onClick={() =>
+                  setSelectedStatusFilter(
+                    selectedStatusFilter === resolveStatus(raw)
+                      ? null
+                      : resolveStatus(raw),
+                  )
+                }
+              >
+                {label}
+              </Badge>
+            ))}
+          </div>
         </div>
       </div>
 
