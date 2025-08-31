@@ -629,13 +629,13 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
               {
                 status: 'imessage',
                 raw: `imessage`,
-                label: 'IMessage Clients',
+                label: 'View IMessage Clients',
                 color: 'bg-blue-500 text-white',
               },
               {
                 status: 'churned',
                 raw: 'churned',
-                label: 'Churned Clients',
+                label: 'View Churned Clients',
                 color: 'bg-purple-500 text-white',
               },
             ].map(({ status, raw, label, color }) => (
