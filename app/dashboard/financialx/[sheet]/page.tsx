@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/db/server'
 import SheetInfo from './SheetInfo'
 
+export const maxDuration = 60
+
 export default async function Sheet({ params }: { params: { sheet: string } }) {
   const db = createClient()
 
