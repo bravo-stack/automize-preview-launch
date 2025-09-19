@@ -27,7 +27,7 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
     router.push('/dashboard/autometric')
   }
 
-  const handleDataRefresh: () => Promise<void> = async () => {
+  const handleDataRefresh = async () => {
     const sheetID = sheet.sheet_id
     const datePreset = sheet.refresh
 
