@@ -2,11 +2,21 @@ import AddStore from '@/components/AddStore'
 import FinancialX from '@/components/FinancialX'
 import StoreList from '@/components/StoreList'
 import { createClient } from '@/lib/db/server'
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
 export const maxDuration = 60
 
 export default async function FinancialXPage() {
   const db = createClient()
+
+  const {
+    data: { user },
+  } = await db.auth.getUser()
+
+  if (!user) {
+    redirect('/')
+  }
 
   const { data: stores } = await db
     .from('clients')
@@ -15,24 +25,85 @@ export default async function FinancialXPage() {
     .neq('store_id', null)
     .eq('status', 'active')
 
+  const { data: sheets } = await db
+    .from('sheets')
+    .select('*')
+    .eq('is_finance', true)
+
   return (
     <main className="gap-10 px-6 py-28 lg:px-12 lg:py-12">
-      <div className="space-y-10 rounded-md bg-night-starlit p-5 lg:p-10">
+      <div className="space-y-10 rounded-2xl border bg-night-starlit p-5 lg:p-10">
         <div className="flex justify-between">
-          <h2 className="text-lg font-semibold">Shopify Store List</h2>
+          <h2 className="text-2xl font-semibold">FinanceX Overview</h2>
 
           <div className="flex items-center gap-2">
             <a
-              className="underline"
+              className="rounded px-2 py-1.5 underline"
               href="https://docs.google.com/spreadsheets/d/19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY/"
               target="_blank"
               rel="noopener"
             >
-              Visit Financials Sheet
+              Visit Main Financials Sheet
             </a>
-            <FinancialX stores={stores ?? []} batchStores />
+            <FinancialX stores={stores ?? []} batchStores main />
             <AddStore />
           </div>
+        </div>
+
+        <div className="p-5">
+          <div className="mb-5 flex gap-3">
+            <div className="flex w-full items-center gap-2 border-b-2 border-zinc-800 bg-night-starlit py-1 text-lg font-medium">
+              Finance Time Frames
+            </div>
+
+            {/* <CreateSheet user={user} finance={true} /> */}
+          </div>
+
+          <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {sheets
+              ?.sort((a, b) => {
+                // Define order for time periods
+                const timeOrder = {
+                  today: 1,
+                  yesterday: 2,
+                  last_3d: 3,
+                  last_7d: 4,
+                  last_14d: 5,
+                  last_30d: 6,
+                  this_month: 7,
+                  maximum: 8,
+                }
+
+                // Sort by the predefined order
+                return (
+                  timeOrder[a.refresh.toLowerCase()] -
+                  timeOrder[b.refresh.toLowerCase()]
+                )
+              })
+              .map((sheet, index) => {
+                const href = `/dashboard/financialx/${sheet.sheet_id}`
+
+                return (
+                  <li
+                    key={index}
+                    className="group rounded-lg border border-zinc-800 bg-night-starlit transition-colors hover:border-zinc-700"
+                  >
+                    <Link href={href} className="block h-full w-full p-3">
+                      <h4>{sheet.title}</h4>
+                      <h5 className="mb-3 overflow-clip text-ellipsis text-sm text-zinc-400 hover:underline">
+                        <span>
+                          docs.google.com/spreadsheets/d/{sheet.sheet_id}/edit
+                        </span>
+                      </h5>
+
+                      <p className="mt-3 text-sm">
+                        Data refreshes {sheet.refresh.toLowerCase()}
+                      </p>
+                    </Link>
+                  </li>
+                )
+              })}
+          </ul>
         </div>
 
         <StoreList stores={stores ?? []} />

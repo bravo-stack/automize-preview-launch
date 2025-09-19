@@ -20,6 +20,21 @@ export const templates = [
     ],
   ],
   [['Name', 'ROAS', 'Impressions']],
+  [
+    [
+      'Name',
+      'Pod',
+      'Revenue',
+      'Ad spend',
+      'Revenue since rebill',
+      'Ad spend since rebill',
+      'ROAS',
+      'ROAS since rebill',
+      'Is Rebillable',
+      'Last Rebill Date',
+      'Next Rebill',
+    ],
+  ],
 ]
 
 export function getTemplateById(id: number) {

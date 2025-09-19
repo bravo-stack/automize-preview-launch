@@ -49,10 +49,17 @@ html {
 
 input {
   outline: none;
+  background: #ffffff;
+}
+
+select {
+  outline: none;
+  background: #ffffff;
 }
 
 textarea {
   outline: none;
+  background: #ffffff;
 }
 
 ::-webkit-scrollbar {

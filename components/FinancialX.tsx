@@ -9,10 +9,12 @@ export default function FinancialX({
   stores,
   sheetId,
   batchStores = false,
+  main = false,
 }: {
   stores: any[]
   sheetId?: string
   batchStores?: boolean
+  main?: boolean
 }) {
   const [notificationState, setNotificationState] = useState<{
     state: string
@@ -211,7 +213,7 @@ export default function FinancialX({
   return (
     <>
       <button onClick={handleRefresh} className="rounded border px-2 py-1.5">
-        Refresh FinanceX
+        Refresh {main && 'Main'} Finance Sheet
       </button>
 
       {notificationState && (

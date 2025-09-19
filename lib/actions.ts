@@ -114,10 +114,17 @@ export async function createSheet(
   const permissionId = await getPermissionId(drive, sheet_id, email)
   const res2Data = await updatePermission(drive, sheet_id, permissionId)
 
-  const { user_id, frequency, templateId } = sheetData
+  const { user_id, frequency, templateId, is_finance } = sheetData
   const { data, error } = await db
     .from('sheets')
-    .insert({ title, user_id, refresh: frequency, sheet_id, pod: pod || '' })
+    .insert({
+      title,
+      user_id,
+      refresh: frequency,
+      sheet_id,
+      pod: pod || '',
+      is_finance,
+    })
     .select()
 
   if (templateId) {
@@ -228,7 +235,11 @@ export async function updateStore(storeData: any) {
   }
 }
 
-export async function fetchShopify(stores: any[], rebill?: boolean) {
+export async function fetchShopify(
+  stores: any[],
+  rebill?: boolean,
+  datePreset?: string,
+) {
   const fetchOrders = async (
     store_id: string,
     key: string,
@@ -240,10 +251,43 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
       return new Date(dateString + 'T00:00:00.000Z')
     }
 
+    function getDateFromPreset(preset: string): Date {
+      const date = new Date()
+      switch (preset) {
+        case 'today':
+          return date
+        case 'yesterday':
+          date.setDate(date.getDate() - 1)
+          return date
+        case 'last_3d':
+          date.setDate(date.getDate() - 3)
+          return date
+        case 'last_7d':
+          date.setDate(date.getDate() - 7)
+          return date
+        case 'last_14d':
+          date.setDate(date.getDate() - 14)
+          return date
+        case 'last_30d':
+          date.setDate(date.getDate() - 30)
+          return date
+        case 'this_month':
+          return new Date(date.getFullYear(), date.getMonth(), 1)
+        case 'maximum':
+          date.setFullYear(date.getFullYear() - 1)
+          return date
+        default:
+          date.setDate(date.getDate() - 30)
+          return date
+      }
+    }
+
     let queryDate: Date
 
     if (rebill && last_rebill) {
       queryDate = parseRebillDateToDate(last_rebill)
+    } else if (datePreset && datePreset !== 'none') {
+      queryDate = getDateFromPreset(datePreset)
     } else {
       queryDate = new Date()
       queryDate.setDate(queryDate.getDate() - 30)
@@ -255,6 +299,7 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
     let cursor = null
     let totalAmount = 0
     let totalOrders = 0
+    let lastError: string | null = null
 
     while (hasNextPage) {
       const query: string = `
@@ -289,6 +334,22 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
 
         const data = await result.json()
 
+        // Check if there's an error in the response
+        if (data.errors) {
+          console.error(`Shopify API error for store ${store_id}:`, data.errors)
+          lastError = 'API Error'
+          hasNextPage = false
+          break
+        }
+
+        // Check if data structure is as expected
+        if (!data.data || !data.data.orders) {
+          console.error(`Unexpected data structure for store ${store_id}`)
+          lastError = 'Invalid Response'
+          hasNextPage = false
+          break
+        }
+
         const orders = data.data.orders.edges
         totalOrders += orders.length
 
@@ -301,12 +362,17 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
           cursor = orders[orders.length - 1].cursor
         }
       } catch (error) {
-        console.error(`Error fetching data for store ${store_id}.`)
+        console.error(
+          `Network error fetching data for store ${store_id}:`,
+          error,
+        )
+        lastError = 'Network Error'
         hasNextPage = false
+        break
       }
     }
 
-    return { totalOrders, totalAmount }
+    return { totalOrders, totalAmount, error: lastError }
   }
 
   const calculateRevenue = async () => {
@@ -314,6 +380,16 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
       stores.map(async (store) => {
         try {
           const { store_id, shopify_key, brand } = store
+
+          // Check if required fields are present
+          if (!store_id || !shopify_key) {
+            return {
+              name: brand || 'Unknown Store',
+              revenue: 'Missing Store Credentials',
+              lastRebill: store.rebill_date,
+            }
+          }
+
           const decryptedKey = decrypt(shopify_key)
 
           let res
@@ -323,19 +399,47 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
             res = await fetchOrders(store_id, decryptedKey)
           }
 
+          // Handle specific error types
+          if (res.error) {
+            return {
+              name: brand,
+              revenue:
+                res.error === 'API Error'
+                  ? 'Shopify API Error'
+                  : res.error === 'Invalid Response'
+                    ? 'Invalid Shopify Response'
+                    : res.error === 'Network Error'
+                      ? 'Network Connection Error'
+                      : 'Could Not Retrieve',
+              lastRebill: store.rebill_date,
+            }
+          }
+
           const totalOrders = res.totalOrders
           const totalAmount = res.totalAmount
 
+          // More specific messaging for no data scenarios
+          if (totalOrders === 0 && totalAmount === 0) {
+            return {
+              name: brand,
+              revenue: 'No Orders Found',
+              lastRebill: store.rebill_date,
+            }
+          }
+
           const AOV = totalOrders > 0 ? totalAmount / totalOrders : 0
           const revenue =
-            totalOrders > 0 ? totalOrders * AOV : 'Could not retrieve'
+            totalOrders > 0 ? totalOrders * AOV : 'No Revenue Data'
 
           return { name: brand, revenue, lastRebill: store.rebill_date }
         } catch (error) {
-          console.error(`Error processing store ${store.store_id}.`)
+          console.error(
+            `Unexpected error processing store ${store.store_id}:`,
+            error,
+          )
           return {
             name: store.brand,
-            revenue: 'Error fetching data',
+            revenue: 'Processing Error',
             lastRebill: store.rebill_date,
           }
         }
@@ -348,7 +452,11 @@ export async function fetchShopify(stores: any[], rebill?: boolean) {
   return await calculateRevenue()
 }
 
-export async function fetchFacebook(stores: any[], rebill?: boolean) {
+export async function fetchFacebook(
+  stores: any[],
+  rebill?: boolean,
+  datePreset?: string,
+) {
   const FACEBOOK_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN
   const fields = `spend,purchase_roas`
 
@@ -358,29 +466,76 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
     pod: string,
     rebill?: string,
   ) {
-    const dateParam = rebill
-      ? `&time_range[since]=${rebill}&time_range[until]=${new Date().toISOString().split('T')[0]}`
-      : '&date_preset=last_30d'
+    let dateParam: string
+    if (rebill) {
+      dateParam = `&time_range[since]=${rebill}&time_range[until]=${new Date().toISOString().split('T')[0]}`
+    } else if (datePreset && datePreset !== 'none') {
+      dateParam = `&date_preset=${datePreset}`
+    } else {
+      dateParam = '&date_preset=last_30d'
+    }
     const url = `https://graph.facebook.com/v11.0/${accountId}/insights?access_token=${FACEBOOK_ACCESS_TOKEN}&fields=${fields}${dateParam}`
 
     try {
       const response = await fetch(url)
       if (!response.ok) {
-        return {
-          name,
-          pod,
-          roas: 'Missing Permissions or Incorrect ID',
-          spend: 'Missing Permissions or Incorrect ID',
+        // More specific error messages based on status codes
+        if (response.status === 401) {
+          return {
+            name,
+            pod,
+            roas: 'Invalid Access Token',
+            spend: 'Invalid Access Token',
+          }
+        } else if (response.status === 403) {
+          return {
+            name,
+            pod,
+            roas: 'Access Forbidden',
+            spend: 'Access Forbidden',
+          }
+        } else if (response.status === 404) {
+          return {
+            name,
+            pod,
+            roas: 'Account Not Found',
+            spend: 'Account Not Found',
+          }
+        } else if (response.status === 429) {
+          return {
+            name,
+            pod,
+            roas: 'Rate Limit Exceeded',
+            spend: 'Rate Limit Exceeded',
+          }
+        } else {
+          return {
+            name,
+            pod,
+            roas: `HTTP Error ${response.status}`,
+            spend: `HTTP Error ${response.status}`,
+          }
         }
       }
 
       const data = await response.json()
+
+      // Check for Facebook API errors
+      if (data.error) {
+        return {
+          name,
+          pod,
+          roas: `FB API Error: ${data.error.message}`,
+          spend: `FB API Error: ${data.error.message}`,
+        }
+      }
+
       if (!data.data || data.data.length === 0) {
         return {
           name,
           pod,
-          roas: 'No Data',
-          spend: 'No Data',
+          roas: 'No Data Available',
+          spend: 'No Data Available',
         }
       }
 
@@ -390,16 +545,17 @@ export async function fetchFacebook(stores: any[], rebill?: boolean) {
         name,
         pod,
         roas:
-          (insights.purchase_roas && insights.purchase_roas[0].value) || '--',
-        spend: insights.spend || '--',
+          (insights.purchase_roas && insights.purchase_roas[0].value) ||
+          'No ROAS Data',
+        spend: insights.spend || 'No Spend Data',
       }
     } catch (error) {
-      console.error('Error fetching insights:', error)
+      console.error('Network error fetching Facebook insights:', error)
       return {
         name,
         pod,
-        roas: 'Missing Permissions or Incorrect ID',
-        spend: 'Missing Permissions or Incorrect ID',
+        roas: 'Network Connection Error',
+        spend: 'Network Connection Error',
       }
     }
   }
@@ -433,12 +589,13 @@ export async function financialize(
   sheetId?: string,
   subsheet = false,
   batch = false,
+  datePreset?: string,
 ) {
   const [revenueLast30, revenueSinceRebill, fbLast30, fbSinceRebill] =
     await Promise.all([
-      fetchShopify(stores),
+      fetchShopify(stores, false, datePreset),
       fetchShopify(stores, true),
-      fetchFacebook(stores),
+      fetchFacebook(stores, false, datePreset),
       fetchFacebook(stores, true),
     ])
 
@@ -659,6 +816,161 @@ function combineData(
   addFbData(fbSinceRebill, 'fbSinceRebillRoas', 'fbSinceRebillSpend')
 
   return Object.values(combinedData)
+}
+
+export async function refreshSheetData(
+  sheetId: string,
+  datePreset: string,
+  status: string,
+) {
+  const db = createClient()
+
+  // Fetch accounts based on status - using 'clients' table to match existing API behavior
+  const { data: accounts, error } = await db
+    .from('clients')
+    .select('id, brand, pod, fb_key, store_id, shopify_key, rebill_date')
+    .order('brand')
+    .neq('store_id', null)
+    .eq('status', 'active')
+
+  if (error || !accounts) {
+    console.error('Error fetching accounts:', error)
+    return { success: false, error: 'Failed to fetch accounts data' }
+  }
+
+  try {
+    const BATCH_SIZE = 75
+    const totalBatches = Math.ceil(accounts.length / BATCH_SIZE)
+    const allRows: any[][] = []
+    let batchNumber = 0
+
+    // Process in batches to avoid rate limits
+    for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
+      const batch = accounts.slice(i, i + BATCH_SIZE)
+      batchNumber++
+
+      // Batch mode: batch = true
+      const batchRows = (await financialize(
+        batch,
+        sheetId,
+        sheetId ? true : false,
+        true, // batch = true
+        datePreset,
+      )) as any[][]
+
+      allRows.push(...batchRows)
+    }
+
+    // Clean all number fields (cols 2 to 5) before sorting
+    for (let row of allRows) {
+      for (let i of [2, 3, 4, 5]) {
+        const val = row[i]
+
+        if (
+          typeof val === 'string' &&
+          /^[\d,.\s]+$/.test(val) // Matches numbers with optional commas/decimals
+        ) {
+          row[i] = parseFloat(val.replace(/,/g, '')) || 0
+        }
+        // else keep original message like "Could not retrieve"
+      }
+    }
+
+    // Sort globally by revenue then spend
+    allRows.sort((a, b) => {
+      const revenueA = typeof a[2] === 'number' ? a[2] : -Infinity
+      const revenueB = typeof b[2] === 'number' ? b[2] : -Infinity
+      const spendA = typeof a[3] === 'number' ? a[3] : -Infinity
+      const spendB = typeof b[3] === 'number' ? b[3] : -Infinity
+
+      return revenueB - revenueA || spendB - spendA
+    })
+
+    // Compute totals & averages
+    const totals = allRows.reduce(
+      (acc, row) => {
+        const toNum = (val: any) => {
+          if (
+            typeof val === 'string' &&
+            /^[\d,.\s]+$/.test(val) // Only parse if it's a numeric-looking string
+          ) {
+            return parseFloat(val.replace(/,/g, ''))
+          } else if (typeof val === 'number') {
+            return val
+          }
+          return null // non-numeric or error string
+        }
+
+        const r30 = toNum(row[2])
+        const s30 = toNum(row[3])
+        const rRebill = toNum(row[4])
+        const sRebill = toNum(row[5])
+        const roas30 = toNum(row[6])
+        const roasRebill = toNum(row[7])
+
+        if (r30 !== null) acc.revenueLast30 += r30
+        if (s30 !== null) acc.fbLast30Spend += s30
+        if (rRebill !== null) acc.revenueSinceRebill += rRebill
+        if (sRebill !== null) acc.fbSinceRebillSpend += sRebill
+
+        if (roas30 !== null) {
+          acc.fbLast30RoasSum += roas30
+          acc.fbLast30RoasCount++
+        }
+
+        if (roasRebill !== null) {
+          acc.fbSinceRebillRoasSum += roasRebill
+          acc.fbSinceRebillRoasCount++
+        }
+
+        return acc
+      },
+      {
+        revenueLast30: 0,
+        fbLast30Spend: 0,
+        revenueSinceRebill: 0,
+        fbSinceRebillSpend: 0,
+        fbLast30RoasSum: 0,
+        fbLast30RoasCount: 0,
+        fbSinceRebillRoasSum: 0,
+        fbSinceRebillRoasCount: 0,
+      },
+    )
+
+    // Compute average ROAS
+    const avgRoas30 =
+      totals.fbLast30RoasCount > 0
+        ? totals.fbLast30RoasSum / totals.fbLast30RoasCount
+        : 0
+
+    const avgRoasRebill =
+      totals.fbSinceRebillRoasCount > 0
+        ? totals.fbSinceRebillRoasSum / totals.fbSinceRebillRoasCount
+        : 0
+
+    // Append totals row
+    allRows.push([
+      'TOTAL/AVG',
+      new Date().toDateString(),
+      totals.revenueLast30.toLocaleString(),
+      totals.fbLast30Spend.toLocaleString(),
+      totals.revenueSinceRebill.toLocaleString(),
+      totals.fbSinceRebillSpend.toLocaleString(),
+      avgRoas30.toFixed(2),
+      avgRoasRebill.toFixed(2),
+      '',
+      '',
+      '',
+    ])
+
+    // Write to sheet
+    await appendDataToSheet(sheetId, allRows)
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in refreshSheetData:', error)
+    return { success: false, error: 'Failed to refresh sheet data' }
+  }
 }
 
 export async function changePassword() {
