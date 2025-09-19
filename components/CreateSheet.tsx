@@ -7,30 +7,40 @@ import { useState } from 'react'
 
 interface CreateJobProps {
   user: User
+  finance?: boolean
 }
 
-export default function CreateSheet({ user }: CreateJobProps) {
+export default function CreateSheet({ user, finance = false }: CreateJobProps) {
   const [title, setTitle] = useState('')
   const [email, setEmail] = useState('')
   const [frequency, setFrequency] = useState('none')
-  const [templateId, setTemplateId] = useState(1)
+  const [templateId, setTemplateId] = useState(finance ? 3 : 1)
   const [showModal, setShowModal] = useState(false)
   const router = useRouter()
 
-  const templates = [
-    {
-      id: 1,
-      name: 'Insight Pro',
-      description:
-        'Insight Pro includes advanced analytics and detailed insights for your business.',
-    },
-    {
-      id: 2,
-      name: 'Essential',
-      description:
-        'Essential includes basic analytics and essential insights for your business.',
-    },
-  ]
+  const templates = finance
+    ? [
+        {
+          id: 3,
+          name: 'FinancialX',
+          description:
+            'Template specifically designed for Shopify x Facebook sheets.',
+        },
+      ]
+    : [
+        {
+          id: 1,
+          name: 'Insight Pro',
+          description:
+            'Insight Pro includes advanced analytics and detailed insights for your business.',
+        },
+        {
+          id: 2,
+          name: 'Essential',
+          description:
+            'Essential includes basic analytics and essential insights for your business.',
+        },
+      ]
 
   const handleTemplateSelect = (templateId: number) => {
     setTemplateId(templateId)
@@ -41,6 +51,7 @@ export default function CreateSheet({ user }: CreateJobProps) {
       user_id: user.id,
       frequency,
       templateId,
+      is_finance: finance,
     })
 
     if (!status) {
@@ -79,7 +90,7 @@ export default function CreateSheet({ user }: CreateJobProps) {
                     onChange={(e) => setTitle(e.target.value)}
                     required
                     placeholder="E.g. Weekly Insights Sheet"
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded border border-slate-400 px-3 py-2"
                   />
                 </div>
 
@@ -93,7 +104,7 @@ export default function CreateSheet({ user }: CreateJobProps) {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="E.g. email@yourdomain.com"
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded border border-slate-400 px-3 py-2"
                   />
                 </div>
               </div>
@@ -104,7 +115,7 @@ export default function CreateSheet({ user }: CreateJobProps) {
                 <select
                   value={frequency}
                   onChange={(e) => setFrequency(e.target.value)}
-                  className="w-full rounded border px-3 py-2"
+                  className="w-full rounded border border-slate-400 px-3 py-2"
                 >
                   <option value="none">None</option>
                   <option value="today">Today</option>
@@ -126,7 +137,7 @@ export default function CreateSheet({ user }: CreateJobProps) {
                     <div
                       key={template.id}
                       onClick={() => handleTemplateSelect(template.id)}
-                      className={`cursor-pointer rounded border px-3 py-2 text-center ${
+                      className={`cursor-pointer rounded border border-slate-400 px-3 py-2 text-center ${
                         templateId === template.id
                           ? 'border-zinc-900/20 bg-zinc-800/10'
                           : ''
