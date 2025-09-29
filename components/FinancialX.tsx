@@ -64,10 +64,10 @@ export default function FinancialX({
 
         if (batchStores) {
           // ✅ Step 1: Flattened data is already in allRows — now we sort globally
-          // Clean all number fields (cols 2 to 5) before sorting
-          // CLEAN numeric fields (cols 2–5) ONLY if they look numeric
+          // Clean all number fields (cols 2 to 7) before sorting
+          // CLEAN numeric fields (cols 2–7) ONLY if they look numeric
           for (let row of allRows) {
-            for (let i of [2, 3, 4, 5]) {
+            for (let i of [2, 3, 4, 5, 6, 7]) {
               const val = row[i]
 
               if (
@@ -81,10 +81,10 @@ export default function FinancialX({
           }
 
           allRows.sort((a, b) => {
-            const revenueA = typeof a[2] === 'number' ? a[2] : -Infinity
-            const revenueB = typeof b[2] === 'number' ? b[2] : -Infinity
-            const spendA = typeof a[3] === 'number' ? a[3] : -Infinity
-            const spendB = typeof b[3] === 'number' ? b[3] : -Infinity
+            const revenueA = typeof a[3] === 'number' ? a[3] : -Infinity
+            const revenueB = typeof b[3] === 'number' ? b[3] : -Infinity
+            const spendA = typeof a[4] === 'number' ? a[4] : -Infinity
+            const spendB = typeof b[4] === 'number' ? b[4] : -Infinity
 
             return revenueB - revenueA || spendB - spendA
           })
@@ -104,17 +104,24 @@ export default function FinancialX({
                 return null // non-numeric or error string
               }
 
-              const r30 = toNum(row[2])
-              const s30 = toNum(row[3])
-              const rRebill = toNum(row[4])
-              const sRebill = toNum(row[5])
-              const roas30 = toNum(row[6])
-              const roasRebill = toNum(row[7])
+              const ordersLast30 = toNum(row[2])
+              const revenueLast30 = toNum(row[3])
+              const fbLast30Spend = toNum(row[4])
+              const ordersSinceRebill = toNum(row[5])
+              const revenueSinceRebill = toNum(row[6])
+              const fbSinceRebillSpend = toNum(row[7])
+              const roas30 = toNum(row[8])
+              const roasRebill = toNum(row[9])
 
-              if (r30 !== null) acc.revenueLast30 += r30
-              if (s30 !== null) acc.fbLast30Spend += s30
-              if (rRebill !== null) acc.revenueSinceRebill += rRebill
-              if (sRebill !== null) acc.fbSinceRebillSpend += sRebill
+              if (ordersLast30 !== null) acc.ordersLast30 += ordersLast30
+              if (revenueLast30 !== null) acc.revenueLast30 += revenueLast30
+              if (fbLast30Spend !== null) acc.fbLast30Spend += fbLast30Spend
+              if (ordersSinceRebill !== null)
+                acc.ordersSinceRebill += ordersSinceRebill
+              if (revenueSinceRebill !== null)
+                acc.revenueSinceRebill += revenueSinceRebill
+              if (fbSinceRebillSpend !== null)
+                acc.fbSinceRebillSpend += fbSinceRebillSpend
 
               if (roas30 !== null) {
                 acc.fbLast30RoasSum += roas30
@@ -129,8 +136,10 @@ export default function FinancialX({
               return acc
             },
             {
+              ordersLast30: 0,
               revenueLast30: 0,
               fbLast30Spend: 0,
+              ordersSinceRebill: 0,
               revenueSinceRebill: 0,
               fbSinceRebillSpend: 0,
               fbLast30RoasSum: 0,
@@ -155,8 +164,10 @@ export default function FinancialX({
           allRows.push([
             'TOTAL/AVG',
             new Date().toDateString(),
+            totals.ordersLast30.toLocaleString(),
             totals.revenueLast30.toLocaleString(),
             totals.fbLast30Spend.toLocaleString(),
+            totals.ordersSinceRebill.toLocaleString(),
             totals.revenueSinceRebill.toLocaleString(),
             totals.fbSinceRebillSpend.toLocaleString(),
             avgRoas30.toFixed(2),

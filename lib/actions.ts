@@ -18,6 +18,7 @@ import { toNumber } from './utils'
 interface RevenueData {
   name: string
   revenue: number
+  orders: number
   lastRebill: string
 }
 
@@ -31,7 +32,9 @@ interface FbData {
 interface CombinedData {
   name: string
   revenueLast30?: number
+  ordersLast30?: number
   revenueSinceRebill?: number
+  ordersSinceRebill?: number
   lastRebill?: string
   fbLast30Roas?: number
   fbLast30Spend?: number
@@ -386,6 +389,7 @@ export async function fetchShopify(
             return {
               name: brand || 'Unknown Store',
               revenue: 'Missing Store Credentials',
+              orders: 'Missing Store Credentials',
               lastRebill: store.rebill_date,
             }
           }
@@ -411,6 +415,14 @@ export async function fetchShopify(
                     : res.error === 'Network Error'
                       ? 'Network Connection Error'
                       : 'Could Not Retrieve',
+              orders:
+                res.error === 'API Error'
+                  ? 'Shopify API Error'
+                  : res.error === 'Invalid Response'
+                    ? 'Invalid Shopify Response'
+                    : res.error === 'Network Error'
+                      ? 'Network Connection Error'
+                      : 'Could Not Retrieve',
               lastRebill: store.rebill_date,
             }
           }
@@ -423,6 +435,7 @@ export async function fetchShopify(
             return {
               name: brand,
               revenue: 'No Orders Found',
+              orders: 0,
               lastRebill: store.rebill_date,
             }
           }
@@ -431,7 +444,12 @@ export async function fetchShopify(
           const revenue =
             totalOrders > 0 ? totalOrders * AOV : 'No Revenue Data'
 
-          return { name: brand, revenue, lastRebill: store.rebill_date }
+          return {
+            name: brand,
+            revenue,
+            orders: totalOrders,
+            lastRebill: store.rebill_date,
+          }
         } catch (error) {
           console.error(
             `Unexpected error processing store ${store.store_id}:`,
@@ -440,6 +458,7 @@ export async function fetchShopify(
           return {
             name: store.brand,
             revenue: 'Processing Error',
+            orders: 'Processing Error',
             lastRebill: store.rebill_date,
           }
         }
@@ -613,8 +632,10 @@ export async function financialize(
   const id = sheetId ?? '19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY' // '19xIfkTLIQpuY4V00502VijpAIo_UOPLxYron2oFK1Q8' //
 
   let totalRevenueLast30 = 0
+  let totalOrdersLast30 = 0
   let totalFbLast30Spend = 0
   let totalRevenueSinceRebill = 0
+  let totalOrdersSinceRebill = 0
   let totalFbSinceRebillSpend = 0
   let fbLast30RoasSum = 0
   let fbSinceRebillRoasSum = 0
@@ -631,16 +652,21 @@ export async function financialize(
       )
 
       const revenueLast30 = toNumber(s.revenueLast30)
+      const ordersLast30 = toNumber(s.ordersLast30)
       const fbLast30Spend = toNumber(s.fbLast30Spend)
       const revenueSinceRebill = toNumber(s.revenueSinceRebill)
+      const ordersSinceRebill = toNumber(s.ordersSinceRebill)
       const fbSinceRebillSpend = toNumber(s.fbSinceRebillSpend)
       const fbLast30Roas = toNumber(s.fbLast30Roas)
       const fbSinceRebillRoas = toNumber(s.fbSinceRebillRoas)
 
       if (revenueLast30 !== null) totalRevenueLast30 += revenueLast30
+      if (ordersLast30 !== null) totalOrdersLast30 += ordersLast30
       if (fbLast30Spend !== null) totalFbLast30Spend += fbLast30Spend
       if (revenueSinceRebill !== null)
         totalRevenueSinceRebill += revenueSinceRebill
+      if (ordersSinceRebill !== null)
+        totalOrdersSinceRebill += ordersSinceRebill
       if (fbSinceRebillSpend !== null)
         totalFbSinceRebillSpend += fbSinceRebillSpend
 
@@ -657,8 +683,10 @@ export async function financialize(
       return [
         s.name,
         s.pod,
+        s.ordersLast30,
         s.revenueLast30,
         s.fbLast30Spend,
+        s.ordersSinceRebill,
         s.revenueSinceRebill,
         s.fbSinceRebillSpend,
         s.fbLast30Roas,
@@ -672,10 +700,10 @@ export async function financialize(
     })
 
     const sortedSheetData = sheetData.sort((a, b) => {
-      const revenueA = parseFloat(a[1]) || 0 // Revenue is in column 1
-      const revenueB = parseFloat(b[1]) || 0
-      const fbSpendA = parseFloat(a[2]) || 0 // Spend is in column 2
-      const fbSpendB = parseFloat(b[2]) || 0
+      const revenueA = parseFloat(a[3]) || 0 // Revenue is now in column 3
+      const revenueB = parseFloat(b[3]) || 0
+      const fbSpendA = parseFloat(a[4]) || 0 // Spend is now in column 4
+      const fbSpendB = parseFloat(b[4]) || 0
 
       // Sort by revenue, then by spend
       return revenueB - revenueA || fbSpendB - fbSpendA
@@ -695,8 +723,10 @@ export async function financialize(
     sortedSheetData.push([
       'TOTAL/AVG',
       new Date().toDateString(),
+      totalOrdersLast30.toLocaleString(),
       totalRevenueLast30.toLocaleString(),
       totalFbLast30Spend.toLocaleString(),
+      totalOrdersSinceRebill.toLocaleString(),
       totalRevenueSinceRebill.toLocaleString(),
       totalFbSinceRebillSpend.toLocaleString(),
       averageFbLast30Roas.toLocaleString(),
@@ -784,13 +814,15 @@ function combineData(
 
   const addRevenueData = (
     data: RevenueData[],
-    key: 'revenueLast30' | 'revenueSinceRebill',
+    keyRevenue: 'revenueLast30' | 'revenueSinceRebill',
+    keyOrders: 'ordersLast30' | 'ordersSinceRebill',
   ) => {
-    data.forEach(({ name, revenue, lastRebill }) => {
+    data.forEach(({ name, revenue, orders, lastRebill }) => {
       if (!combinedData[name]) {
         combinedData[name] = { name }
       }
-      combinedData[name][key] = revenue
+      combinedData[name][keyRevenue] = revenue
+      combinedData[name][keyOrders] = orders
       combinedData[name]['lastRebill'] = lastRebill
     })
   }
@@ -810,8 +842,8 @@ function combineData(
     })
   }
 
-  addRevenueData(revenueLast30, 'revenueLast30')
-  addRevenueData(revenueSinceRebill, 'revenueSinceRebill')
+  addRevenueData(revenueLast30, 'revenueLast30', 'ordersLast30')
+  addRevenueData(revenueSinceRebill, 'revenueSinceRebill', 'ordersSinceRebill')
   addFbData(fbLast30, 'fbLast30Roas', 'fbLast30Spend')
   addFbData(fbSinceRebill, 'fbSinceRebillRoas', 'fbSinceRebillSpend')
 
@@ -861,9 +893,9 @@ export async function refreshSheetData(
       allRows.push(...batchRows)
     }
 
-    // Clean all number fields (cols 2 to 5) before sorting
+    // Clean all number fields (cols 2 to 7) before sorting
     for (let row of allRows) {
-      for (let i of [2, 3, 4, 5]) {
+      for (let i of [2, 3, 4, 5, 6, 7]) {
         const val = row[i]
 
         if (
@@ -878,10 +910,10 @@ export async function refreshSheetData(
 
     // Sort globally by revenue then spend
     allRows.sort((a, b) => {
-      const revenueA = typeof a[2] === 'number' ? a[2] : -Infinity
-      const revenueB = typeof b[2] === 'number' ? b[2] : -Infinity
-      const spendA = typeof a[3] === 'number' ? a[3] : -Infinity
-      const spendB = typeof b[3] === 'number' ? b[3] : -Infinity
+      const revenueA = typeof a[3] === 'number' ? a[3] : -Infinity
+      const revenueB = typeof b[3] === 'number' ? b[3] : -Infinity
+      const spendA = typeof a[4] === 'number' ? a[4] : -Infinity
+      const spendB = typeof b[4] === 'number' ? b[4] : -Infinity
 
       return revenueB - revenueA || spendB - spendA
     })
@@ -901,17 +933,24 @@ export async function refreshSheetData(
           return null // non-numeric or error string
         }
 
-        const r30 = toNum(row[2])
-        const s30 = toNum(row[3])
-        const rRebill = toNum(row[4])
-        const sRebill = toNum(row[5])
-        const roas30 = toNum(row[6])
-        const roasRebill = toNum(row[7])
+        const ordersLast30 = toNum(row[2])
+        const revenueLast30 = toNum(row[3])
+        const fbLast30Spend = toNum(row[4])
+        const ordersSinceRebill = toNum(row[5])
+        const revenueSinceRebill = toNum(row[6])
+        const fbSinceRebillSpend = toNum(row[7])
+        const roas30 = toNum(row[8])
+        const roasRebill = toNum(row[9])
 
-        if (r30 !== null) acc.revenueLast30 += r30
-        if (s30 !== null) acc.fbLast30Spend += s30
-        if (rRebill !== null) acc.revenueSinceRebill += rRebill
-        if (sRebill !== null) acc.fbSinceRebillSpend += sRebill
+        if (ordersLast30 !== null) acc.ordersLast30 += ordersLast30
+        if (revenueLast30 !== null) acc.revenueLast30 += revenueLast30
+        if (fbLast30Spend !== null) acc.fbLast30Spend += fbLast30Spend
+        if (ordersSinceRebill !== null)
+          acc.ordersSinceRebill += ordersSinceRebill
+        if (revenueSinceRebill !== null)
+          acc.revenueSinceRebill += revenueSinceRebill
+        if (fbSinceRebillSpend !== null)
+          acc.fbSinceRebillSpend += fbSinceRebillSpend
 
         if (roas30 !== null) {
           acc.fbLast30RoasSum += roas30
@@ -926,8 +965,10 @@ export async function refreshSheetData(
         return acc
       },
       {
+        ordersLast30: 0,
         revenueLast30: 0,
         fbLast30Spend: 0,
+        ordersSinceRebill: 0,
         revenueSinceRebill: 0,
         fbSinceRebillSpend: 0,
         fbLast30RoasSum: 0,
@@ -952,8 +993,10 @@ export async function refreshSheetData(
     allRows.push([
       'TOTAL/AVG',
       new Date().toDateString(),
+      totals.ordersLast30.toLocaleString(),
       totals.revenueLast30.toLocaleString(),
       totals.fbLast30Spend.toLocaleString(),
+      totals.ordersSinceRebill.toLocaleString(),
       totals.revenueSinceRebill.toLocaleString(),
       totals.fbSinceRebillSpend.toLocaleString(),
       avgRoas30.toFixed(2),
