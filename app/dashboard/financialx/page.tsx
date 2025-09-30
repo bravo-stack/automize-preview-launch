@@ -1,8 +1,7 @@
 import AddStore from '@/components/AddStore'
-import FinancialX from '@/components/FinancialX'
+import SheetCard from '@/components/SheetCard'
 import StoreList from '@/components/StoreList'
 import { createClient } from '@/lib/db/server'
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 export const maxDuration = 60
@@ -37,7 +36,7 @@ export default async function FinancialXPage() {
           <h2 className="text-2xl font-semibold">FinanceX Overview</h2>
 
           <div className="flex items-center gap-2">
-            <a
+            {/* <a
               className="rounded px-2 py-1.5 underline"
               href="https://docs.google.com/spreadsheets/d/19lCLSuG9cU7U0bL1DiqWUd-QbfBGPEQgG7joOnu9gyY/"
               target="_blank"
@@ -45,7 +44,7 @@ export default async function FinancialXPage() {
             >
               Visit Main Financials Sheet
             </a>
-            <FinancialX stores={stores ?? []} batchStores main />
+            <FinancialX stores={stores ?? []} batchStores main /> */}
             <AddStore />
           </div>
         </div>
@@ -81,26 +80,8 @@ export default async function FinancialXPage() {
                 )
               })
               .map((sheet, index) => {
-                const href = `/dashboard/financialx/${sheet.sheet_id}`
-
                 return (
-                  <li
-                    key={index}
-                    className="group rounded-lg border border-zinc-800 bg-night-starlit transition-colors hover:border-zinc-700"
-                  >
-                    <Link href={href} className="block h-full w-full p-3">
-                      <h4>{sheet.title}</h4>
-                      <h5 className="mb-3 overflow-clip text-ellipsis text-sm text-zinc-400 hover:underline">
-                        <span>
-                          docs.google.com/spreadsheets/d/{sheet.sheet_id}/edit
-                        </span>
-                      </h5>
-
-                      <p className="mt-3 text-sm">
-                        Data refreshes {sheet.refresh.toLowerCase()}
-                      </p>
-                    </Link>
-                  </li>
+                  <SheetCard key={index} sheet={sheet} stores={stores ?? []} />
                 )
               })}
           </ul>

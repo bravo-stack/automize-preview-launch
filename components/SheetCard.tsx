@@ -1,35 +1,24 @@
 'use client'
 
-import NotificationModal from '@/components/NotificationModal'
-import { deleteSheet } from '@/lib/actions'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useState } from 'react'
+import NotificationModal from './NotificationModal'
 
-interface SheetInfoProps {
-  links: string[]
-  data: any
+interface SheetCardProps {
+  sheet: any
+  stores: any[]
 }
 
-export default function SheetInfo({ links, data }: SheetInfoProps) {
-  const { sheet, lastRefresh } = data
-  const status = sheet.title === 'Churned' ? 'left' : 'active'
-  const router = useRouter()
-
-  const [activeSection, setActiveSection] = useState(0)
-  const [confirm, setConfirm] = useState(false)
+export default function SheetCard({ sheet, stores }: SheetCardProps) {
   const [notificationState, setNotificationState] = useState<{
     state: string
     message: string
   } | null>(null)
 
-  const handleDelete = async () => {
-    await deleteSheet(sheet.sheet_id)
-    router.push('/dashboard/autometric')
-  }
-
-  const handleDataRefresh = async () => {
+  const handleRefresh = async () => {
     const sheetID = sheet.sheet_id
     const datePreset = sheet.refresh
+    const status = sheet.title === 'Churned' ? 'left' : 'active'
 
     // First, fetch accounts for batching
     const response = await fetch('/api/accounts-for-batching', {
@@ -227,100 +216,51 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
     }
   }
 
+  const lastRefresh = new Date(sheet.last_refresh).toLocaleString()
+
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <nav className="grid grid-cols-2 gap-3">
-        {links.map((link, index: number) => (
-          <button
-            key={link}
-            onClick={() => setActiveSection(index)}
-            className={`w-full overflow-hidden rounded border border-zinc-800 p-3 font-medium transition-colors hover:border-zinc-700 lg:p-7 ${activeSection === index ? 'bg-night-dusk' : ''}`}
-          >
-            {link}
-          </button>
-        ))}
-      </nav>
-
-      <div className="space-y-3 overflow-clip text-ellipsis lg:col-span-2">
-        {activeSection === 0 && (
-          <div className="space-y-3">
-            <h4>Frequency</h4>
-            {sheet.refresh === 'none' ? (
-              <span className="text-sm">
-                <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-red-600"></span>
-                No Automations Active
-              </span>
-            ) : (
-              <span className="text-sm">
-                <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-teal-400" />
-                Active - {sheet.refresh.replace(/_/g, ' ')}
-              </span>
-            )}
-
-            <div>
-              <h4>Last Refresh</h4>
-              <span className="text-sm">{lastRefresh}</span>
+    <>
+      <li className="group rounded-lg border border-zinc-800 bg-night-starlit transition-colors hover:border-zinc-700">
+        <div className="h-full w-full p-3">
+          <div className="mb-3 flex items-start justify-between">
+            <div className="flex-1">
+              <h4 className="font-medium">{sheet.title}</h4>
+              <h5 className="line-clamp-1 max-w-[30ch] truncate text-sm text-zinc-400">
+                Data refreshes {sheet.refresh.replace(/_/g, ' ')}
+              </h5>
             </div>
-
-            <button
-              onClick={handleDataRefresh}
-              className="rounded bg-white px-3 py-2 font-medium text-black"
+            <Link
+              href={`/dashboard/financialx/${sheet.sheet_id}`}
+              className="ml-2 text-xs text-white/80 hover:underline"
             >
-              Refresh Finance Data
-            </button>
+              Settings
+            </Link>
           </div>
-        )}
 
-        {activeSection === 1 && (
-          <div className="flex h-full min-h-40 flex-col justify-between">
-            <h4>Automation</h4>
-            <p className="text-sm">
-              Set up automatic refreshes to avoid refreshing manually.
-            </p>
-
-            <button className="w-fit rounded border px-3 py-2">
-              Create Automation
-            </button>
-          </div>
-        )}
-
-        {activeSection === 2 && (
-          <>
-            <h4>Create Backups</h4>
-            <p className="text-sm">
-              Automatically create backups with our backup tool.
-            </p>
-          </>
-        )}
-
-        {activeSection === 3 && (
-          <div className="flex h-full min-h-40 flex-col justify-between">
-            <h4>Section 3 Placeholder</h4>
-            <p className="text-sm">Content for section 3 will go here.</p>
-
-            <div className="flex space-x-4">
-              <button
-                className="hover:border-xps-deepBlue hover:text-xps-deepBlue rounded-sm border border-red-950 bg-red-950/30 px-2 py-1 text-red-950 transition-colors"
-                onClick={() => setConfirm(true)}
+          <div className="space-y-2">
+            <div className="flex gap-2 pt-2">
+              <a
+                href={`https://docs.google.com/spreadsheets/d/${sheet.sheet_id}/edit`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 rounded bg-zinc-700 px-3 py-1.5 text-center text-sm font-medium transition-colors hover:bg-zinc-600"
               >
-                Delete Sheet
-              </button>
+                Visit Sheet
+              </a>
+
               <button
-                className={`rounded-full border border-red-950 bg-red-950/30 px-2 py-1 text-red-950 ${confirm ? 'flex' : 'hidden'}`}
-                onClick={handleDelete}
+                onClick={handleRefresh}
+                disabled={notificationState?.state === 'loading'}
+                className="flex-1 rounded bg-white px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:bg-gray-300"
               >
-                Confirm
-              </button>
-              <button
-                className={`border-xps-grey text-xps-grey rounded-full border px-2 py-1 ${confirm ? 'flex' : 'hidden'}`}
-                onClick={() => setConfirm(false)}
-              >
-                Cancel
+                {notificationState?.state === 'loading'
+                  ? 'Refreshing...'
+                  : 'Refresh Data'}
               </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      </li>
 
       {notificationState && (
         <NotificationModal
@@ -329,6 +269,6 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
           message={notificationState.message}
         />
       )}
-    </div>
+    </>
   )
 }
