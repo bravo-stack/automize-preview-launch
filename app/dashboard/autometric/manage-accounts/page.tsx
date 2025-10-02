@@ -7,7 +7,7 @@ export default async function AccountsPage() {
   const { data: accounts } = await db
     .from('clients')
     .select(
-      'id, full_name, phone_number, brand, fb_key, pod, status, closed_at',
+      'id, full_name, phone_number, brand, fb_key, pod, status, closed_at, is_monitored, rebill_amt',
     )
   // .is('onboarded', true)
 

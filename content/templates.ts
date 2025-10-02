@@ -3,6 +3,7 @@ export const templates = [
     [
       'Name',
       'Pod',
+      'Monitored',
       'CPA',
       'Ad Spend',
       'CPC',
@@ -19,11 +20,12 @@ export const templates = [
       'IC/PUR%',
     ],
   ],
-  [['Name', 'ROAS', 'Impressions']],
+  [['Name', 'Monitored', 'ROAS', 'Impressions']],
   [
     [
       'Name',
       'Pod',
+      'Monitored',
       'Revenue',
       'Ad spend',
       'Revenue since rebill',

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { emptyInsights } from '@/content/accounts'
 import { appendDataToSheet } from '@/lib/api'
+import { createClient } from '@/lib/db/server'
 import {
   getActions,
   getBounceRate,
@@ -8,7 +8,9 @@ import {
   getHookRate,
   getPercentage,
 } from '@/lib/insights'
-import { createClient } from '@/lib/db/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+export const maxDuration = 60
 
 // MAIN GET
 export async function POST(request: NextRequest) {
