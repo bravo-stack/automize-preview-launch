@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/db/server'
 import { NextRequest, NextResponse } from 'next/server'
 
+export const maxDuration = 60
+
 export async function POST(request: NextRequest) {
   try {
     const { status } = await request.json()
@@ -10,7 +12,9 @@ export async function POST(request: NextRequest) {
     // Fetch accounts based on status - using 'clients' table to match existing API behavior
     const { data: accounts, error } = await db
       .from('clients')
-      .select('id, brand, pod, fb_key, store_id, shopify_key, rebill_date')
+      .select(
+        'id, brand, pod, fb_key, store_id, shopify_key, rebill_date, is_monitored',
+      )
       .order('brand')
       .neq('store_id', null)
       .eq('status', status || 'active')

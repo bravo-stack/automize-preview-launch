@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { emptyInsights } from '@/content/accounts'
 import { appendDataToSheet } from '@/lib/api'
+import { createClient } from '@/lib/db/server'
 import {
   getActions,
   getBounceRate,
@@ -8,7 +8,9 @@ import {
   getHookRate,
   getPercentage,
 } from '@/lib/insights'
-import { createClient } from '@/lib/db/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+export const maxDuration = 60
 
 // MAIN GET
 export async function POST(request: NextRequest) {
@@ -17,9 +19,10 @@ export async function POST(request: NextRequest) {
 
   const { data: accounts } = await db
     .from('clients')
-    .select('brand, fb_key, pod')
+    .select('brand, fb_key, pod, is_monitored')
+
     .order('brand', { ascending: true })
-    .eq('status', status)
+    .eq('status', 'active')
 
   if (accounts === null) {
     return NextResponse.json(
@@ -35,7 +38,12 @@ export async function POST(request: NextRequest) {
   const fields = `actions,cost_per_action_type,impressions,spend,cpc,cpm,ctr,quality_ranking,engagement_rate_ranking,conversion_rate_ranking,purchase_roas`
   const actions = `'omni_add_to_cart','omni_initiated_checkout','link_click','purchase','landing_page_view','video_view'`
 
-  async function fetchInsights(accountId: string, name: string, pod: string) {
+  async function fetchInsights(
+    accountId: string,
+    name: string,
+    pod: string,
+    isMonitored: boolean,
+  ) {
     const url = `https://graph.facebook.com/v11.0/${accountId}/insights?access_token=${FACEBOOK_ACCESS_TOKEN}&fields=${fields}&date_preset=${datePreset}&filtering=[{"field":"action_type","operator":"IN","value":[${actions}]}]`
 
     try {
@@ -46,6 +54,7 @@ export async function POST(request: NextRequest) {
           name,
           pod: 'Missing Permissions or Incorrect ID',
           insights: emptyInsights,
+          isMonitored,
         }
       }
 
@@ -56,21 +65,32 @@ export async function POST(request: NextRequest) {
           name,
           pod: `No data for ${datePreset}`,
           insights: emptyInsights,
+          isMonitored,
         }
       }
 
       const insights = data.data[0]
-      return { name, pod, insights }
+      return { name, pod, insights, isMonitored }
     } catch (error) {
       console.error('Error fetching insights:', error)
-      return { name, pod: 'Missing Permissions', insights: emptyInsights }
+      return {
+        name,
+        pod: 'Missing Permissions',
+        insights: emptyInsights,
+        isMonitored,
+      }
     }
   }
 
   async function fetchAllInsights() {
     if (accounts !== null) {
       const fetchPromises = accounts.map((account: any) =>
-        fetchInsights(account.fb_key, account.brand, account.pod),
+        fetchInsights(
+          account.fb_key,
+          account.brand,
+          account.pod,
+          account.is_monitored,
+        ),
       )
       return Promise.all(fetchPromises)
     }
@@ -102,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     if (adInsights) {
       const sheetData = adInsights
-        .map(({ name, pod, insights: i }) => {
+        .map(({ name, pod, insights: i, isMonitored }) => {
           const roas = parseFloat(
             i.purchase_roas ? i.purchase_roas[0].value : '0',
           )
@@ -126,6 +146,7 @@ export async function POST(request: NextRequest) {
             data: [
               name,
               pod,
+              isMonitored ? 'Yes' : 'No',
               CPA.purchase ?? '',
               i.spend,
               i.cpc,
