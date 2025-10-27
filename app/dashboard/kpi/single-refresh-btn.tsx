@@ -20,7 +20,7 @@ export function IndividualRefreshButton({ sheet_id }: { sheet_id: string }) {
     <button
       onClick={handleClick}
       disabled={isPending}
-      className="p-1 text-zinc-500 transition-colors hover:text-white disabled:animate-spin disabled:text-zinc-600"
+      className="p-1 text-zinc-500 transition-colors hover:text-white disabled:animate-spin disabled:cursor-not-allowed disabled:text-zinc-600"
       aria-label="Refresh data"
     >
       <RefreshCw className="h-4 w-4" />

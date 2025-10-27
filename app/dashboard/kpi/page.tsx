@@ -3,7 +3,7 @@ import { authorizeSheets } from '@/lib/google'
 import { google } from 'googleapis'
 import { unstable_cache as cache } from 'next/cache'
 import { KPICard } from './kpi-card'
-import RefreshBtnKpi from './refresh-btn'
+import PageRefreshBtnKpi from './page-refresh-btn'
 
 type SheetsData = {
   id: number
@@ -125,7 +125,7 @@ export default async function KPIPage() {
             </p>
           </div>
 
-          <RefreshBtnKpi />
+          <PageRefreshBtnKpi />
         </div>
         <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent" />
       </header>

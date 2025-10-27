@@ -6,7 +6,7 @@ import { Fragment, useTransition } from 'react'
 
 type Props = {}
 
-const RefreshBtnKpi = (props: Props) => {
+const PageRefreshBtnKpi = (props: Props) => {
   // HOOKS
   const router = useRouter()
   const [isRefreshing, startTransition] = useTransition()
@@ -19,7 +19,7 @@ const RefreshBtnKpi = (props: Props) => {
           router.refresh()
         })
       }}
-      className="rounded bg-white px-3 py-2 font-medium text-black"
+      className="inline-flex items-center gap-2 rounded bg-white px-3 py-2 font-medium text-black"
     >
       {isRefreshing ? (
         <Fragment>
@@ -32,4 +32,4 @@ const RefreshBtnKpi = (props: Props) => {
   )
 }
 
-export default RefreshBtnKpi
+export default PageRefreshBtnKpi
