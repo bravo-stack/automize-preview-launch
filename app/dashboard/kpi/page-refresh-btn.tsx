@@ -19,7 +19,7 @@ const PageRefreshBtnKpi = (props: Props) => {
           router.refresh()
         })
       }}
-      className="inline-flex items-center gap-2 rounded bg-white px-3 py-2 font-medium text-black"
+      className="inline-flex items-center gap-2 rounded bg-white px-3 py-2 font-medium text-black disabled:cursor-not-allowed"
     >
       {isRefreshing ? (
         <Fragment>
