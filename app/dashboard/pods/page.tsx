@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/db/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import CreatePodSheet from './CreatePodSheet'
 
 export default async function Pods() {
@@ -12,6 +12,7 @@ export default async function Pods() {
     .select('*')
     .eq('user_id', id)
     .neq('pod', '')
+    .eq('is_finance', false)
 
   const {
     data: { user },

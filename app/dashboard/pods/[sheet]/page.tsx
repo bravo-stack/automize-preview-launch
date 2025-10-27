@@ -1,6 +1,6 @@
+import FinancialX from '@/components/FinancialX'
 import { createClient } from '@/lib/db/server'
 import SheetInfo from './SheetInfo'
-import FinancialX from '@/components/FinancialX'
 
 export async function generateMetadata({ params, searchParams }) {
   const db = createClient()

@@ -2,11 +2,9 @@ import Footer from '@/components/Footer'
 import Nav from '@/components/Nav'
 import Hero from '@/components/ui/Hero'
 // import { changePassword } from '@/lib/actions'
-// vercel tax
 
 export default async function Home() {
   // await changePassword()
-  // at pre-meeting int
   return (
     <>
       <Nav />

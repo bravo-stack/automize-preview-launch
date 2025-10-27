@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/db/server'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import CreateSheet from '@/components/CreateSheet'
 import Section from '@/components/common/section'
 import Table from '@/components/common/table'
+import { createClient } from '@/lib/db/server'
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
 export default async function Autometric() {
   const db = createClient()
@@ -14,6 +14,8 @@ export default async function Autometric() {
     .select('*')
     .eq('user_id', id)
     .eq('pod', '')
+    .eq('is_finance', false)
+
   const {
     data: { user },
   } = await db.auth.getUser()

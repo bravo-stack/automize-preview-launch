@@ -3,6 +3,7 @@ export const templates = [
     [
       'Name',
       'Pod',
+      'Monitored',
       'CPA',
       'Ad Spend',
       'CPC',
@@ -19,7 +20,23 @@ export const templates = [
       'IC/PUR%',
     ],
   ],
-  [['Name', 'ROAS', 'Impressions']],
+  [['Name', 'Monitored', 'ROAS', 'Impressions']],
+  [
+    [
+      'Name',
+      'Pod',
+      'Monitored',
+      'Revenue',
+      'Ad spend',
+      'Revenue since rebill',
+      'Ad spend since rebill',
+      'ROAS',
+      'ROAS since rebill',
+      'Is Rebillable',
+      'Last Rebill Date',
+      'Next Rebill',
+    ],
+  ],
 ]
 
 export function getTemplateById(id: number) {

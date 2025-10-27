@@ -9,10 +9,12 @@ export default function FinancialX({
   stores,
   sheetId,
   batchStores = false,
+  main = false,
 }: {
   stores: any[]
   sheetId?: string
   batchStores?: boolean
+  main?: boolean
 }) {
   const [notificationState, setNotificationState] = useState<{
     state: string
@@ -62,10 +64,10 @@ export default function FinancialX({
 
         if (batchStores) {
           // ✅ Step 1: Flattened data is already in allRows — now we sort globally
-          // Clean all number fields (cols 2 to 5) before sorting
-          // CLEAN numeric fields (cols 2–5) ONLY if they look numeric
+          // Clean all number fields before sorting
+          // New column order: Monitored(0), Name(1), Pod(2), Ad spend timeframe(3), ROAS timeframe(4), Revenue timeframe(5), Ad spend rebill(6), ROAS rebill(7), Revenue rebill(8), Is rebillable(9), Last rebill date(10), Orders timeframe(11), Orders rebill(12)
           for (let row of allRows) {
-            for (let i of [2, 3, 4, 5]) {
+            for (let i of [3, 4, 5, 6, 7, 8, 11, 12]) {
               const val = row[i]
 
               if (
@@ -79,9 +81,9 @@ export default function FinancialX({
           }
 
           allRows.sort((a, b) => {
-            const revenueA = typeof a[2] === 'number' ? a[2] : -Infinity
-            const revenueB = typeof b[2] === 'number' ? b[2] : -Infinity
-            const spendA = typeof a[3] === 'number' ? a[3] : -Infinity
+            const revenueA = typeof a[5] === 'number' ? a[5] : -Infinity // Revenue (timeframe) is column 5
+            const revenueB = typeof b[5] === 'number' ? b[5] : -Infinity
+            const spendA = typeof a[3] === 'number' ? a[3] : -Infinity // Ad spend (timeframe) is column 3
             const spendB = typeof b[3] === 'number' ? b[3] : -Infinity
 
             return revenueB - revenueA || spendB - spendA
@@ -102,17 +104,24 @@ export default function FinancialX({
                 return null // non-numeric or error string
               }
 
-              const r30 = toNum(row[2])
-              const s30 = toNum(row[3])
-              const rRebill = toNum(row[4])
-              const sRebill = toNum(row[5])
-              const roas30 = toNum(row[6])
-              const roasRebill = toNum(row[7])
+              // New column order: Monitored(0), Name(1), Pod(2), Ad spend timeframe(3), ROAS timeframe(4), Revenue timeframe(5), Ad spend rebill(6), ROAS rebill(7), Revenue rebill(8), Is rebillable(9), Last rebill date(10), Orders timeframe(11), Orders rebill(12)
+              const fbLast30Spend = toNum(row[3]) // Ad spend (timeframe)
+              const roas30 = toNum(row[4]) // ROAS (timeframe)
+              const revenueLast30 = toNum(row[5]) // Revenue (timeframe)
+              const fbSinceRebillSpend = toNum(row[6]) // Ad spend (rebill)
+              const roasRebill = toNum(row[7]) // ROAS (rebill)
+              const revenueSinceRebill = toNum(row[8]) // Revenue (rebill)
+              const ordersLast30 = toNum(row[11]) // Orders (timeframe)
+              const ordersSinceRebill = toNum(row[12]) // Orders (rebill)
 
-              if (r30 !== null) acc.revenueLast30 += r30
-              if (s30 !== null) acc.fbLast30Spend += s30
-              if (rRebill !== null) acc.revenueSinceRebill += rRebill
-              if (sRebill !== null) acc.fbSinceRebillSpend += sRebill
+              if (fbLast30Spend !== null) acc.fbLast30Spend += fbLast30Spend
+              if (revenueLast30 !== null) acc.revenueLast30 += revenueLast30
+              if (fbSinceRebillSpend !== null)
+                acc.fbSinceRebillSpend += fbSinceRebillSpend
+              if (revenueSinceRebill !== null)
+                acc.revenueSinceRebill += revenueSinceRebill
+              if (ordersLast30 !== null) acc.ordersLast30 += ordersLast30
+              if (ordersSinceRebill !== null) acc.ordersSinceRebill += ordersSinceRebill
 
               if (roas30 !== null) {
                 acc.fbLast30RoasSum += roas30
@@ -131,6 +140,8 @@ export default function FinancialX({
               fbLast30Spend: 0,
               revenueSinceRebill: 0,
               fbSinceRebillSpend: 0,
+              ordersLast30: 0,
+              ordersSinceRebill: 0,
               fbLast30RoasSum: 0,
               fbLast30RoasCount: 0,
               fbSinceRebillRoasSum: 0,
@@ -151,17 +162,19 @@ export default function FinancialX({
 
           // ✅ Step 4: Append totals row
           allRows.push([
-            'TOTAL/AVG',
-            new Date().toDateString(),
-            totals.revenueLast30.toLocaleString(),
-            totals.fbLast30Spend.toLocaleString(),
-            totals.revenueSinceRebill.toLocaleString(),
-            totals.fbSinceRebillSpend.toLocaleString(),
-            avgRoas30.toFixed(2),
-            avgRoasRebill.toFixed(2),
-            '',
-            '',
-            '',
+            'n/a', // Monitored
+            'TOTAL/AVG', // Name
+            new Date().toDateString(), // Pod
+            totals.fbLast30Spend.toLocaleString(), // Ad spend (timeframe)
+            avgRoas30.toFixed(2), // ROAS (timeframe)
+            totals.revenueLast30.toLocaleString(), // Revenue (timeframe)
+            totals.fbSinceRebillSpend.toLocaleString(), // Ad spend (rebill)
+            avgRoasRebill.toFixed(2), // ROAS (rebill)
+            totals.revenueSinceRebill.toLocaleString(), // Revenue (rebill)
+            'n/a', // Is rebillable
+            'n/a', // Last rebill date
+            totals.ordersLast30.toLocaleString(), // Orders (timeframe)
+            totals.ordersSinceRebill.toLocaleString(), // Orders (rebill)
           ])
 
           // ✅ Step 5: Write to sheet
@@ -211,7 +224,7 @@ export default function FinancialX({
   return (
     <>
       <button onClick={handleRefresh} className="rounded border px-2 py-1.5">
-        Refresh FinanceX
+        Refresh {main && 'Main'} Finance Sheet
       </button>
 
       {notificationState && (

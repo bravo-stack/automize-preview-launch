@@ -1,0 +1,335 @@
+'use client'
+
+import NotificationModal from '@/components/NotificationModal'
+import { deleteSheet } from '@/lib/actions'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+interface SheetInfoProps {
+  links: string[]
+  data: any
+}
+
+export default function SheetInfo({ links, data }: SheetInfoProps) {
+  const { sheet, lastRefresh } = data
+  const status = sheet.title === 'Churned' ? 'left' : 'active'
+  const router = useRouter()
+
+  const [activeSection, setActiveSection] = useState(0)
+  const [confirm, setConfirm] = useState(false)
+  const [notificationState, setNotificationState] = useState<{
+    state: string
+    message: string
+  } | null>(null)
+
+  const handleDelete = async () => {
+    await deleteSheet(sheet.sheet_id)
+    router.push('/dashboard/autometric')
+  }
+
+  const handleDataRefresh = async () => {
+    const sheetID = sheet.sheet_id
+    const datePreset = sheet.refresh
+
+    // First, fetch accounts for batching
+    const response = await fetch('/api/accounts-for-batching', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+
+    if (!response.ok) {
+      setNotificationState({
+        state: 'error',
+        message: 'Failed to fetch accounts data',
+      })
+      return
+    }
+
+    const { accounts } = await response.json()
+
+    if (!accounts || accounts.length === 0) {
+      setNotificationState({
+        state: 'error',
+        message: 'No accounts found for processing',
+      })
+      return
+    }
+
+    const BATCH_SIZE = 75
+    const totalBatches = Math.ceil(accounts.length / BATCH_SIZE)
+    let batchNumber = 0
+
+    setNotificationState({
+      state: 'loading',
+      message: `Starting batch processing (${totalBatches} total)...`,
+    })
+
+    const allRows: any[][] = []
+
+    try {
+      // Import financialize and appendDataToSheet for client-side processing
+      const { financialize } = await import('@/lib/actions')
+      const { appendDataToSheet } = await import('@/lib/api')
+
+      // Process in batches
+      for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
+        const batch = accounts.slice(i, i + BATCH_SIZE)
+        batchNumber++
+
+        // Batch mode: batch = true
+        const batchRows = (await financialize(
+          batch,
+          sheetID,
+          true, // subsheet = true
+          true, // batch = true
+          datePreset,
+        )) as any[][]
+
+        allRows.push(...batchRows)
+
+        setNotificationState({
+          state: 'loading',
+          message: `✅ Batch ${batchNumber} of ${totalBatches} complete...`,
+        })
+      }
+
+      // Clean all number fields before sorting
+      // New column order: Monitored(0), Name(1), Pod(2), Ad spend timeframe(3), ROAS timeframe(4), Revenue timeframe(5), Ad spend rebill(6), ROAS rebill(7), Revenue rebill(8), Is rebillable(9), Last rebill date(10), Orders timeframe(11), Orders rebill(12)
+      for (let row of allRows) {
+        for (let i of [3, 4, 5, 6, 7, 8, 11, 12]) {
+          const val = row[i]
+
+          if (
+            typeof val === 'string' &&
+            /^[\d,.\s]+$/.test(val) // Matches numbers with optional commas/decimals
+          ) {
+            row[i] = parseFloat(val.replace(/,/g, '')) || 0
+          }
+          // else keep original message like "Could not retrieve"
+        }
+      }
+
+      // Sort globally by revenue (timeframe) then spend (timeframe)
+      allRows.sort((a, b) => {
+        const revenueA = typeof a[5] === 'number' ? a[5] : -Infinity // Revenue (timeframe)
+        const revenueB = typeof b[5] === 'number' ? b[5] : -Infinity
+        const spendA = typeof a[3] === 'number' ? a[3] : -Infinity // Ad spend (timeframe)
+        const spendB = typeof b[3] === 'number' ? b[3] : -Infinity
+
+        return revenueB - revenueA || spendB - spendA
+      })
+
+      // Compute totals & averages
+      const totals = allRows.reduce(
+        (acc, row) => {
+          const toNum = (val: any) => {
+            if (
+              typeof val === 'string' &&
+              /^[\d,.\s]+$/.test(val) // Only parse if it's a numeric-looking string
+            ) {
+              return parseFloat(val.replace(/,/g, ''))
+            } else if (typeof val === 'number') {
+              return val
+            }
+            return null // non-numeric or error string
+          }
+
+          // New column order: Monitored(0), Name(1), Pod(2), Ad spend timeframe(3), ROAS timeframe(4), Revenue timeframe(5), Ad spend rebill(6), ROAS rebill(7), Revenue rebill(8), Is rebillable(9), Last rebill date(10), Orders timeframe(11), Orders rebill(12)
+          const fbLast30Spend = toNum(row[3]) // Ad spend (timeframe)
+          const roas30 = toNum(row[4]) // ROAS (timeframe)
+          const revenueLast30 = toNum(row[5]) // Revenue (timeframe)
+          const fbSinceRebillSpend = toNum(row[6]) // Ad spend (rebill)
+          const roasRebill = toNum(row[7]) // ROAS (rebill)
+          const revenueSinceRebill = toNum(row[8]) // Revenue (rebill)
+          const ordersLast30 = toNum(row[11]) // Orders (timeframe)
+          const ordersSinceRebill = toNum(row[12]) // Orders (rebill)
+
+          if (fbLast30Spend !== null) acc.fbLast30Spend += fbLast30Spend
+          if (revenueLast30 !== null) acc.revenueLast30 += revenueLast30
+          if (fbSinceRebillSpend !== null)
+            acc.fbSinceRebillSpend += fbSinceRebillSpend
+          if (revenueSinceRebill !== null)
+            acc.revenueSinceRebill += revenueSinceRebill
+          if (ordersLast30 !== null) acc.ordersLast30 += ordersLast30
+          if (ordersSinceRebill !== null) acc.ordersSinceRebill += ordersSinceRebill
+
+          if (roas30 !== null) {
+            acc.fbLast30RoasSum += roas30
+            acc.fbLast30RoasCount++
+          }
+
+          if (roasRebill !== null) {
+            acc.fbSinceRebillRoasSum += roasRebill
+            acc.fbSinceRebillRoasCount++
+          }
+
+          return acc
+        },
+        {
+          revenueLast30: 0,
+          fbLast30Spend: 0,
+          revenueSinceRebill: 0,
+          fbSinceRebillSpend: 0,
+          ordersLast30: 0,
+          ordersSinceRebill: 0,
+          fbLast30RoasSum: 0,
+          fbLast30RoasCount: 0,
+          fbSinceRebillRoasSum: 0,
+          fbSinceRebillRoasCount: 0,
+        },
+      )
+
+      // Compute average ROAS
+      const avgRoas30 =
+        totals.fbLast30RoasCount > 0
+          ? totals.fbLast30RoasSum / totals.fbLast30RoasCount
+          : 0
+
+      const avgRoasRebill =
+        totals.fbSinceRebillRoasCount > 0
+          ? totals.fbSinceRebillRoasSum / totals.fbSinceRebillRoasCount
+          : 0
+
+      // Append totals row
+      allRows.push([
+        'n/a', // Monitored
+        'TOTAL/AVG', // Name
+        new Date().toDateString(), // Pod
+        totals.fbLast30Spend.toLocaleString(), // Ad spend (timeframe)
+        avgRoas30.toFixed(2), // ROAS (timeframe)
+        totals.revenueLast30.toLocaleString(), // Revenue (timeframe)
+        totals.fbSinceRebillSpend.toLocaleString(), // Ad spend (rebill)
+        avgRoasRebill.toFixed(2), // ROAS (rebill)
+        totals.revenueSinceRebill.toLocaleString(), // Revenue (rebill)
+        'n/a', // Is rebillable
+        'n/a', // Last rebill date
+        totals.ordersLast30.toLocaleString(), // Orders (timeframe)
+        totals.ordersSinceRebill.toLocaleString(), // Orders (rebill)
+      ])
+
+      // Write to sheet
+      await appendDataToSheet(sheetID, allRows)
+
+      setNotificationState({
+        state: 'success',
+        message: '✅ All batches processed and data saved!',
+      })
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+      setNotificationState({
+        state: 'error',
+        message: `❌ Error during batch ${batchNumber}`,
+      })
+    } finally {
+      setTimeout(() => {
+        setNotificationState(null)
+      }, 5000)
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <nav className="grid grid-cols-2 gap-3">
+        {links.map((link, index: number) => (
+          <button
+            key={link}
+            onClick={() => setActiveSection(index)}
+            className={`w-full overflow-hidden rounded border border-zinc-800 p-3 font-medium transition-colors hover:border-zinc-700 lg:p-7 ${activeSection === index ? 'bg-night-dusk' : ''}`}
+          >
+            {link}
+          </button>
+        ))}
+      </nav>
+
+      <div className="space-y-3 overflow-clip text-ellipsis lg:col-span-2">
+        {activeSection === 0 && (
+          <div className="space-y-3">
+            <h4>Frequency</h4>
+            {sheet.refresh === 'none' ? (
+              <span className="text-sm">
+                <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-red-600"></span>
+                No Automations Active
+              </span>
+            ) : (
+              <span className="text-sm">
+                <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-teal-400" />
+                Active - {sheet.refresh.replace(/_/g, ' ')}
+              </span>
+            )}
+
+            <div>
+              <h4>Last Refresh</h4>
+              <span className="text-sm">{lastRefresh}</span>
+            </div>
+
+            <button
+              onClick={handleDataRefresh}
+              className="rounded bg-white px-3 py-2 font-medium text-black"
+            >
+              Refresh Finance Data
+            </button>
+          </div>
+        )}
+
+        {activeSection === 1 && (
+          <div className="flex h-full min-h-40 flex-col justify-between">
+            <h4>Automation</h4>
+            <p className="text-sm">
+              Set up automatic refreshes to avoid refreshing manually.
+            </p>
+
+            <button className="w-fit rounded border px-3 py-2">
+              Create Automation
+            </button>
+          </div>
+        )}
+
+        {activeSection === 2 && (
+          <>
+            <h4>Create Backups</h4>
+            <p className="text-sm">
+              Automatically create backups with our backup tool.
+            </p>
+          </>
+        )}
+
+        {activeSection === 3 && (
+          <div className="flex h-full min-h-40 flex-col justify-between">
+            <h4>Section 3 Placeholder</h4>
+            <p className="text-sm">Content for section 3 will go here.</p>
+
+            <div className="flex space-x-4">
+              <button
+                className="hover:border-xps-deepBlue hover:text-xps-deepBlue rounded-sm border border-red-950 bg-red-950/30 px-2 py-1 text-red-950 transition-colors"
+                onClick={() => setConfirm(true)}
+              >
+                Delete Sheet
+              </button>
+              <button
+                className={`rounded-full border border-red-950 bg-red-950/30 px-2 py-1 text-red-950 ${confirm ? 'flex' : 'hidden'}`}
+                onClick={handleDelete}
+              >
+                Confirm
+              </button>
+              <button
+                className={`border-xps-grey text-xps-grey rounded-full border px-2 py-1 ${confirm ? 'flex' : 'hidden'}`}
+                onClick={() => setConfirm(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {notificationState && (
+        <NotificationModal
+          state={notificationState.state}
+          onClose={() => setNotificationState(null)}
+          message={notificationState.message}
+        />
+      )}
+    </div>
+  )
+}
