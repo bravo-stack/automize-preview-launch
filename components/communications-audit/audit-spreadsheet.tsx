@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import useSearchNavigation from '@/hooks/use-search-navigation'
+import { EXTERNAL_LINK_URLS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import type {
   CommunicationReport,
@@ -19,6 +20,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import ExternalLink from '../ExternalLink'
 import EmptyData from './empty-data'
 import Highlighter from './highlighter'
 import LoadingView from './loading-view'
@@ -848,17 +850,26 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
                                   )
                                 }
                               >
-                                <div className="py-1">
-                                  <div
-                                    className="truncate text-center text-xs font-medium"
-                                    title={category}
-                                  >
-                                    <Highlighter
-                                      text={category.replace('-IXM', '')}
-                                      query={searchQuery}
-                                    />
+                                <ExternalLink
+                                  href={
+                                    cell?.report?.guild_id &&
+                                    cell?.report?.channel_id
+                                      ? `${EXTERNAL_LINK_URLS.discord_channels}${cell?.report?.guild_id}/${cell?.report?.channel_id}`
+                                      : ''
+                                  }
+                                >
+                                  <div className="py-1">
+                                    <div
+                                      className="truncate text-center text-xs font-medium"
+                                      title={category}
+                                    >
+                                      <Highlighter
+                                        text={category.replace('-IXM', '')}
+                                        query={searchQuery}
+                                      />
+                                    </div>
                                   </div>
-                                </div>
+                                </ExternalLink>
                               </td>
                             )
                           })}
