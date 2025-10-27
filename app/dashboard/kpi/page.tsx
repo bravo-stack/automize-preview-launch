@@ -39,12 +39,31 @@ async function getTotalData(sheet_id: string) {
       const headers = rows[0]
       const lastRow = rows[rows.length - 1]
 
-      const mappedValues = headers.map((header, index) => {
-        return {
-          key: header,
-          value: lastRow[index] || null,
-        }
-      })
+      // Define fields to exclude
+      const excludedFields = [
+        'monitored',
+        'is rebillable',
+        'last rebill date',
+        'name',
+      ]
+
+      const mappedValues = headers
+        .map((header, index) => {
+          // Rename 'pod' to 'last refresh date'
+          const displayKey =
+            header.toLowerCase() === 'pod' ? 'Last refresh date' : header
+
+          return {
+            key: displayKey,
+            value: lastRow[index] || null,
+          }
+        })
+        .filter(
+          (item) =>
+            !excludedFields.some((excluded) =>
+              item.key.toLowerCase().includes(excluded.toLowerCase()),
+            ),
+        )
 
       return {
         label: lastRow[0] || 'Total',
@@ -86,7 +105,7 @@ export default async function KPIPage() {
             KPIs
           </h1>
           <p className="text-base text-zinc-400 sm:text-lg">
-            Key Performance Indicators pulled directly from the Financials
+            Financial overview pulled directly from FinanceX sheets.
           </p>
         </div>
         <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent" />
@@ -94,14 +113,34 @@ export default async function KPIPage() {
 
       <section className="mx-auto max-w-7xl">
         <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-          {sheetsWithKpi.map((item) => (
-            <KPICard
-              key={item.id}
-              title={item.title}
-              kpi={item.kpi}
-              lastRefresh={item.last_refresh}
-            />
-          ))}
+          {sheetsWithKpi
+            .sort((a, b) => {
+              // Define order for time periods
+              const timeOrder = {
+                yesterday: 1,
+                today: 2,
+                last_3d: 3,
+                last_7d: 4,
+                last_14d: 5,
+                last_30d: 6,
+                this_month: 7,
+                maximum: 8,
+              }
+
+              // Sort by the predefined order
+              return (
+                timeOrder[a.refresh.toLowerCase()] -
+                timeOrder[b.refresh.toLowerCase()]
+              )
+            })
+            .map((item) => (
+              <KPICard
+                key={item.id}
+                title={item.title}
+                kpi={item.kpi}
+                lastRefresh={item.last_refresh}
+              />
+            ))}
         </div>
       </section>
     </main>

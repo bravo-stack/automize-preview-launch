@@ -975,7 +975,8 @@ export async function refreshSheetData(
         if (revenueSinceRebill !== null)
           acc.revenueSinceRebill += revenueSinceRebill
         if (ordersLast30 !== null) acc.ordersLast30 += ordersLast30
-        if (ordersSinceRebill !== null) acc.ordersSinceRebill += ordersSinceRebill
+        if (ordersSinceRebill !== null)
+          acc.ordersSinceRebill += ordersSinceRebill
 
         if (roas30 !== null) {
           acc.fbLast30RoasSum += roas30
