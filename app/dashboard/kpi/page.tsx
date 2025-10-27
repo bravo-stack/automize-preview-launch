@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/db/server'
 import { authorizeSheets } from '@/lib/google'
 import { google } from 'googleapis'
@@ -21,14 +23,6 @@ async function getTotalData(sheet_id: string) {
   }
 
   try {
-    const scopes = ['https://www.googleapis.com/auth/drive']
-    const jwt = new google.auth.JWT(
-      process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
-      undefined,
-      (process.env.GOOGLE_SHEETS_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-      scopes,
-    )
-
     const sheets = google.sheets({
       version: 'v4',
       auth: await authorizeSheets(),
