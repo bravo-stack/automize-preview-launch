@@ -2,7 +2,7 @@
 
 import { getTemplateById } from '@/content/templates'
 import { google } from 'googleapis'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import {
   appendDataToSheet,
@@ -1048,4 +1048,21 @@ export async function changePassword() {
   await db.auth.updateUser({
     password: '',
   })
+}
+
+export async function refreshSheet(sheet_id: string) {
+  if (!sheet_id) {
+    return { error: 'Sheet ID is required' }
+  }
+
+  try {
+    const tag = `sheet-${sheet_id}`
+
+    revalidateTag(tag)
+
+    return { success: true }
+  } catch (err) {
+    console.error('Error revalidating tag:', err)
+    return { error: 'Failed to revalidate' }
+  }
 }
