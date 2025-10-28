@@ -1066,3 +1066,26 @@ export async function refreshSheet(sheet_id: string) {
     return { error: 'Failed to revalidate' }
   }
 }
+
+export async function updateDatabaseAction() {
+  try {
+    const res = await fetch('http://localhost:3001/api/update-database', {
+      method: 'GET',
+      headers: {
+        'x-api-key': process.env.LOCAL_API_KEY!, // store safely in .env
+      },
+      // Prevent Next.js caching — ensure this fetch always hits the API
+      cache: 'no-store',
+    })
+
+    if (!res.ok) {
+      throw new Error(`Failed to update database: ${res.statusText}`)
+    }
+
+    const data = await res.json()
+    return { success: true, data }
+  } catch (error) {
+    console.error('Error in updateDatabaseAction:', error)
+    return { success: false, error: String(error) }
+  }
+}
