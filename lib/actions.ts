@@ -2,7 +2,7 @@
 
 import { getTemplateById } from '@/content/templates'
 import { google } from 'googleapis'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import {
   appendDataToSheet,
@@ -975,7 +975,8 @@ export async function refreshSheetData(
         if (revenueSinceRebill !== null)
           acc.revenueSinceRebill += revenueSinceRebill
         if (ordersLast30 !== null) acc.ordersLast30 += ordersLast30
-        if (ordersSinceRebill !== null) acc.ordersSinceRebill += ordersSinceRebill
+        if (ordersSinceRebill !== null)
+          acc.ordersSinceRebill += ordersSinceRebill
 
         if (roas30 !== null) {
           acc.fbLast30RoasSum += roas30
@@ -1047,4 +1048,44 @@ export async function changePassword() {
   await db.auth.updateUser({
     password: '',
   })
+}
+
+export async function refreshSheet(sheet_id: string) {
+  if (!sheet_id) {
+    return { error: 'Sheet ID is required' }
+  }
+
+  try {
+    const tag = `sheet-${sheet_id}`
+
+    revalidateTag(tag)
+
+    return { success: true }
+  } catch (err) {
+    console.error('Error revalidating tag:', err)
+    return { error: 'Failed to revalidate' }
+  }
+}
+
+export async function updateDatabaseAction() {
+  try {
+    const res = await fetch('http://localhost:3001/api/update-database', {
+      method: 'GET',
+      headers: {
+        'x-api-key': process.env.LOCAL_API_KEY!, // store safely in .env
+      },
+      // Prevent Next.js caching — ensure this fetch always hits the API
+      cache: 'no-store',
+    })
+
+    if (!res.ok) {
+      throw new Error(`Failed to update database: ${res.statusText}`)
+    }
+
+    const data = await res.json()
+    return { success: true, data }
+  } catch (error) {
+    console.error('Error in updateDatabaseAction:', error)
+    return { success: false, error: String(error) }
+  }
 }

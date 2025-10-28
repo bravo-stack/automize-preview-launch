@@ -1,10 +1,8 @@
-// create an external link component
-
 import { ReactNode } from 'react'
 
 interface ExternalLinkProps {
   children: ReactNode
-  href: string
+  href?: string | null
   className?: string
   onClick?: () => void
 }
@@ -15,20 +13,27 @@ export default function ExternalLink({
   className,
   onClick,
 }: ExternalLinkProps) {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!href) {
+      e.preventDefault() // stop navigation
+      console.warn(
+        'ExternalLink: href is null or undefined, navigation prevented.',
+      )
+      return
+    }
+
+    if (onClick) onClick()
+  }
+
   return (
     <a
-      href={href}
-      onClick={onClick}
+      href={href || '#'}
+      onClick={handleClick}
       target="_blank"
       rel="noopener noreferrer"
-      className={className}
+      className={`${!href ? 'cursor-not-allowed opacity-60' : ''} ${className || ''}`}
     >
       {children}
     </a>
   )
 }
-
-// Usage example:
-// <ExternalLink href="https://example.com" className="text-blue-500 hover:text-blue-600">
-//   Visit Example
-// </ExternalLink>

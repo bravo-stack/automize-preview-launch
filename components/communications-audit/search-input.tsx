@@ -88,7 +88,10 @@ const SearchInput = ({
           <ChevronDown className="h-4 w-4" />
         </Button>
         <Button
-          onClick={() => setIsSearching(false)}
+          onClick={() => {
+            setSearchQuery('')
+            setIsSearching(false)
+          }}
           variant="outline"
           className="inline-flex size-7 items-center justify-center border-none hover:opacity-85"
         >
