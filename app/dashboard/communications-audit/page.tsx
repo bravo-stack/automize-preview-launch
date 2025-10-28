@@ -19,6 +19,7 @@ export const fetchCache = 'default-no-store'
 export default async function CommunicationsAudit() {
   const authDb = createClient()
   const db = await createAdminClient()
+
   unstable_noStore()
 
   const {
@@ -66,6 +67,16 @@ export default async function CommunicationsAudit() {
     latestDate,
   }
 
+  const { data: timeframe } = await db
+    .from('timeframe')
+    .select(
+      'id, didnt_reach_out_hours, client_silent_days, updated_at, created_at',
+    )
+    .single()
+
+  const timeFrameDidntReactOutHours = timeframe?.didnt_reach_out_hours ?? 48
+  const timeFrameClientSilentDays = timeframe?.client_silent_days ?? 5
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-night-midnight via-night-starlit to-night-dusk">
       <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -81,7 +92,10 @@ export default async function CommunicationsAudit() {
 
           <RevalidateButton />
 
-          <UpdateIxmValue didnt_reach_out_hours={48} client_silent_days={5} />
+          <UpdateIxmValue
+            didnt_reach_out_hours={timeFrameDidntReactOutHours}
+            client_silent_days={timeFrameClientSilentDays}
+          />
 
           <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent"></div>
         </header>
@@ -97,7 +111,11 @@ export default async function CommunicationsAudit() {
           }
         >
           {uniqueDates && uniqueDates.length > 0 ? (
-            <AuditSpreadsheet initialData={auditData} />
+            <AuditSpreadsheet
+              ixm_didnt_reach_out_hours={timeFrameDidntReactOutHours}
+              client_silent_days={timeFrameClientSilentDays}
+              initialData={auditData}
+            />
           ) : (
             <div className="flex min-h-[400px] items-center justify-center">
               <div className="max-w-lg rounded-xl border border-zinc-800/50 bg-gradient-to-br from-night-starlit to-night-moonlit p-8 text-center shadow-2xl">

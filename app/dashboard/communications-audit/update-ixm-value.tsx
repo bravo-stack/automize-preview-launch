@@ -2,7 +2,9 @@
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useState } from 'react'
+import { updateItem } from '@/lib/actions/db'
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
 import toast from 'react-hot-toast'
 
 type Props = {
@@ -16,9 +18,13 @@ const UpdateIxmValue = ({
 }: Props) => {
   // STATES
   const [timeFrame, setTimeFrame] = useState(() => ({
-    didnt_reach_out_hours: didnt_reach_out_hours ?? 48,
-    client_silent_days: client_silent_days ?? 5,
+    didnt_reach_out_hours: didnt_reach_out_hours,
+    client_silent_days: client_silent_days,
   }))
+  const [isSubmitting, startTransition] = useTransition()
+
+  //   HOOKS
+  const router = useRouter()
 
   //   HANDLERS
   const handleSubmit = (e: React.FormEvent) => {
@@ -42,7 +48,49 @@ const UpdateIxmValue = ({
       return
     }
 
-    console.log('Updated IXM Values:', timeFrame)
+    if (
+      timeFrame.didnt_reach_out_hours < 1 ||
+      timeFrame.didnt_reach_out_hours > 168
+    ) {
+      toast.error(
+        'Out of range: "Didn\'t Reach Out" must be between 1 and 168 hours.',
+      )
+      return
+    }
+
+    if (
+      timeFrame.client_silent_days < 1 ||
+      timeFrame.client_silent_days > 100
+    ) {
+      toast.error(
+        'Out of range: "Client Silent" must be between 1 and 100 days.',
+      )
+      return
+    }
+
+    startTransition(async () => {
+      try {
+        const { error } = await updateItem(
+          'timeframe',
+          {
+            didnt_reach_out_hours: timeFrame.didnt_reach_out_hours,
+            client_silent_days: timeFrame.client_silent_days,
+            updated_at: new Date().toISOString(),
+          },
+          1,
+        )
+
+        if (error) {
+          throw new Error('Failed to update timeframe')
+        }
+
+        toast.success('Timeframe updated successfully!')
+        router.refresh()
+      } catch (error) {
+        console.error('Error updating timeframe:', error)
+        toast.error('An error occurred while updating the timeframe.')
+      }
+    })
   }
 
   return (
@@ -58,6 +106,7 @@ const UpdateIxmValue = ({
           Didn&apos;t Reach Out (Hours):
         </label>
         <Input
+          disabled={isSubmitting}
           type="text"
           value={timeFrame.didnt_reach_out_hours}
           onChange={(e) =>
@@ -79,6 +128,7 @@ const UpdateIxmValue = ({
         </label>
 
         <Input
+          disabled={isSubmitting}
           type="text"
           value={timeFrame.client_silent_days}
           onChange={(e) =>
@@ -90,8 +140,12 @@ const UpdateIxmValue = ({
           className="bg-background/50"
         />
       </div>
-      <Button type="submit" className="w-full sm:w-auto">
-        Update
+      <Button
+        disabled={isSubmitting}
+        type="submit"
+        className="w-full sm:w-auto"
+      >
+        {isSubmitting ? 'Updating...' : 'Update'}
       </Button>
     </form>
   )

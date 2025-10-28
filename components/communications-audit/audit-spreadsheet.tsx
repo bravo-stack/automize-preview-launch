@@ -42,6 +42,8 @@ type NormalizedStatus =
 type StatusColorMap = Record<NormalizedStatus | 'default', string>
 interface Props {
   initialData: CommunicationsAuditData
+  ixm_didnt_reach_out_hours: number
+  client_silent_days: number
 }
 interface SpreadsheetCell {
   categoryName: string
@@ -61,27 +63,6 @@ interface SelectionRange {
   end: SelectedCell | null
 }
 
-const STATUS_PATTERNS: Array<[NormalizedStatus, RegExp[]]> = [
-  ['inactive', [/^inactive$/i]],
-  ['transferred', [/^transferred$/i]],
-  ['churned', [/^churned$/i]],
-
-  ['imessage', [/^imessage$/i]],
-
-  [
-    'ixm_no_reach_48h',
-    [/didn'?t reach out for 48 hours/i, /ixm didn'?t reach out/i],
-  ],
-  ['client_silent_5d', [/client silent for 5\+ days/i, /client silent/i]],
-  [
-    'client_awaiting_team',
-    [/client responded - awaiting team reply/i, /awaiting team reply/i],
-  ],
-  ['active_communication', [/active communication/i]],
-  ['no_messages', [/no messages found/i]],
-  ['team_only', [/team only - no client messages/i, /team only/i]],
-  ['client_only_no_team', [/client only - no team response/i, /client only/i]],
-]
 const STATUS_COLORS: StatusColorMap = {
   ixm_no_reach_48h: 'bg-amber-500 text-black',
   client_only_no_team: 'bg-amber-500 text-black', // optional alias if needed
@@ -101,18 +82,6 @@ const STATUS_COLORS: StatusColorMap = {
 
   unknown: 'bg-gray-400 text-white', // from getStatus fallback
   default: 'bg-gray-400 text-white',
-}
-function resolveStatus(rawStatus: string | null | undefined): NormalizedStatus {
-  const normalized = rawStatus?.trim().toLowerCase()
-  if (!normalized) return 'unknown'
-
-  for (const [mappedStatus, patterns] of STATUS_PATTERNS) {
-    if (patterns.some((p) => p.test(normalized))) {
-      return mappedStatus
-    }
-  }
-
-  return 'active_communication' // default fallback
 }
 function getStatusColor(status: NormalizedStatus): string {
   return STATUS_COLORS[status] ?? STATUS_COLORS.default
@@ -155,7 +124,11 @@ function customPodSort(a: string, b: string): number {
   return a.localeCompare(b) // Neither is in the list, sort alphabetically
 }
 
-function CommunicationsAuditSpreadsheet({ initialData }: Props) {
+function CommunicationsAuditSpreadsheet({
+  initialData,
+  ixm_didnt_reach_out_hours,
+  client_silent_days,
+}: Props) {
   // STATES
   const [searchQuery, setSearchQuery] = useState('')
   const [matches, setMatches] = useState<Element[]>([])
@@ -179,6 +152,59 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
   const hasData = initialData.availableDates.length > 0
 
   // HOOKS
+  const STATUS_PATTERNS = useMemo<Array<[NormalizedStatus, RegExp[]]>>(
+    () => [
+      ['inactive', [/^inactive$/i]],
+      ['transferred', [/^transferred$/i]],
+      ['churned', [/^churned$/i]],
+      ['imessage', [/^imessage$/i]],
+      [
+        `ixm_no_reach_48h`,
+        [
+          new RegExp(
+            `didn'?t reach out for ${ixm_didnt_reach_out_hours} hours`,
+            'i',
+          ),
+          /ixm didn'?t reach out/i,
+        ],
+      ],
+      [
+        `client_silent_5d`,
+        [
+          new RegExp(`client silent for ${client_silent_days}\\+ days`, 'i'),
+          /client silent/i,
+        ],
+      ],
+      [
+        'client_awaiting_team',
+        [/client responded - awaiting team reply/i, /awaiting team reply/i],
+      ],
+      ['active_communication', [/active communication/i]],
+      ['no_messages', [/no messages found/i]],
+      ['team_only', [/team only - no client messages/i, /team only/i]],
+      [
+        'client_only_no_team',
+        [/client only - no team response/i, /client only/i],
+      ],
+    ],
+    [ixm_didnt_reach_out_hours, client_silent_days],
+  )
+
+  const resolveStatus = useCallback(
+    (rawStatus: string | null | undefined): NormalizedStatus => {
+      const normalized = rawStatus?.trim().toLowerCase()
+      if (!normalized) return 'unknown'
+
+      for (const [mappedStatus, patterns] of STATUS_PATTERNS) {
+        if (patterns.some((p) => p.test(normalized))) {
+          return mappedStatus
+        }
+      }
+      return 'active_communication'
+    },
+    [STATUS_PATTERNS],
+  )
+
   const { goToNextMatch, goToPrevMatch } = useSearchNavigation(
     matches,
     currentIndex,
@@ -245,10 +271,11 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
 
       // 2. Create the cell data
       const key = `${guild_name}-${category_name}`
+      const resolved = resolveStatus(status)
       cells.set(key, {
         podName: guild_name,
         categoryName: category_name,
-        status: resolveStatus(status),
+        status: resolved,
         channelName: channel_name || undefined,
         report,
       })
@@ -266,7 +293,7 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
       podCategories: sortedPodCategories,
       cells,
     }
-  }, [data])
+  }, [data, resolveStatus])
 
   const spreadsheetData = useMemo(() => {
     if (!selectedStatusFilter) {
@@ -573,15 +600,15 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
             <span className="text-zinc-400">Legend:</span>
             {[
               {
-                status: 'ixm_no_reach_48h',
-                raw: `IXM didn't reach out for 48 hours`,
-                label: "Didn't reach out for 48 hours",
+                status: `ixm_no_reach_48h`,
+                raw: `IXM didn't reach out for ${ixm_didnt_reach_out_hours} hours`,
+                label: `Didn't reach out ${ixm_didnt_reach_out_hours}h`,
                 color: 'bg-amber-500 text-black',
               },
               {
-                status: 'client_silent_5d',
-                raw: 'Client silent for 5+ days',
-                label: 'Client Silent 5+ Days',
+                status: `client_silent_5d`,
+                raw: `Client silent for ${client_silent_days}+ days`,
+                label: `Client Silent ${client_silent_days}+ Days`,
                 color: 'bg-red-500 text-black',
               },
               {
@@ -617,13 +644,13 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {[
             {
-              status: 'ixm_no_reach_48h',
-              label: `Didn't reach out`,
+              status: `ixm_no_reach_48h`,
+              label: `Didn't reach out ${ixm_didnt_reach_out_hours}h`,
               color: 'bg-amber-500 text-black',
             },
             {
-              status: 'client_silent_5d',
-              label: 'Client Silent 5+ Days',
+              status: `client_silent_5d`,
+              label: `Client Silent ${client_silent_days}+ Days`,
               color: 'bg-red-500 text-black',
             },
             {
