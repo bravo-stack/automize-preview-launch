@@ -568,7 +568,7 @@ function CommunicationsAuditSpreadsheet({ initialData }: Props) {
           </select>
         </div>
 
-        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-6 sm:space-y-0">
+        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-end sm:space-x-6 sm:space-y-0">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-zinc-400">Legend:</span>
             {[

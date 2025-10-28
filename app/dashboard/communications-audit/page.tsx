@@ -10,6 +10,7 @@ import type {
 import { unstable_noStore } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
+import UpdateIxmValue from './update-ixm-value'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -77,7 +78,11 @@ export default async function CommunicationsAudit() {
               Monitor client communication status across all pods
             </p>
           </div>
+
           <RevalidateButton />
+
+          <UpdateIxmValue didnt_reach_out_hours={48} client_silent_days={5} />
+
           <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent"></div>
         </header>
 
