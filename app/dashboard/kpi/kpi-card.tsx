@@ -23,7 +23,7 @@ const layout = [
   { label: 'Ad Spend Since Rebill', value: 5 },
   { label: 'ROAS Since Rebill', value: 6 },
   { label: 'Revenue Since Rebill', value: 7 },
-  { label: 'Order', value: 8 },
+  { label: 'Orders', value: 8 },
   { label: 'Orders Since Rebill', value: 9 },
 ]
 
