@@ -500,8 +500,28 @@ export async function fetchFacebook(
     try {
       const response = await fetch(url)
       if (!response.ok) {
+        // Try to get the error details from Facebook
+        let errorDetails = ''
+        try {
+          const errorData = await response.json()
+          if (errorData.error) {
+            errorDetails = `: ${errorData.error.message}`
+            console.error(`FB API Error for ${name} (${accountId}):`, errorData.error)
+          }
+        } catch (e) {
+          // Unable to parse error response
+        }
+
         // More specific error messages based on status codes
-        if (response.status === 401) {
+        if (response.status === 400) {
+          console.error(`Bad Request for account ${accountId} (${name})`, { url, dateParam })
+          return {
+            name,
+            pod,
+            roas: `Bad Request${errorDetails}`,
+            spend: `Bad Request${errorDetails}`,
+          }
+        } else if (response.status === 401) {
           return {
             name,
             pod,
