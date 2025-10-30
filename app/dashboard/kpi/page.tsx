@@ -3,7 +3,6 @@ import { authorizeSheets } from '@/lib/google'
 import { google } from 'googleapis'
 import { unstable_cache as cache } from 'next/cache'
 import { KPICard } from './kpi-card'
-import PageRefreshBtnKpi from './page-refresh-btn'
 
 type SheetsData = {
   id: number
@@ -112,17 +111,13 @@ export default async function KPIPage() {
   return (
     <main className="space-y-7 p-7">
       <header className="mb-8 space-y-4">
-        <div className="flex w-full flex-col items-stretch justify-start md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col space-y-2">
-            <h1 className="w-fit bg-gradient-to-r from-white via-zinc-300 to-white/80 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl lg:text-5xl">
-              KPIs
-            </h1>
-            <p className="text-base text-zinc-400 sm:text-lg">
-              Financial overview pulled directly from FinanceX sheets.
-            </p>
-          </div>
-
-          <PageRefreshBtnKpi />
+        <div className="flex flex-col space-y-2">
+          <h1 className="w-fit bg-gradient-to-r from-white via-zinc-300 to-white/80 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl lg:text-5xl">
+            KPIs
+          </h1>
+          <p className="text-base text-zinc-400 sm:text-lg">
+            Financial overview pulled directly from FinanceX sheets.
+          </p>
         </div>
         <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent" />
       </header>
