@@ -637,9 +637,11 @@ export async function financialize(
   let totalRevenueLast30 = 0
   let totalOrdersLast30 = 0
   let totalFbLast30Spend = 0
+  let totalFbLast30Revenue = 0
   let totalRevenueSinceRebill = 0
   let totalOrdersSinceRebill = 0
   let totalFbSinceRebillSpend = 0
+  let totalFbSinceRebillRevenue = 0
   let fbLast30RoasSum = 0
   let fbSinceRebillRoasSum = 0
   let fbLast30RoasCount = 0
@@ -663,15 +665,28 @@ export async function financialize(
       const fbLast30Roas = toNumber(s.fbLast30Roas)
       const fbSinceRebillRoas = toNumber(s.fbSinceRebillRoas)
 
+      // Calculate FB Revenue (spend × ROAS)
+      const fbLast30Revenue =
+        fbLast30Spend !== null && fbLast30Roas !== null
+          ? fbLast30Spend * fbLast30Roas
+          : null
+      const fbSinceRebillRevenue =
+        fbSinceRebillSpend !== null && fbSinceRebillRoas !== null
+          ? fbSinceRebillSpend * fbSinceRebillRoas
+          : null
+
       if (revenueLast30 !== null) totalRevenueLast30 += revenueLast30
       if (ordersLast30 !== null) totalOrdersLast30 += ordersLast30
       if (fbLast30Spend !== null) totalFbLast30Spend += fbLast30Spend
+      if (fbLast30Revenue !== null) totalFbLast30Revenue += fbLast30Revenue
       if (revenueSinceRebill !== null)
         totalRevenueSinceRebill += revenueSinceRebill
       if (ordersSinceRebill !== null)
         totalOrdersSinceRebill += ordersSinceRebill
       if (fbSinceRebillSpend !== null)
         totalFbSinceRebillSpend += fbSinceRebillSpend
+      if (fbSinceRebillRevenue !== null)
+        totalFbSinceRebillRevenue += fbSinceRebillRevenue
 
       if (fbLast30Roas !== null) {
         fbLast30RoasSum += fbLast30Roas
@@ -689,9 +704,13 @@ export async function financialize(
         s.pod, // Pod
         s.fbLast30Spend, // Ad spend (timeframe)
         s.fbLast30Roas, // ROAS (timeframe)
+        fbLast30Revenue !== null ? fbLast30Revenue.toFixed(2) : s.fbLast30Spend, // FB Revenue (timeframe)
         s.revenueLast30, // Revenue (timeframe)
         s.fbSinceRebillSpend, // Ad spend (rebill)
         s.fbSinceRebillRoas, // ROAS (rebill)
+        fbSinceRebillRevenue !== null
+          ? fbSinceRebillRevenue.toFixed(2)
+          : s.fbSinceRebillSpend, // FB Revenue (rebill)
         s.revenueSinceRebill, // Revenue (rebill)
         rebillStatus, // Is rebillable
         s.lastRebill ? s.lastRebill : 'Missing rebill date', // Last rebill date
@@ -701,8 +720,8 @@ export async function financialize(
     })
 
     const sortedSheetData = sheetData.sort((a, b) => {
-      const revenueA = parseFloat(a[5]) || 0 // Revenue (timeframe) is in column 5 (Monitored, Name, Pod, Ad spend, ROAS, Revenue)
-      const revenueB = parseFloat(b[5]) || 0
+      const revenueA = parseFloat(a[6]) || 0 // Revenue (timeframe) is now in column 6 (Monitored, Name, Pod, Ad spend, ROAS, FB Revenue, Revenue)
+      const revenueB = parseFloat(b[6]) || 0
       const fbSpendA = parseFloat(a[3]) || 0 // Ad spend (timeframe) is in column 3
       const fbSpendB = parseFloat(b[3]) || 0
 
@@ -727,9 +746,11 @@ export async function financialize(
       new Date().toDateString(), // Pod
       totalFbLast30Spend.toLocaleString(), // Ad spend (timeframe)
       averageFbLast30Roas.toFixed(2), // ROAS (timeframe)
+      totalFbLast30Revenue.toFixed(2), // FB Revenue (timeframe)
       totalRevenueLast30.toLocaleString(), // Revenue (timeframe)
       totalFbSinceRebillSpend.toLocaleString(), // Ad spend (rebill)
       averageFbSinceRebillRoas.toFixed(2), // ROAS (rebill)
+      totalFbSinceRebillRevenue.toFixed(2), // FB Revenue (rebill)
       totalRevenueSinceRebill.toLocaleString(), // Revenue (rebill)
       'n/a', // Is rebillable
       'n/a', // Last rebill date
@@ -918,9 +939,9 @@ export async function refreshSheetData(
     }
 
     // Clean all number fields before sorting
-    // New column order: Monitored(0), Name(1), Pod(2), Ad spend timeframe(3), ROAS timeframe(4), Revenue timeframe(5), Ad spend rebill(6), ROAS rebill(7), Revenue rebill(8), Is rebillable(9), Last rebill date(10), Orders timeframe(11), Orders rebill(12)
+    // New column order: Monitored(0), Name(1), Pod(2), Ad spend timeframe(3), ROAS timeframe(4), FB Revenue timeframe(5), Revenue timeframe(6), Ad spend rebill(7), ROAS rebill(8), FB Revenue rebill(9), Revenue rebill(10), Is rebillable(11), Last rebill date(12), Orders timeframe(13), Orders rebill(14)
     for (let row of allRows) {
-      for (let i of [3, 4, 5, 6, 7, 8, 11, 12]) {
+      for (let i of [3, 4, 5, 6, 7, 8, 9, 10, 13, 14]) {
         const val = row[i]
 
         if (
@@ -935,8 +956,8 @@ export async function refreshSheetData(
 
     // Sort globally by revenue (timeframe) then spend (timeframe)
     allRows.sort((a, b) => {
-      const revenueA = typeof a[5] === 'number' ? a[5] : -Infinity // Revenue (timeframe) is column 5
-      const revenueB = typeof b[5] === 'number' ? b[5] : -Infinity
+      const revenueA = typeof a[6] === 'number' ? a[6] : -Infinity // Revenue (timeframe) is now column 6
+      const revenueB = typeof b[6] === 'number' ? b[6] : -Infinity
       const spendA = typeof a[3] === 'number' ? a[3] : -Infinity // Ad spend (timeframe) is column 3
       const spendB = typeof b[3] === 'number' ? b[3] : -Infinity
 
@@ -958,20 +979,25 @@ export async function refreshSheetData(
           return null // non-numeric or error string
         }
 
-        // New column order: Monitored(0), Name(1), Pod(2), Ad spend timeframe(3), ROAS timeframe(4), Revenue timeframe(5), Ad spend rebill(6), ROAS rebill(7), Revenue rebill(8), Is rebillable(9), Last rebill date(10), Orders timeframe(11), Orders rebill(12)
+        // New column order: Monitored(0), Name(1), Pod(2), Ad spend timeframe(3), ROAS timeframe(4), FB Revenue timeframe(5), Revenue timeframe(6), Ad spend rebill(7), ROAS rebill(8), FB Revenue rebill(9), Revenue rebill(10), Is rebillable(11), Last rebill date(12), Orders timeframe(13), Orders rebill(14)
         const fbLast30Spend = toNum(row[3]) // Ad spend (timeframe)
         const roas30 = toNum(row[4]) // ROAS (timeframe)
-        const revenueLast30 = toNum(row[5]) // Revenue (timeframe)
-        const fbSinceRebillSpend = toNum(row[6]) // Ad spend (rebill)
-        const roasRebill = toNum(row[7]) // ROAS (rebill)
-        const revenueSinceRebill = toNum(row[8]) // Revenue (rebill)
-        const ordersLast30 = toNum(row[11]) // Orders (timeframe)
-        const ordersSinceRebill = toNum(row[12]) // Orders (rebill)
+        const fbLast30Revenue = toNum(row[5]) // FB Revenue (timeframe)
+        const revenueLast30 = toNum(row[6]) // Revenue (timeframe)
+        const fbSinceRebillSpend = toNum(row[7]) // Ad spend (rebill)
+        const roasRebill = toNum(row[8]) // ROAS (rebill)
+        const fbSinceRebillRevenue = toNum(row[9]) // FB Revenue (rebill)
+        const revenueSinceRebill = toNum(row[10]) // Revenue (rebill)
+        const ordersLast30 = toNum(row[13]) // Orders (timeframe)
+        const ordersSinceRebill = toNum(row[14]) // Orders (rebill)
 
         if (fbLast30Spend !== null) acc.fbLast30Spend += fbLast30Spend
+        if (fbLast30Revenue !== null) acc.fbLast30Revenue += fbLast30Revenue
         if (revenueLast30 !== null) acc.revenueLast30 += revenueLast30
         if (fbSinceRebillSpend !== null)
           acc.fbSinceRebillSpend += fbSinceRebillSpend
+        if (fbSinceRebillRevenue !== null)
+          acc.fbSinceRebillRevenue += fbSinceRebillRevenue
         if (revenueSinceRebill !== null)
           acc.revenueSinceRebill += revenueSinceRebill
         if (ordersLast30 !== null) acc.ordersLast30 += ordersLast30
@@ -993,8 +1019,10 @@ export async function refreshSheetData(
       {
         revenueLast30: 0,
         fbLast30Spend: 0,
+        fbLast30Revenue: 0,
         revenueSinceRebill: 0,
         fbSinceRebillSpend: 0,
+        fbSinceRebillRevenue: 0,
         ordersLast30: 0,
         ordersSinceRebill: 0,
         fbLast30RoasSum: 0,
@@ -1022,9 +1050,11 @@ export async function refreshSheetData(
       new Date().toDateString(), // Pod
       totals.fbLast30Spend.toLocaleString(), // Ad spend (timeframe)
       avgRoas30.toFixed(2), // ROAS (timeframe)
+      totals.fbLast30Revenue.toFixed(2), // FB Revenue (timeframe)
       totals.revenueLast30.toLocaleString(), // Revenue (timeframe)
       totals.fbSinceRebillSpend.toLocaleString(), // Ad spend (rebill)
       avgRoasRebill.toFixed(2), // ROAS (rebill)
+      totals.fbSinceRebillRevenue.toFixed(2), // FB Revenue (rebill)
       totals.revenueSinceRebill.toLocaleString(), // Revenue (rebill)
       'n/a', // Is rebillable
       'n/a', // Last rebill date
