@@ -1,6 +1,7 @@
 'use client'
 
 import NotificationModal from '@/components/NotificationModal'
+import { cn } from '@/lib/utils'
 import { Fragment, useState } from 'react'
 
 type KpiValue = {
@@ -25,6 +26,7 @@ const layout = [
   { label: 'Orders Since Rebill', value: 11 },
   { label: 'FB Rev', value: 4 },
   { label: 'FB Rev Since Rebill', value: 8 },
+  { label: '', value: 0 },
   { label: 'Shopify Rev', value: 5 },
   { label: 'Shopify Rev Since Rebill', value: 9 },
 ]
@@ -41,7 +43,11 @@ function KpiCell({
       <span className="truncate text-sm text-zinc-400" title={label}>
         {label}
       </span>
-      <span className="break-words text-lg font-bold text-white">
+      <span
+        className={cn('break-words text-lg font-bold text-white', {
+          'opacity-0': !value && !label,
+        })}
+      >
         {value || '-'}
       </span>
     </div>

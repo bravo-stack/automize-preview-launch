@@ -109,6 +109,8 @@ export default async function KPIPage() {
     }),
   )
 
+  console.log('sheets with kpi: ', sheetsWithKpi)
+
   return (
     <main className="space-y-7 p-7">
       <header className="mb-8 space-y-4">
