@@ -506,7 +506,10 @@ export async function fetchFacebook(
           const errorData = await response.json()
           if (errorData.error) {
             errorDetails = `: ${errorData.error.message}`
-            console.error(`FB API Error for ${name} (${accountId}):`, errorData.error)
+            console.error(
+              `FB API Error for ${name} (${accountId}):`,
+              errorData.error,
+            )
           }
         } catch (e) {
           // Unable to parse error response
@@ -514,7 +517,10 @@ export async function fetchFacebook(
 
         // More specific error messages based on status codes
         if (response.status === 400) {
-          console.error(`Bad Request for account ${accountId} (${name})`, { url, dateParam })
+          console.error(`Bad Request for account ${accountId} (${name})`, {
+            url,
+            dateParam,
+          })
           return {
             name,
             pod,
@@ -766,11 +772,11 @@ export async function financialize(
       new Date().toDateString(), // Pod
       totalFbLast30Spend.toLocaleString(), // Ad spend (timeframe)
       averageFbLast30Roas.toFixed(2), // ROAS (timeframe)
-      totalFbLast30Revenue.toFixed(2), // FB Revenue (timeframe)
+      totalFbLast30Revenue.toLocaleString(), // FB Revenue (timeframe)
       totalRevenueLast30.toLocaleString(), // Revenue (timeframe)
       totalFbSinceRebillSpend.toLocaleString(), // Ad spend (rebill)
       averageFbSinceRebillRoas.toFixed(2), // ROAS (rebill)
-      totalFbSinceRebillRevenue.toFixed(2), // FB Revenue (rebill)
+      totalFbSinceRebillRevenue.toLocaleString(), // FB Revenue (rebill)
       totalRevenueSinceRebill.toLocaleString(), // Revenue (rebill)
       'n/a', // Is rebillable
       'n/a', // Last rebill date
@@ -1070,11 +1076,11 @@ export async function refreshSheetData(
       new Date().toDateString(), // Pod
       totals.fbLast30Spend.toLocaleString(), // Ad spend (timeframe)
       avgRoas30.toFixed(2), // ROAS (timeframe)
-      totals.fbLast30Revenue.toFixed(2), // FB Revenue (timeframe)
+      totals.fbLast30Revenue.toLocaleString(), // FB Revenue (timeframe)
       totals.revenueLast30.toLocaleString(), // Revenue (timeframe)
       totals.fbSinceRebillSpend.toLocaleString(), // Ad spend (rebill)
       avgRoasRebill.toFixed(2), // ROAS (rebill)
-      totals.fbSinceRebillRevenue.toFixed(2), // FB Revenue (rebill)
+      totals.fbSinceRebillRevenue.toLocaleString(), // FB Revenue (rebill)
       totals.revenueSinceRebill.toLocaleString(), // Revenue (rebill)
       'n/a', // Is rebillable
       'n/a', // Last rebill date
