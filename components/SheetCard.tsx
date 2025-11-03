@@ -195,11 +195,11 @@ export default function SheetCard({ sheet, stores }: SheetCardProps) {
         new Date().toDateString(), // Pod
         totals.fbLast30Spend.toLocaleString(), // Ad spend (timeframe)
         avgRoas30.toFixed(2), // ROAS (timeframe)
-        totals.fbLast30Revenue.toFixed(2), // FB Revenue (timeframe)
+        totals.fbLast30Revenue.toLocaleString(), // FB Revenue (timeframe)
         totals.revenueLast30.toLocaleString(), // Revenue (timeframe)
         totals.fbSinceRebillSpend.toLocaleString(), // Ad spend (rebill)
         avgRoasRebill.toFixed(2), // ROAS (rebill)
-        totals.fbSinceRebillRevenue.toFixed(2), // FB Revenue (rebill)
+        totals.fbSinceRebillRevenue.toLocaleString(), // FB Revenue (rebill)
         totals.revenueSinceRebill.toLocaleString(), // Revenue (rebill)
         'n/a', // Is rebillable
         'n/a', // Last rebill date
