@@ -1,22 +1,21 @@
 'use client'
 
+import { refresh } from '@/lib/actions'
 import { Loader } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { Fragment, useTransition } from 'react'
 
 type Props = {}
 
 const PageRefreshBtnKpi = (props: Props) => {
   // HOOKS
-  const router = useRouter()
   const [isRefreshing, startTransition] = useTransition()
 
   return (
     <button
       disabled={isRefreshing}
       onClick={() => {
-        startTransition(() => {
-          router.refresh()
+        startTransition(async () => {
+          await refresh('/dashboard/kpi')
         })
       }}
       className="inline-flex items-center gap-2 rounded bg-white px-3 py-2 font-medium text-black disabled:cursor-not-allowed"

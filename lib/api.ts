@@ -102,6 +102,12 @@ export async function appendDataToSheet(
     })
   }
 
+  // Clear existing data first
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: sheetId,
+    range: 'Sheet1!A2:Z1000',
+  })
+
   // Step 3: Append the data to the correct sheet
   const requestBody = {
     values: data,

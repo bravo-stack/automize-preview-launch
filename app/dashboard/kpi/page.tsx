@@ -16,6 +16,8 @@ type SheetsData = {
   is_finance: boolean
 }
 
+export const maxDuration = 60
+
 async function getSheetData(sheet_id: string) {
   if (!sheet_id) {
     console.error('Error: The Google Sheet ID is missing')
