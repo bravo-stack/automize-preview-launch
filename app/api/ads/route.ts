@@ -139,6 +139,10 @@ export async function POST(request: NextRequest) {
 
           const CPA = getCPA(i.cost_per_action_type)
 
+          // Calculate FB Revenue = Ad Spend × ROAS
+          const spend = parseFloat(i.spend || '0')
+          const fbRevenue = spend * validROAS
+
           return {
             name,
             pod,
@@ -148,14 +152,15 @@ export async function POST(request: NextRequest) {
               pod,
               isMonitored ? 'Yes' : 'No',
               CPA.purchase ?? '',
-              i.spend,
               i.cpc,
               i.cpm,
               i.ctr,
               i.quality_ranking,
               i.engagement_rate_ranking,
               i.conversion_rate_ranking,
+              i.spend,
               i.purchase_roas ? i.purchase_roas[0].value : '',
+              fbRevenue.toFixed(2), // FB Revenue (after ROAS)
               getHookRate(video_view, i.impressions),
               getPercentage(omni_add_to_cart, link_click),
               getPercentage(omni_initiated_checkout, omni_add_to_cart),
