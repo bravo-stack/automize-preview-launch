@@ -8,9 +8,10 @@ import { useState } from 'react'
 interface SheetInfoProps {
   links: string[]
   data: any
+  role: string
 }
 
-export default function SheetInfo({ links, data }: SheetInfoProps) {
+export default function SheetInfo({ links, data, role }: SheetInfoProps) {
   const { sheet, lastRefresh } = data
   const status = sheet.title === 'Churned' ? 'left' : 'active'
   const router = useRouter()
@@ -138,26 +139,28 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
             <h4>Section 3 Placeholder</h4>
             <p className="text-sm">Content for section 3 will go here.</p>
 
-            <div className="flex space-x-4">
-              <button
-                className="hover:border-xps-deepBlue hover:text-xps-deepBlue rounded-sm border border-red-950 bg-red-950/30 px-2 py-1 text-red-950 transition-colors"
-                onClick={() => setConfirm(true)}
-              >
-                Delete Sheet
-              </button>
-              <button
-                className={`rounded-full border border-red-950 bg-red-950/30 px-2 py-1 text-red-950 ${confirm ? 'flex' : 'hidden'}`}
-                onClick={handleDelete}
-              >
-                Confirm
-              </button>
-              <button
-                className={`border-xps-grey text-xps-grey rounded-full border px-2 py-1 ${confirm ? 'flex' : 'hidden'}`}
-                onClick={() => setConfirm(false)}
-              >
-                Cancel
-              </button>
-            </div>
+            {role === 'exec' && (
+              <div className="flex space-x-4">
+                <button
+                  className="hover:border-xps-deepBlue hover:text-xps-deepBlue rounded-sm border border-red-950 bg-red-950/30 px-2 py-1 text-red-950 transition-colors"
+                  onClick={() => setConfirm(true)}
+                >
+                  Delete Sheet
+                </button>
+                <button
+                  className={`rounded-full border border-red-950 bg-red-950/30 px-2 py-1 text-red-950 ${confirm ? 'flex' : 'hidden'}`}
+                  onClick={handleDelete}
+                >
+                  Confirm
+                </button>
+                <button
+                  className={`border-xps-grey text-xps-grey rounded-full border px-2 py-1 ${confirm ? 'flex' : 'hidden'}`}
+                  onClick={() => setConfirm(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
