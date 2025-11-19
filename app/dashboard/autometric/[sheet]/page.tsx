@@ -17,7 +17,7 @@ export default async function Sheet({ params }: { params: { sheet: string } }) {
     .single()
 
   const execLinks = ['Sheet', 'Automations', 'History', 'Settings']
-  const podLinks = ['Sheet']
+  const podLinks = ['Sheet', 'Automations', 'History']
   const lastRefresh = new Date(sheet?.last_refresh).toLocaleString()
 
   return (

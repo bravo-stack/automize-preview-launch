@@ -13,9 +13,11 @@ export default async function FinancialXPage() {
     data: { user },
   } = await db.auth.getUser()
 
-  if (!user) {
-    redirect('/')
+  if (!user || !user.email) {
+    redirect('/login')
   }
+
+  const role = user.user_metadata.role ?? 'exec'
 
   const { data: stores } = await db
     .from('clients')
@@ -83,13 +85,18 @@ export default async function FinancialXPage() {
               })
               .map((sheet, index) => {
                 return (
-                  <SheetCard key={index} sheet={sheet} stores={stores ?? []} />
+                  <SheetCard
+                    role={role}
+                    key={index}
+                    sheet={sheet}
+                    stores={stores ?? []}
+                  />
                 )
               })}
           </ul>
         </div>
 
-        <StoreList stores={stores ?? []} />
+        {role === 'exec' ? <StoreList stores={stores ?? []} /> : null}
       </div>
     </main>
   )
