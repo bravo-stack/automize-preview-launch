@@ -10,16 +10,22 @@ import toast from 'react-hot-toast'
 type Props = {
   didnt_reach_out_hours: number
   client_silent_days: number
+  high_priority_days: number
+  high_priority_color: string
 }
 
 const UpdateIxmValue = ({
   didnt_reach_out_hours,
   client_silent_days,
+  high_priority_days,
+  high_priority_color,
 }: Props) => {
   // STATES
   const [timeFrame, setTimeFrame] = useState(() => ({
     didnt_reach_out_hours: didnt_reach_out_hours,
     client_silent_days: client_silent_days,
+    high_priority_days: high_priority_days,
+    high_priority_color: high_priority_color,
   }))
   const [isSubmitting, startTransition] = useTransition()
 
@@ -49,6 +55,14 @@ const UpdateIxmValue = ({
     }
 
     if (
+      isNaN(timeFrame.high_priority_days) ||
+      timeFrame.high_priority_days < 0
+    ) {
+      toast.error('Please enter a valid number of days for "High Priority".')
+      return
+    }
+
+    if (
       timeFrame.didnt_reach_out_hours < 1 ||
       timeFrame.didnt_reach_out_hours > 168
     ) {
@@ -68,6 +82,13 @@ const UpdateIxmValue = ({
       return
     }
 
+    if (timeFrame.high_priority_days < 1 || timeFrame.high_priority_days > 30) {
+      toast.error(
+        'Out of range: "High Priority" must be between 1 and 30 days.',
+      )
+      return
+    }
+
     startTransition(async () => {
       try {
         const { error } = await updateItem(
@@ -75,6 +96,8 @@ const UpdateIxmValue = ({
           {
             didnt_reach_out_hours: timeFrame.didnt_reach_out_hours,
             client_silent_days: timeFrame.client_silent_days,
+            high_priority_days: timeFrame.high_priority_days,
+            high_priority_color: timeFrame.high_priority_color,
             updated_at: new Date().toISOString(),
           },
           1,
@@ -138,6 +161,52 @@ const UpdateIxmValue = ({
             })
           }
           className="bg-background/50"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label
+          htmlFor="high-priority-days"
+          className="text-sm font-medium text-zinc-300"
+        >
+          High Priority (Days):
+        </label>
+
+        <Input
+          disabled={isSubmitting}
+          type="text"
+          id="high-priority-days"
+          value={timeFrame.high_priority_days}
+          onChange={(e) =>
+            setTimeFrame({
+              ...timeFrame,
+              high_priority_days: +e.target.value,
+            })
+          }
+          className="bg-background/50"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label
+          htmlFor="high-priority-color"
+          className="text-sm font-medium text-zinc-300"
+        >
+          High Priority Color:
+        </label>
+
+        <Input
+          disabled={isSubmitting}
+          type="color"
+          id="high-priority-color"
+          value={timeFrame.high_priority_color}
+          onChange={(e) =>
+            setTimeFrame({
+              ...timeFrame,
+              high_priority_color: e.target.value,
+            })
+          }
+          className="h-10 w-20 cursor-pointer bg-background/50"
         />
       </div>
       <Button

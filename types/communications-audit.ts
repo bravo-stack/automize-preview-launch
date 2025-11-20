@@ -33,6 +33,7 @@ export interface Pod {
 
 export interface CommunicationsAuditData {
   reports: CommunicationReport[]
+  previousDayReports?: CommunicationReport[]
   availableDates: string[]
   availablePods: Pod[]
   latestDate: string | null
