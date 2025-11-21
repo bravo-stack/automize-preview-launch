@@ -54,6 +54,7 @@ interface SpreadsheetCell {
   status: string
   channelName?: string
   report?: CommunicationReport
+  isHighPriority?: boolean
 }
 interface SelectedCell {
   podIndex: number
@@ -376,16 +377,13 @@ function CommunicationsAuditSpreadsheet({
 
       // 2. Create the cell data
       const key = `${guild_name}-${category_name}`
-      let resolved = resolveStatus(status)
+      const resolved = resolveStatus(status)
 
       // Check if this is a high-priority case (orange today AND orange for N-1 previous days)
-      if (
+      const isHighPriority =
         (resolved === 'ixm_no_reach_48h' ||
           resolved === 'client_only_no_team') &&
         consecutiveOrangeClients.has(key)
-      ) {
-        resolved = 'high_priority_no_reach'
-      }
 
       cells.set(key, {
         podName: guild_name,
@@ -393,6 +391,7 @@ function CommunicationsAuditSpreadsheet({
         status: resolved,
         channelName: channel_name || undefined,
         report,
+        isHighPriority,
       })
     }
 
@@ -420,7 +419,13 @@ function CommunicationsAuditSpreadsheet({
     const filteredPodSet = new Set<string>()
 
     baseSpreadsheetData.cells.forEach((cell, key) => {
-      if (cell.status === selectedStatusFilter) {
+      // Special handling for high_priority_no_reach filter
+      const matchesFilter =
+        selectedStatusFilter === 'high_priority_no_reach'
+          ? cell.isHighPriority === true
+          : cell.status === selectedStatusFilter
+
+      if (matchesFilter) {
         filteredCells.set(key, cell)
 
         // Rebuild the list of pods and categories that are still visible
@@ -768,17 +773,12 @@ function CommunicationsAuditSpreadsheet({
 
       {/* Summary Stats */}
       {uniqueCategoryCells.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            {
-              status: `high_priority_no_reach`,
-              label: `High Priority (${high_priority_days}+ days)`,
-              color: '',
-              customColor: high_priority_color,
-            },
             {
               status: `ixm_no_reach_48h`,
               label: `Didn't reach out ${ixm_didnt_reach_out_hours}h`,
+              subLabel: `(${uniqueCategoryCells.filter((cell) => cell.isHighPriority === true).length} high priority)`,
               color: 'bg-amber-500 text-black',
             },
             {
@@ -791,7 +791,12 @@ function CommunicationsAuditSpreadsheet({
               label: 'Clients responded',
               color: 'bg-white text-black',
             },
-          ].map(({ status, label, color, customColor }) => {
+            {
+              status: 'other',
+              label: 'Other',
+              color: 'bg-zinc-700 text-white',
+            },
+          ].map(({ status, label, subLabel, color }) => {
             let count = 0
 
             if (status === 'active_communication') {
@@ -805,16 +810,30 @@ function CommunicationsAuditSpreadsheet({
                 ].includes(cell.status),
               ).length
             } else if (status === 'ixm_no_reach_48h') {
-              // orange bucket by unique category (excluding high priority)
+              // orange bucket includes ALL orange clients (including high priority)
               count = uniqueCategoryCells.filter((cell) =>
                 ['ixm_no_reach_48h', 'client_only_no_team'].includes(
                   cell.status,
                 ),
               ).length
-            } else if (status === 'high_priority_no_reach') {
-              // high priority (2+ consecutive days orange)
+            } else if (status === 'client_silent_5d') {
+              // red bucket
               count = uniqueCategoryCells.filter(
-                (cell) => cell.status === 'high_priority_no_reach',
+                (cell) => cell.status === status,
+              ).length
+            } else if (status === 'other') {
+              // Everything else: inactive, transferred, churned, imessage, unknown
+              count = uniqueCategoryCells.filter(
+                (cell) =>
+                  ![
+                    'client_awaiting_team',
+                    'active_communication',
+                    'no_messages',
+                    'team_only',
+                    'ixm_no_reach_48h',
+                    'client_only_no_team',
+                    'client_silent_5d',
+                  ].includes(cell.status),
               ).length
             } else {
               // exact-match statuses by unique category
@@ -833,16 +852,13 @@ function CommunicationsAuditSpreadsheet({
               >
                 <div
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${color} mb-2`}
-                  style={
-                    customColor
-                      ? { backgroundColor: customColor, color: '#000' }
-                      : undefined
-                  }
                 >
                   {label}
                 </div>
                 <div className="text-2xl font-bold text-white">{count}</div>
-                <div className="text-xs text-zinc-400">{pct}%</div>
+                <div className="text-xs text-zinc-400">
+                  {pct}%{subLabel && <span className="ml-1">{subLabel}</span>}
+                </div>
               </Card>
             )
           })}
@@ -996,8 +1012,7 @@ function CommunicationsAuditSpreadsheet({
                               podIndex,
                               rowIndex,
                             )
-                            const isHighPriority =
-                              cell?.status === 'high_priority_no_reach'
+                            const isHighPriority = cell?.isHighPriority === true
                             const cellColor = cell
                               ? getStatusColor(cell.status as NormalizedStatus)
                               : 'bg-zinc-900/50'

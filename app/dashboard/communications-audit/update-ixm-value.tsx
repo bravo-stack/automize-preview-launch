@@ -82,9 +82,9 @@ const UpdateIxmValue = ({
       return
     }
 
-    if (timeFrame.high_priority_days < 1 || timeFrame.high_priority_days > 30) {
+    if (timeFrame.high_priority_days < 2 || timeFrame.high_priority_days > 30) {
       toast.error(
-        'Out of range: "High Priority" must be between 1 and 30 days.',
+        'Out of range: "High Priority" must be between 2 and 30 days.',
       )
       return
     }
