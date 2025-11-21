@@ -82,10 +82,8 @@ const UpdateIxmValue = ({
       return
     }
 
-    if (timeFrame.high_priority_days < 2 || timeFrame.high_priority_days > 30) {
-      toast.error(
-        'Out of range: "High Priority" must be between 2 and 30 days.',
-      )
+    if (timeFrame.high_priority_days < 2) {
+      toast.error('Out of range: "High Priority" must be at least 2 days.')
       return
     }
 
@@ -174,8 +172,9 @@ const UpdateIxmValue = ({
 
         <Input
           disabled={isSubmitting}
-          type="text"
+          type="number"
           id="high-priority-days"
+          min={2}
           value={timeFrame.high_priority_days}
           onChange={(e) =>
             setTimeFrame({
