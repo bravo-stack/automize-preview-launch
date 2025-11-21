@@ -50,7 +50,6 @@ export default function SheetInfo({ links, data, role }: SheetInfoProps) {
         throw new Error('Failed to refresh data')
       }
       const data = await response.json()
-      console.log(data)
       setNotificationState({
         state: 'success',
         message: 'Data refreshed successfully!',

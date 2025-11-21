@@ -1,10 +1,10 @@
 'use client'
 
 import { createItem, updateItem } from '@/lib/actions/db'
+import { sendDiscordMessage } from '@/lib/actions/discord'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { sendDiscordMessage } from '@/lib/actions/discord'
 
 export default function OnboarderForm({ client, id, pods }) {
   const router = useRouter()
@@ -17,7 +17,6 @@ export default function OnboarderForm({ client, id, pods }) {
     pod: undefined,
   })
 
-  console.log(formData)
   const [isSR, setSR] = useState(false)
   const [specialReq, setSpecialReq] = useState({
     package_type: '',

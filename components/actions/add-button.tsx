@@ -38,7 +38,6 @@ export default function AddButton({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log(formData)
     const { error } = await createItem('pod', formData)
     setOpen(false)
     alert(error ? 'Error adding item.' : 'Successfully added item.')

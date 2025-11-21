@@ -63,7 +63,6 @@ export default function UpdateItem({ id, inputs, data = {} }: AddButtonProps) {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      console.log(formData)
       const res = await updateItem('pod', formData, id)
       setOpen(false)
       alert(res ? 'Successfully updated item.' : 'Error updating item.')
