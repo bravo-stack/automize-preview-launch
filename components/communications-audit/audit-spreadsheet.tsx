@@ -843,7 +843,7 @@ function CommunicationsAuditSpreadsheet({
             }
 
             const total = uniqueCategoryCells.length
-            const pct = total > 0 ? Math.round((count / total) * 100) : 0
+            const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0'
 
             return (
               <Card
