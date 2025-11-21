@@ -773,12 +773,12 @@ function CommunicationsAuditSpreadsheet({
 
       {/* Summary Stats */}
       {uniqueCategoryCells.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {[
             {
               status: `ixm_no_reach_48h`,
               label: `Didn't reach out ${ixm_didnt_reach_out_hours}h`,
-              subLabel: `(${uniqueCategoryCells.filter((cell) => cell.isHighPriority === true).length} high priority)`,
+              subLabel: `(${uniqueCategoryCells.filter((cell) => cell.isHighPriority === true).length} HIGH PRIORITY)`,
               color: 'bg-amber-500 text-black',
             },
             {
@@ -790,11 +790,6 @@ function CommunicationsAuditSpreadsheet({
               status: 'active_communication',
               label: 'Clients responded',
               color: 'bg-white text-black',
-            },
-            {
-              status: 'other',
-              label: 'Other',
-              color: 'bg-zinc-700 text-white',
             },
           ].map(({ status, label, subLabel, color }) => {
             let count = 0
@@ -857,7 +852,10 @@ function CommunicationsAuditSpreadsheet({
                 </div>
                 <div className="text-2xl font-bold text-white">{count}</div>
                 <div className="text-xs text-zinc-400">
-                  {pct}%{subLabel && <span className="ml-1">{subLabel}</span>}
+                  {pct}%
+                  {subLabel && (
+                    <span className="ml-1 font-semibold">{subLabel}</span>
+                  )}
                 </div>
               </Card>
             )
