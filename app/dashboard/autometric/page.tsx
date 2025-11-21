@@ -50,6 +50,20 @@ export default async function Autometric() {
     shopify_key: rest.shopify_key === null ? 'N/A' : 'Exists',
   }))
 
+  const visibleSheets = (sheets || []).filter((sheet) => {
+    if (!sheet?.title) return false
+
+    // For non-exec users, hide churned/dev sheets
+    if (role !== 'exec') {
+      const title = String(sheet.title).toLowerCase()
+      if (title.includes('churned') || title.includes('dev')) {
+        return false
+      }
+    }
+
+    return true
+  })
+
   return (
     <main className="space-y-10 p-7">
       <Section title="All Automize Sheets">
@@ -75,8 +89,7 @@ export default async function Autometric() {
                 placeholder="Search by name"
               />
             </search>
-
-            <CreateSheet user={user} />
+            {role === 'exec' ? <CreateSheet user={user} /> : null}
 
             {role === 'exec' ? (
               <Link
@@ -89,7 +102,7 @@ export default async function Autometric() {
           </div>
 
           <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {sheets?.map((sheet, index) => {
+            {visibleSheets.map((sheet, index) => {
               const href = `/dashboard/autometric/${sheet.sheet_id}`
 
               return (
