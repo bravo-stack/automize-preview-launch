@@ -32,6 +32,7 @@ type NormalizedStatus =
   | 'transferred'
   | 'churned'
   | 'ixm_no_reach_48h'
+  | 'high_priority_no_reach'
   | 'client_silent_5d'
   | 'client_awaiting_team'
   | 'active_communication'
@@ -44,6 +45,8 @@ interface Props {
   initialData: CommunicationsAuditData
   ixm_didnt_reach_out_hours: number
   client_silent_days: number
+  high_priority_days: number
+  high_priority_color: string
 }
 interface SpreadsheetCell {
   categoryName: string
@@ -51,6 +54,7 @@ interface SpreadsheetCell {
   status: string
   channelName?: string
   report?: CommunicationReport
+  isHighPriority?: boolean
 }
 interface SelectedCell {
   podIndex: number
@@ -66,6 +70,7 @@ interface SelectionRange {
 const STATUS_COLORS: StatusColorMap = {
   ixm_no_reach_48h: 'bg-amber-500 text-black',
   client_only_no_team: 'bg-amber-500 text-black', // optional alias if needed
+  high_priority_no_reach: '', // Dynamic, set via style attribute
 
   client_silent_5d: 'bg-red-500 text-black',
 
@@ -128,6 +133,8 @@ function CommunicationsAuditSpreadsheet({
   initialData,
   ixm_didnt_reach_out_hours,
   client_silent_days,
+  high_priority_days,
+  high_priority_color,
 }: Props) {
   // STATES
   const [searchQuery, setSearchQuery] = useState('')
@@ -136,6 +143,21 @@ function CommunicationsAuditSpreadsheet({
   const [start, setStart] = useState(true)
   const [selectedDate, setSelectedDate] = useState(initialData.latestDate || '')
   const [data, setData] = useState<CommunicationReport[]>(initialData.reports)
+  const [historicalData, setHistoricalData] = useState<
+    Map<string, CommunicationReport[]>
+  >(() => {
+    const map = new Map<string, CommunicationReport[]>()
+    if (
+      initialData.previousDayReports &&
+      initialData.previousDayReports.length > 0
+    ) {
+      const date = new Date(initialData.latestDate || '')
+      date.setDate(date.getDate() - 1)
+      const prevDate = date.toISOString().split('T')[0]
+      map.set(prevDate, initialData.previousDayReports)
+    }
+    return map
+  })
   const [loading, setLoading] = useState(false)
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<
     string | null
@@ -210,6 +232,60 @@ function CommunicationsAuditSpreadsheet({
     currentIndex,
     setCurrentIndex,
   )
+
+  // Map of clients who were orange for N consecutive days
+  const consecutiveOrangeClients = useMemo(() => {
+    const orangeSet = new Set<string>()
+
+    if (high_priority_days < 1 || historicalData.size === 0) {
+      return orangeSet
+    }
+
+    // Get the last N-1 days of data (we need N-1 previous days + today = N days total)
+    const daysNeeded = high_priority_days - 1
+    const currentDate = new Date(selectedDate)
+    const historicalDates: string[] = []
+
+    for (let i = 1; i <= daysNeeded; i++) {
+      const date = new Date(currentDate)
+      date.setDate(date.getDate() - i)
+      historicalDates.push(date.toISOString().split('T')[0])
+    }
+
+    // Build a map of category -> dates it was orange
+    const categoryOrangeDays = new Map<string, Set<string>>()
+
+    for (const dateStr of historicalDates) {
+      const reports = historicalData.get(dateStr)
+      if (!reports) continue
+
+      for (const report of reports) {
+        const { guild_name, category_name, status } = report
+        if (!guild_name || !category_name || !status) continue
+
+        const resolved = resolveStatus(status)
+        if (
+          resolved === 'ixm_no_reach_48h' ||
+          resolved === 'client_only_no_team'
+        ) {
+          const key = `${guild_name}-${category_name}`
+          if (!categoryOrangeDays.has(key)) {
+            categoryOrangeDays.set(key, new Set())
+          }
+          categoryOrangeDays.get(key)!.add(dateStr)
+        }
+      }
+    }
+
+    // Only include categories that were orange on ALL historical dates checked
+    Array.from(categoryOrangeDays.entries()).forEach(([key, orangeDates]) => {
+      if (orangeDates.size >= daysNeeded) {
+        orangeSet.add(key)
+      }
+    })
+
+    return orangeSet
+  }, [historicalData, resolveStatus, high_priority_days, selectedDate])
   const fetchData = useCallback(async () => {
     if (!selectedDate) return
 
@@ -233,13 +309,43 @@ function CommunicationsAuditSpreadsheet({
 
       const result = await response.json()
       setData(result.data || [])
+
+      // Fetch N-1 days of historical data for consecutive day checking
+      const daysNeeded = high_priority_days - 1
+      const newHistoricalData = new Map<string, CommunicationReport[]>()
+
+      for (let i = 1; i <= daysNeeded; i++) {
+        const date = new Date(selectedDate)
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toISOString().split('T')[0]
+
+        const histParams = new URLSearchParams({
+          report_date: dateStr,
+        })
+
+        const histResponse = await fetch(
+          `/api/communications-audit?${histParams}&ts=${Date.now()}`,
+          {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-store' },
+          },
+        )
+
+        if (histResponse.ok) {
+          const histResult = await histResponse.json()
+          newHistoricalData.set(dateStr, histResult.data || [])
+        }
+      }
+
+      setHistoricalData(newHistoricalData)
     } catch (error) {
       console.error('Error:', error)
       setData([])
+      setHistoricalData(new Map())
     } finally {
       setLoading(false)
     }
-  }, [selectedDate])
+  }, [selectedDate, high_priority_days])
   const tableRef = useRef<HTMLTableElement>(null)
 
   const baseSpreadsheetData = useMemo(() => {
@@ -272,12 +378,20 @@ function CommunicationsAuditSpreadsheet({
       // 2. Create the cell data
       const key = `${guild_name}-${category_name}`
       const resolved = resolveStatus(status)
+
+      // Check if this is a high-priority case (orange today AND orange for N-1 previous days)
+      const isHighPriority =
+        (resolved === 'ixm_no_reach_48h' ||
+          resolved === 'client_only_no_team') &&
+        consecutiveOrangeClients.has(key)
+
       cells.set(key, {
         podName: guild_name,
         categoryName: category_name,
         status: resolved,
         channelName: channel_name || undefined,
         report,
+        isHighPriority,
       })
     }
 
@@ -293,7 +407,7 @@ function CommunicationsAuditSpreadsheet({
       podCategories: sortedPodCategories,
       cells,
     }
-  }, [data, resolveStatus])
+  }, [data, resolveStatus, consecutiveOrangeClients])
 
   const spreadsheetData = useMemo(() => {
     if (!selectedStatusFilter) {
@@ -305,7 +419,13 @@ function CommunicationsAuditSpreadsheet({
     const filteredPodSet = new Set<string>()
 
     baseSpreadsheetData.cells.forEach((cell, key) => {
-      if (cell.status === selectedStatusFilter) {
+      // Special handling for high_priority_no_reach filter
+      const matchesFilter =
+        selectedStatusFilter === 'high_priority_no_reach'
+          ? cell.isHighPriority === true
+          : cell.status === selectedStatusFilter
+
+      if (matchesFilter) {
         filteredCells.set(key, cell)
 
         // Rebuild the list of pods and categories that are still visible
@@ -569,73 +689,85 @@ function CommunicationsAuditSpreadsheet({
       />
 
       {/* Date Selector & Legend */}
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
-          <label
-            htmlFor="date-select"
-            className="text-sm font-medium text-zinc-300"
-          >
-            Report Date:
-          </label>
-          <select
-            id="date-select"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-white backdrop-blur-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-          >
-            {dates.map((date) => (
-              <option key={date} value={date}>
-                {new Date(date).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="flex w-full flex-col-reverse gap-5">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+          <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
+            <label
+              htmlFor="date-select"
+              className="text-sm font-medium text-zinc-300"
+            >
+              Report Date:
+            </label>
+            <select
+              id="date-select"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-white backdrop-blur-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            >
+              {dates.map((date) => (
+                <option key={date} value={date}>
+                  {new Date(date).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-end sm:space-x-6 sm:space-y-0">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-zinc-400">Legend:</span>
-            {[
-              {
-                status: `ixm_no_reach_48h`,
-                raw: `IXM didn't reach out for ${ixm_didnt_reach_out_hours} hours`,
-                label: `Didn't reach out ${ixm_didnt_reach_out_hours}h`,
-                color: 'bg-amber-500 text-black',
-              },
-              {
-                status: `client_silent_5d`,
-                raw: `Client silent for ${client_silent_days}+ days`,
-                label: `Client Silent ${client_silent_days}+ Days`,
-                color: 'bg-red-500 text-black',
-              },
-              {
-                status: 'active_communication',
-                raw: 'Active communication',
-                label: 'Clients responded',
-                color: 'bg-white text-black',
-              },
-            ].map(({ status, raw, label, color }) => (
-              <Badge
-                key={status}
-                className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
-                onClick={() =>
-                  setSelectedStatusFilter(
-                    selectedStatusFilter === resolveStatus(raw)
-                      ? null
-                      : resolveStatus(raw),
-                  )
-                }
-              >
-                {label}
-              </Badge>
-            ))}
+          <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-end sm:space-x-6 sm:space-y-0">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-zinc-400">Legend:</span>
+              {[
+                {
+                  status: `high_priority_no_reach`,
+                  raw: 'high_priority_no_reach',
+                  label: `High Priority (${high_priority_days}+ days)`,
+                  color: '',
+                  customColor: high_priority_color,
+                },
+                {
+                  status: `ixm_no_reach_48h`,
+                  raw: `IXM didn't reach out for ${ixm_didnt_reach_out_hours} hours`,
+                  label: `Didn't reach out ${ixm_didnt_reach_out_hours}h`,
+                  color: 'bg-amber-500 text-black',
+                },
+                {
+                  status: `client_silent_5d`,
+                  raw: `Client silent for ${client_silent_days}+ days`,
+                  label: `Client Silent ${client_silent_days}+ Days`,
+                  color: 'bg-red-500 text-black',
+                },
+                {
+                  status: 'active_communication',
+                  raw: 'Active communication',
+                  label: 'Clients responded',
+                  color: 'bg-white text-black',
+                },
+              ].map(({ status, raw, label, color, customColor }) => (
+                <Badge
+                  key={status}
+                  className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
+                  style={
+                    customColor
+                      ? { backgroundColor: customColor, color: '#000' }
+                      : undefined
+                  }
+                  onClick={() =>
+                    setSelectedStatusFilter(
+                      selectedStatusFilter === status ? null : status,
+                    )
+                  }
+                >
+                  {label}
+                </Badge>
+              ))}
+            </div>
           </div>
-          <div className="text-xs text-zinc-400">
-            Drag to select cells, click button or Ctrl+C to copy
-          </div>
+        </div>
+        <div className="text-xs text-zinc-400">
+          Drag to select cells, click button or Ctrl+C to copy
         </div>
       </div>
 
@@ -646,6 +778,7 @@ function CommunicationsAuditSpreadsheet({
             {
               status: `ixm_no_reach_48h`,
               label: `Didn't reach out ${ixm_didnt_reach_out_hours}h`,
+              subLabel: `(${uniqueCategoryCells.filter((cell) => cell.isHighPriority === true).length} HIGH PRIORITY)`,
               color: 'bg-amber-500 text-black',
             },
             {
@@ -658,7 +791,7 @@ function CommunicationsAuditSpreadsheet({
               label: 'Clients responded',
               color: 'bg-white text-black',
             },
-          ].map(({ status, label, color }) => {
+          ].map(({ status, label, subLabel, color }) => {
             let count = 0
 
             if (status === 'active_communication') {
@@ -672,11 +805,30 @@ function CommunicationsAuditSpreadsheet({
                 ].includes(cell.status),
               ).length
             } else if (status === 'ixm_no_reach_48h') {
-              // red bucket by unique category
+              // orange bucket includes ALL orange clients (including high priority)
               count = uniqueCategoryCells.filter((cell) =>
                 ['ixm_no_reach_48h', 'client_only_no_team'].includes(
                   cell.status,
                 ),
+              ).length
+            } else if (status === 'client_silent_5d') {
+              // red bucket
+              count = uniqueCategoryCells.filter(
+                (cell) => cell.status === status,
+              ).length
+            } else if (status === 'other') {
+              // Everything else: inactive, transferred, churned, imessage, unknown
+              count = uniqueCategoryCells.filter(
+                (cell) =>
+                  ![
+                    'client_awaiting_team',
+                    'active_communication',
+                    'no_messages',
+                    'team_only',
+                    'ixm_no_reach_48h',
+                    'client_only_no_team',
+                    'client_silent_5d',
+                  ].includes(cell.status),
               ).length
             } else {
               // exact-match statuses by unique category
@@ -686,7 +838,7 @@ function CommunicationsAuditSpreadsheet({
             }
 
             const total = uniqueCategoryCells.length
-            const pct = total > 0 ? Math.round((count / total) * 100) : 0
+            const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0'
 
             return (
               <Card
@@ -699,7 +851,12 @@ function CommunicationsAuditSpreadsheet({
                   {label}
                 </div>
                 <div className="text-2xl font-bold text-white">{count}</div>
-                <div className="text-xs text-zinc-400">{pct}%</div>
+                <div className="text-xs text-zinc-400">
+                  {pct}%
+                  {subLabel && (
+                    <span className="ml-1 font-semibold">{subLabel}</span>
+                  )}
+                </div>
               </Card>
             )
           })}
@@ -734,9 +891,7 @@ function CommunicationsAuditSpreadsheet({
                 className={`${color} cursor-pointer ${selectedStatusFilter === status ? 'ring-2 ring-white ring-offset-2' : ''}`}
                 onClick={() =>
                   setSelectedStatusFilter(
-                    selectedStatusFilter === resolveStatus(raw)
-                      ? null
-                      : resolveStatus(raw),
+                    selectedStatusFilter === status ? null : status,
                   )
                 }
               >
@@ -855,11 +1010,23 @@ function CommunicationsAuditSpreadsheet({
                               podIndex,
                               rowIndex,
                             )
+                            const isHighPriority = cell?.isHighPriority === true
+                            const cellColor = cell
+                              ? getStatusColor(cell.status as NormalizedStatus)
+                              : 'bg-zinc-900/50'
 
                             return (
                               <td
                                 key={`${pod}-${category}`}
-                                className={`cursor-pointer border-r border-zinc-800/50 px-2 py-2 ${cell ? getStatusColor(cell.status as NormalizedStatus) : 'bg-zinc-900/50'} ${isSelected ? 'ring-2 ring-inset ring-blue-400' : ''}`}
+                                className={`cursor-pointer border-r border-zinc-800/50 px-2 py-2 ${!isHighPriority ? cellColor : ''} ${isSelected ? 'ring-2 ring-inset ring-blue-400' : ''}`}
+                                style={
+                                  isHighPriority
+                                    ? {
+                                        backgroundColor: high_priority_color,
+                                        color: '#000',
+                                      }
+                                    : undefined
+                                }
                                 onMouseDown={() =>
                                   handleCellMouseDown(
                                     podIndex,

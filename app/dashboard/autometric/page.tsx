@@ -8,6 +8,16 @@ import { redirect } from 'next/navigation'
 export default async function Autometric() {
   const db = createClient()
 
+  const {
+    data: { user },
+  } = await db.auth.getUser()
+
+  if (!user || !user.email) {
+    redirect('/login')
+  }
+
+  const role = user.user_metadata.role ?? 'exec'
+
   const id = '38817360-608e-438f-93b2-a208c35a8da7'
   const { data: sheets } = await db
     .from('sheets')
@@ -15,14 +25,6 @@ export default async function Autometric() {
     .eq('user_id', id)
     .eq('pod', '')
     .eq('is_finance', false)
-
-  const {
-    data: { user },
-  } = await db.auth.getUser()
-
-  if (!user) {
-    redirect('/')
-  }
 
   const { data: onboarded } = await db
     .from('clients')
@@ -76,12 +78,14 @@ export default async function Autometric() {
 
             <CreateSheet user={user} />
 
-            <Link
-              href="/dashboard/autometric/manage-accounts"
-              className="rounded-md border border-white px-3 py-1.5 font-medium"
-            >
-              Manage&nbsp;Accounts
-            </Link>
+            {role === 'exec' ? (
+              <Link
+                href="/dashboard/autometric/manage-accounts"
+                className="rounded-md border border-white px-3 py-1.5 font-medium"
+              >
+                Manage&nbsp;Accounts
+              </Link>
+            ) : null}
           </div>
 
           <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -112,19 +116,21 @@ export default async function Autometric() {
         </div>
       </Section>
 
-      <Section title="Clients Pending Access">
-        <div className="space-y-5 p-5">
-          <p className="mx-auto max-w-prose text-center font-medium">
-            {onboardedData?.length} clients listed below have gone through the
-            full onboarding process, and are missing at least one of the
-            following: Facebook key, Shopify key, Store ID, Email, Phone Number,
-            Rebill Amount, Rebill Date, Closed Date, Website, Instagram, or
-            Drive.
-          </p>
+      {role === 'exec' ? (
+        <Section title="Clients Pending Access">
+          <div className="space-y-5 p-5">
+            <p className="mx-auto max-w-prose text-center font-medium">
+              {onboardedData?.length} clients listed below have gone through the
+              full onboarding process, and are missing at least one of the
+              following: Facebook key, Shopify key, Store ID, Email, Phone
+              Number, Rebill Amount, Rebill Date, Closed Date, Website,
+              Instagram, or Drive.
+            </p>
 
-          <Table data={onboardedData} />
-        </div>
-      </Section>
+            <Table data={onboardedData} />
+          </div>
+        </Section>
+      ) : null}
     </main>
   )
 }

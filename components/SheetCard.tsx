@@ -7,9 +7,10 @@ import NotificationModal from './NotificationModal'
 interface SheetCardProps {
   sheet: any
   stores: any[]
+  role: string
 }
 
-export default function SheetCard({ sheet, stores }: SheetCardProps) {
+export default function SheetCard({ sheet, stores, role }: SheetCardProps) {
   const [notificationState, setNotificationState] = useState<{
     state: string
     message: string
@@ -258,16 +259,17 @@ export default function SheetCard({ sheet, stores }: SheetCardProps) {
               >
                 Visit Sheet
               </a>
-
-              <button
-                onClick={handleRefresh}
-                disabled={notificationState?.state === 'loading'}
-                className="flex-1 rounded bg-white px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:bg-gray-300"
-              >
-                {notificationState?.state === 'loading'
-                  ? 'Refreshing...'
-                  : 'Refresh Data'}
-              </button>
+              {role === 'exec' ? (
+                <button
+                  onClick={handleRefresh}
+                  disabled={notificationState?.state === 'loading'}
+                  className="flex-1 rounded bg-white px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  {notificationState?.state === 'loading'
+                    ? 'Refreshing...'
+                    : 'Refresh Data'}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

@@ -9,7 +9,7 @@ import type {
 } from '@/types/communications-audit'
 import { unstable_noStore } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
+import { Fragment, Suspense } from 'react'
 import UpdateIxmValue from './update-ixm-value'
 
 export const dynamic = 'force-dynamic'
@@ -29,6 +29,14 @@ export default async function CommunicationsAudit() {
   if (!user) {
     redirect('/login')
   }
+
+  const { data: pod } = await db
+    .from('pod')
+    .select('name, servers')
+    .eq('user_id', user.id)
+    .single()
+
+  const role = user?.user_metadata?.role ?? 'exec'
 
   const { data: dates } = await db
     .from('report_dates')
@@ -50,18 +58,46 @@ export default async function CommunicationsAudit() {
       .sort() || []
 
   let initialReports: CommunicationReport[] = []
+  let previousDayReports: CommunicationReport[] = []
+
   if (latestDate) {
-    const { data: reports } = await db
+    let reportsQuery = db
       .from('communication_reports')
       .select('*')
       .eq('report_date', latestDate)
       .order('channel_name')
 
+    // Filter reports by pod for non-exec users
+    if (role !== 'exec') {
+      reportsQuery = reportsQuery.in('guild_id', pod?.servers)
+    }
+
+    const { data: reports } = await reportsQuery
+
     initialReports = (reports as CommunicationReport[]) || []
+
+    // Fetch previous day's data for high-priority detection
+    const currentDate = new Date(latestDate)
+    currentDate.setDate(currentDate.getDate() - 1)
+    const previousDate = currentDate.toISOString().split('T')[0]
+
+    let prevReportsQuery = db
+      .from('communication_reports')
+      .select('*')
+      .eq('report_date', previousDate)
+      .order('channel_name')
+
+    if (role !== 'exec') {
+      prevReportsQuery = prevReportsQuery.in('guild_id', pod?.servers)
+    }
+
+    const { data: prevReports } = await prevReportsQuery
+    previousDayReports = (prevReports as CommunicationReport[]) || []
   }
 
   const auditData: CommunicationsAuditData = {
     reports: initialReports,
+    previousDayReports: previousDayReports,
     availableDates: uniqueDates,
     availablePods: uniquePods,
     latestDate,
@@ -70,12 +106,14 @@ export default async function CommunicationsAudit() {
   const { data: timeframe } = await db
     .from('timeframe')
     .select(
-      'id, didnt_reach_out_hours, client_silent_days, updated_at, created_at',
+      'id, didnt_reach_out_hours, client_silent_days, high_priority_days, high_priority_color, updated_at, created_at',
     )
     .single()
 
   const timeFrameDidntReactOutHours = timeframe?.didnt_reach_out_hours ?? 48
   const timeFrameClientSilentDays = timeframe?.client_silent_days ?? 5
+  const timeFrameHighPriorityDays = timeframe?.high_priority_days ?? 2
+  const timeFrameHighPriorityColor = timeframe?.high_priority_color ?? '#06b6d4'
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-night-midnight via-night-starlit to-night-dusk">
@@ -90,12 +128,20 @@ export default async function CommunicationsAudit() {
             </p>
           </div>
 
-          <RevalidateButton />
+          {uniqueDates?.length > 0 &&
+          uniquePods?.length > 0 &&
+          initialReports?.length > 0 ? (
+            <Fragment>
+              <RevalidateButton />
 
-          <UpdateIxmValue
-            didnt_reach_out_hours={timeFrameDidntReactOutHours}
-            client_silent_days={timeFrameClientSilentDays}
-          />
+              <UpdateIxmValue
+                didnt_reach_out_hours={timeFrameDidntReactOutHours}
+                client_silent_days={timeFrameClientSilentDays}
+                high_priority_days={timeFrameHighPriorityDays}
+                high_priority_color={timeFrameHighPriorityColor}
+              />
+            </Fragment>
+          ) : null}
 
           <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent"></div>
         </header>
@@ -110,10 +156,14 @@ export default async function CommunicationsAudit() {
             </div>
           }
         >
-          {uniqueDates && uniqueDates.length > 0 ? (
+          {uniqueDates?.length > 0 &&
+          uniquePods?.length > 0 &&
+          initialReports?.length > 0 ? (
             <AuditSpreadsheet
               ixm_didnt_reach_out_hours={timeFrameDidntReactOutHours}
               client_silent_days={timeFrameClientSilentDays}
+              high_priority_days={timeFrameHighPriorityDays}
+              high_priority_color={timeFrameHighPriorityColor}
               initialData={auditData}
             />
           ) : (

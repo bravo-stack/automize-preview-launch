@@ -4,13 +4,20 @@ import SheetInfo from './SheetInfo'
 export default async function Sheet({ params }: { params: { sheet: string } }) {
   const db = createClient()
 
+  const {
+    data: { user },
+  } = await db.auth.getUser()
+
+  const role = user?.user_metadata?.role ?? 'exec'
+
   const { data: sheet } = await db
     .from('sheets')
     .select('*')
     .eq('sheet_id', params.sheet)
     .single()
 
-  const links = ['Sheet', 'Automations', 'History', 'Settings']
+  const execLinks = ['Sheet', 'Automations', 'History', 'Settings']
+  const podLinks = ['Sheet']
   const lastRefresh = new Date(sheet?.last_refresh).toLocaleString()
 
   return (
@@ -27,11 +34,15 @@ export default async function Sheet({ params }: { params: { sheet: string } }) {
             rel="noopener noreferrer"
             className="rounded-md bg-white px-3 py-2 font-medium text-black"
           >
-            Visit
+            Visit Sheet
           </a>
         </header>
 
-        <SheetInfo links={links} data={{ sheet, lastRefresh }} />
+        <SheetInfo
+          links={role === 'exec' ? execLinks : podLinks}
+          data={{ sheet, lastRefresh }}
+          role={role}
+        />
       </section>
     </main>
   )

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/db/server'
+import { redirect } from 'next/navigation'
 import SheetInfo from './SheetInfo'
 
 export const maxDuration = 60
@@ -6,14 +7,25 @@ export const maxDuration = 60
 export default async function Sheet({ params }: { params: { sheet: string } }) {
   const db = createClient()
 
+  const {
+    data: { user },
+  } = await db.auth.getUser()
+
+  if (!user || !user.email) {
+    redirect('/login')
+  }
+
   const { data: sheet } = await db
     .from('sheets')
     .select('*')
     .eq('sheet_id', params.sheet)
     .single()
 
-  const links = ['Sheet', 'Automations', 'History', 'Settings']
+  const execLinks = ['Sheet', 'Automations', 'History', 'Settings']
+  const podLinks = ['Sheet']
   const lastRefresh = new Date(sheet.last_refresh).toLocaleString()
+
+  const role = user.user_metadata.role ?? 'exec'
 
   return (
     <main className="flex flex-col justify-center space-y-10 p-24">
@@ -29,11 +41,14 @@ export default async function Sheet({ params }: { params: { sheet: string } }) {
             rel="noopener noreferrer"
             className="rounded-md bg-white px-3 py-2 font-medium text-black"
           >
-            Visit
+            Visit Sheet
           </a>
         </header>
 
-        <SheetInfo links={links} data={{ sheet, lastRefresh }} />
+        <SheetInfo
+          links={role === 'exec' ? execLinks : podLinks}
+          data={{ sheet, lastRefresh }}
+        />
       </section>
     </main>
   )
