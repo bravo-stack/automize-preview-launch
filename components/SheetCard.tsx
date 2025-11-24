@@ -259,17 +259,15 @@ export default function SheetCard({ sheet, stores, role }: SheetCardProps) {
               >
                 Visit Sheet
               </a>
-              {role === 'exec' ? (
-                <button
-                  onClick={handleRefresh}
-                  disabled={notificationState?.state === 'loading'}
-                  className="flex-1 rounded bg-white px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:bg-gray-300"
-                >
-                  {notificationState?.state === 'loading'
-                    ? 'Refreshing...'
-                    : 'Refresh Data'}
-                </button>
-              ) : null}
+              <button
+                onClick={handleRefresh}
+                disabled={notificationState?.state === 'loading'}
+                className="flex-1 rounded bg-white px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                {notificationState?.state === 'loading'
+                  ? 'Refreshing...'
+                  : 'Refresh Data'}
+              </button>
             </div>
           </div>
         </div>
