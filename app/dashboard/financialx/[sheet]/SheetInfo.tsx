@@ -29,6 +29,7 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
 
   const handleDataRefresh = async () => {
     const sheetID = sheet.sheet_id
+    const sheetNumericId = sheet.id
     const datePreset = sheet.refresh
 
     const response = await fetch('/api/accounts-for-batching', {
@@ -77,7 +78,7 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
       } = await import('@/lib/db/refresh-snapshots')
 
       const snapshotResult = await createRefreshSnapshot({
-        sheetId: sheetID,
+        sheetId: sheetNumericId,
         refreshType: 'financialx',
         datePreset: datePreset,
         metadata: { totalAccounts: accounts.length, totalBatches },

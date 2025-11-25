@@ -3,7 +3,7 @@ export type RefreshStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
 
 export interface SheetRefreshSnapshot {
   id: string
-  sheet_id: string
+  sheet_id: number
   refresh_type: RefreshType
   refresh_status: RefreshStatus
   date_preset: string | null

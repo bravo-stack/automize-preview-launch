@@ -37,7 +37,7 @@ export interface SnapshotMetric {
 }
 
 export interface CreateSnapshotParams {
-  sheetId: string
+  sheetId: number
   refreshType: RefreshType
   datePreset?: string
   metadata?: Record<string, any>
@@ -165,7 +165,7 @@ export async function saveSnapshotMetrics({
 }
 
 export async function getLatestSnapshot(
-  sheetId: string,
+  sheetId: number,
   refreshType: RefreshType,
 ) {
   const db = createClient()
@@ -193,7 +193,7 @@ export async function getLatestSnapshot(
 }
 
 export async function getSnapshotHistory(
-  sheetId: string,
+  sheetId: number,
   refreshType: RefreshType,
   limit = 30,
 ) {

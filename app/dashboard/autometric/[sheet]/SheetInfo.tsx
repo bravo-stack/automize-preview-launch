@@ -30,6 +30,7 @@ export default function SheetInfo({ links, data, role }: SheetInfoProps) {
 
   const handleDataRefresh: () => Promise<void> = async () => {
     const sheetID = sheet.sheet_id
+    const sheetNumericId = sheet.id
     const datePreset = sheet.refresh
 
     setNotificationState({ state: 'loading', message: 'Refreshing data...' })
@@ -40,7 +41,7 @@ export default function SheetInfo({ links, data, role }: SheetInfoProps) {
       )
 
       const snapshotResult = await createRefreshSnapshot({
-        sheetId: sheetID,
+        sheetId: sheetNumericId,
         refreshType: 'autometric',
         datePreset: datePreset,
         metadata: { status },
