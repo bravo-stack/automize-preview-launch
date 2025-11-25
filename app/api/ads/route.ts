@@ -15,7 +15,7 @@ export const maxDuration = 60
 // MAIN GET
 export async function POST(request: NextRequest) {
   const db = createClient()
-  const { sheetID, datePreset, status } = await request.json()
+  const { sheetID, datePreset, status, snapshotId } = await request.json()
 
   const { data: accounts } = await db
     .from('clients')
@@ -109,20 +109,18 @@ export async function POST(request: NextRequest) {
       const validROASA = isNaN(roasA) ? 0 : roasA
       const validROASB = isNaN(roasB) ? 0 : roasB
 
-      // Primary sorting by ROAS if both have non-zero ROAS
       if (validROASB !== validROASA) {
         return validROASB - validROASA
       }
 
-      // Secondary sorting by spend when ROAS values are equal or zero
       const spendA = parseFloat(a.insights.spend || '0')
       const spendB = parseFloat(b.insights.spend || '0')
       return spendB - spendA
     })
 
     if (adInsights) {
-      const sheetData = adInsights
-        .map(({ name, pod, insights: i, isMonitored }) => {
+      const enrichedData = adInsights.map(
+        ({ name, pod, insights: i, isMonitored }) => {
           const roas = parseFloat(
             i.purchase_roas ? i.purchase_roas[0].value : '0',
           )
@@ -139,7 +137,6 @@ export async function POST(request: NextRequest) {
 
           const CPA = getCPA(i.cost_per_action_type)
 
-          // Calculate FB Revenue = Ad Spend × ROAS
           const spend = parseFloat(i.spend || '0')
           const fbRevenue = spend * validROAS
 
@@ -147,6 +144,37 @@ export async function POST(request: NextRequest) {
             name,
             pod,
             roas: validROAS,
+            isMonitored,
+            metrics: {
+              cpa_purchase: CPA.purchase ? parseFloat(CPA.purchase) : undefined,
+              cpc: i.cpc ? parseFloat(i.cpc) : undefined,
+              cpm: i.cpm ? parseFloat(i.cpm) : undefined,
+              ctr: i.ctr ? parseFloat(i.ctr) : undefined,
+              quality_ranking: i.quality_ranking,
+              engagement_rate_ranking: i.engagement_rate_ranking,
+              conversion_rate_ranking: i.conversion_rate_ranking,
+              ad_spend_timeframe: spend,
+              roas_timeframe: validROAS,
+              fb_revenue_timeframe: fbRevenue,
+              impressions: i.impressions ? parseInt(i.impressions) : undefined,
+              hook_rate: getHookRate(video_view, i.impressions)
+                ? parseFloat(getHookRate(video_view, i.impressions))
+                : undefined,
+              atc_rate: getPercentage(omni_add_to_cart, link_click)
+                ? parseFloat(getPercentage(omni_add_to_cart, link_click))
+                : undefined,
+              ic_rate: getPercentage(omni_initiated_checkout, omni_add_to_cart)
+                ? parseFloat(
+                    getPercentage(omni_initiated_checkout, omni_add_to_cart),
+                  )
+                : undefined,
+              purchase_rate: getPercentage(purchase, omni_initiated_checkout)
+                ? parseFloat(getPercentage(purchase, omni_initiated_checkout))
+                : undefined,
+              bounce_rate: getBounceRate(landing_page_view, link_click)
+                ? parseFloat(getBounceRate(landing_page_view, link_click))
+                : undefined,
+            },
             data: [
               name,
               pod,
@@ -160,7 +188,7 @@ export async function POST(request: NextRequest) {
               i.conversion_rate_ranking,
               i.spend,
               i.purchase_roas ? i.purchase_roas[0].value : '',
-              fbRevenue.toFixed(2), // FB Revenue (after ROAS)
+              fbRevenue.toFixed(2),
               getHookRate(video_view, i.impressions),
               getPercentage(omni_add_to_cart, link_click),
               getPercentage(omni_initiated_checkout, omni_add_to_cart),
@@ -168,11 +196,32 @@ export async function POST(request: NextRequest) {
               getBounceRate(landing_page_view, link_click),
             ],
           }
-        })
+        },
+      )
+
+      const sheetData = enrichedData
         .sort((a, b) => b.roas - a.roas)
         .map((item) => item.data)
 
       await appendDataToSheet(sheetID, sheetData)
+
+      if (snapshotId) {
+        const { saveSnapshotMetrics } = await import(
+          '@/lib/db/refresh-snapshots'
+        )
+
+        const metricsToSave = enrichedData.map((item) => ({
+          account_name: item.name,
+          pod: item.pod,
+          is_monitored: item.isMonitored,
+          ...item.metrics,
+        }))
+
+        await saveSnapshotMetrics({
+          snapshotId,
+          metrics: metricsToSave,
+        })
+      }
 
       return NextResponse.json({
         ok: true,

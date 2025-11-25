@@ -35,6 +35,23 @@ export default function SheetInfo({ links, data, role }: SheetInfoProps) {
     setNotificationState({ state: 'loading', message: 'Refreshing data...' })
 
     try {
+      const { createRefreshSnapshot, updateSnapshotStatus } = await import(
+        '@/lib/db/refresh-snapshots'
+      )
+
+      const snapshotResult = await createRefreshSnapshot({
+        sheetId: sheetID,
+        refreshType: 'autometric',
+        datePreset: datePreset,
+        metadata: { status },
+      })
+
+      if (!snapshotResult.success) {
+        throw new Error(snapshotResult.error)
+      }
+
+      const snapshotId = snapshotResult.snapshotId
+
       const response = await fetch('/api/ads', {
         method: 'POST',
         headers: {
@@ -44,21 +61,33 @@ export default function SheetInfo({ links, data, role }: SheetInfoProps) {
           sheetID,
           datePreset,
           status,
+          snapshotId,
         }),
       })
+
       if (!response.ok) {
+        await updateSnapshotStatus(snapshotId, 'failed', 'API request failed')
         throw new Error('Failed to refresh data')
       }
+
       const data = await response.json()
-      setNotificationState({
-        state: 'success',
-        message: 'Data refreshed successfully!',
-      })
+
+      if (data.ok) {
+        await updateSnapshotStatus(snapshotId, 'completed')
+        setNotificationState({
+          state: 'success',
+          message: 'Data refreshed successfully!',
+        })
+      } else {
+        await updateSnapshotStatus(snapshotId, 'failed', 'API returned error')
+        throw new Error('Failed to refresh data')
+      }
     } catch (error) {
       console.error('Error fetching ad data:', error)
       setNotificationState({
         state: 'error',
-        message: 'Failed to refresh data',
+        message:
+          error instanceof Error ? error.message : 'Failed to refresh data',
       })
     } finally {
       setTimeout(() => {

@@ -31,7 +31,6 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
     const sheetID = sheet.sheet_id
     const datePreset = sheet.refresh
 
-    // First, fetch accounts for batching
     const response = await fetch('/api/accounts-for-batching', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,23 +65,39 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
     })
 
     const allRows: any[][] = []
+    let snapshotId: string | null = null
 
     try {
-      // Import financialize and appendDataToSheet for client-side processing
       const { financialize } = await import('@/lib/actions')
       const { appendDataToSheet } = await import('@/lib/api')
+      const {
+        createRefreshSnapshot,
+        updateSnapshotStatus,
+        saveSnapshotMetrics,
+      } = await import('@/lib/db/refresh-snapshots')
 
-      // Process in batches
+      const snapshotResult = await createRefreshSnapshot({
+        sheetId: sheetID,
+        refreshType: 'financialx',
+        datePreset: datePreset,
+        metadata: { totalAccounts: accounts.length, totalBatches },
+      })
+
+      if (!snapshotResult.success) {
+        throw new Error(snapshotResult.error)
+      }
+
+      snapshotId = snapshotResult.snapshotId
+
       for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
         const batch = accounts.slice(i, i + BATCH_SIZE)
         batchNumber++
 
-        // Batch mode: batch = true
         const batchRows = (await financialize(
           batch,
           sheetID,
-          true, // subsheet = true
-          true, // batch = true
+          true,
+          true,
           datePreset,
         )) as any[][]
 
@@ -90,7 +105,7 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
 
         setNotificationState({
           state: 'loading',
-          message: `✅ Batch ${batchNumber} of ${totalBatches} complete...`,
+          message: `Batch ${batchNumber} of ${totalBatches} complete...`,
         })
       }
 
@@ -199,37 +214,82 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
           ? totals.fbSinceRebillRoasSum / totals.fbSinceRebillRoasCount
           : 0
 
-      // Append totals row
       allRows.push([
-        'n/a', // Monitored
-        'TOTAL/AVG', // Name
-        new Date().toDateString(), // Pod
-        totals.fbLast30Spend.toLocaleString(), // Ad spend (timeframe)
-        avgRoas30.toFixed(2), // ROAS (timeframe)
-        totals.fbLast30Revenue.toLocaleString(), // FB Revenue (timeframe)
-        totals.revenueLast30.toLocaleString(), // Revenue (timeframe)
-        totals.fbSinceRebillSpend.toLocaleString(), // Ad spend (rebill)
-        avgRoasRebill.toFixed(2), // ROAS (rebill)
-        totals.fbSinceRebillRevenue.toLocaleString(), // FB Revenue (rebill)
-        totals.revenueSinceRebill.toLocaleString(), // Revenue (rebill)
-        'n/a', // Is rebillable
-        'n/a', // Last rebill date
-        totals.ordersLast30.toLocaleString(), // Orders (timeframe)
-        totals.ordersSinceRebill.toLocaleString(), // Orders (rebill)
+        'n/a',
+        'TOTAL/AVG',
+        new Date().toDateString(),
+        totals.fbLast30Spend.toLocaleString(),
+        avgRoas30.toFixed(2),
+        totals.fbLast30Revenue.toLocaleString(),
+        totals.revenueLast30.toLocaleString(),
+        totals.fbSinceRebillSpend.toLocaleString(),
+        avgRoasRebill.toFixed(2),
+        totals.fbSinceRebillRevenue.toLocaleString(),
+        totals.revenueSinceRebill.toLocaleString(),
+        'n/a',
+        'n/a',
+        totals.ordersLast30.toLocaleString(),
+        totals.ordersSinceRebill.toLocaleString(),
       ])
 
-      // Write to sheet
       await appendDataToSheet(sheetID, allRows)
+
+      if (snapshotId) {
+        const metricsToSave = allRows
+          .filter((row) => row[1] !== 'TOTAL/AVG')
+          .map((row) => ({
+            account_name: row[1],
+            pod: row[2],
+            is_monitored: row[0] === 'Yes',
+            ad_spend_timeframe: typeof row[3] === 'number' ? row[3] : undefined,
+            roas_timeframe: typeof row[4] === 'number' ? row[4] : undefined,
+            fb_revenue_timeframe:
+              typeof row[5] === 'number' ? row[5] : undefined,
+            shopify_revenue_timeframe:
+              typeof row[6] === 'number' ? row[6] : undefined,
+            ad_spend_rebill: typeof row[7] === 'number' ? row[7] : undefined,
+            roas_rebill: typeof row[8] === 'number' ? row[8] : undefined,
+            fb_revenue_rebill: typeof row[9] === 'number' ? row[9] : undefined,
+            shopify_revenue_rebill:
+              typeof row[10] === 'number' ? row[10] : undefined,
+            rebill_status: typeof row[11] === 'string' ? row[11] : undefined,
+            last_rebill_date:
+              typeof row[12] === 'string' && row[12] !== 'Missing rebill date'
+                ? row[12]
+                : undefined,
+            orders_timeframe: typeof row[13] === 'number' ? row[13] : undefined,
+            orders_rebill: typeof row[14] === 'number' ? row[14] : undefined,
+          }))
+
+        await saveSnapshotMetrics({
+          snapshotId,
+          metrics: metricsToSave,
+        })
+
+        await updateSnapshotStatus(snapshotId, 'completed')
+      }
 
       setNotificationState({
         state: 'success',
-        message: '✅ All batches processed and data saved!',
+        message: 'All batches processed and data saved!',
       })
     } catch (error) {
       console.error('Error refreshing data:', error)
+
+      if (snapshotId) {
+        const { updateSnapshotStatus } = await import(
+          '@/lib/db/refresh-snapshots'
+        )
+        await updateSnapshotStatus(
+          snapshotId,
+          'failed',
+          error instanceof Error ? error.message : 'Failed to refresh data',
+        )
+      }
+
       setNotificationState({
         state: 'error',
-        message: `❌ Error during batch ${batchNumber}`,
+        message: `Error during batch ${batchNumber}`,
       })
     } finally {
       setTimeout(() => {
