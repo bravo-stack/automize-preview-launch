@@ -11,6 +11,7 @@ import {
   updatePermission,
 } from './api'
 import { decrypt, encrypt } from './crypto'
+import { createAdminClient } from './db/admin'
 import { createClient } from './db/server'
 import { authorizeDrive, authorizeSheets } from './google'
 import { toNumber } from './utils'
@@ -1104,6 +1105,22 @@ export async function changePassword() {
   await db.auth.updateUser({
     password: '',
   })
+}
+export async function adminChangePassword(userId: string) {
+  const db = createAdminClient()
+
+  // Generate a random 12-character alphanumeric password
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const randomBytes = crypto.getRandomValues(new Uint8Array(12))
+  const newPassword = Array.from(randomBytes)
+    .map(byte => chars[byte % chars.length])
+    .join('')
+
+  await db.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  })
+
+  return { success: true, newPassword }
 }
 
 export async function refreshSheet(sheet_id: string) {

@@ -24,6 +24,7 @@ export default async function ManagePodsPage({ searchParams }) {
     .from('pod')
     .select('id, name, discord_id, user_id, servers')
     .order('name')
+
   const { data: podAccounts } = await db
     .from('pod')
     .select('name, clients (id, brand, status, pod)')

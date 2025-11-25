@@ -4,7 +4,6 @@ import Hero from '@/components/ui/Hero'
 // import { changePassword } from '@/lib/actions'
 
 export default async function Home() {
-  // await changePassword()
   return (
     <>
       <Nav />
