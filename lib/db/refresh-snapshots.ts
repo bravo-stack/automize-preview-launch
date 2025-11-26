@@ -56,14 +56,22 @@ export async function createRefreshSnapshot({
 }: CreateSnapshotParams) {
   const db = createAdminClient()
 
-  const { data: existingSnapshot } = await db
+  // Build query for existing snapshot
+  let query = db
     .from('sheet_refresh_snapshots')
     .select('id, refresh_status, snapshot_date')
     .eq('sheet_id', sheetId)
     .eq('refresh_type', refreshType)
-    .eq('date_preset', datePreset || '')
     .gte('snapshot_date', new Date().toISOString().split('T')[0])
-    .single()
+
+  // Handle null/undefined datePreset properly
+  if (datePreset) {
+    query = query.eq('date_preset', datePreset)
+  } else {
+    query = query.is('date_preset', null)
+  }
+
+  const { data: existingSnapshot } = await query.single()
 
   if (existingSnapshot) {
     const { error: deleteMetricsError } = await db
@@ -148,7 +156,35 @@ export async function saveSnapshotMetrics({
 }: SaveMetricsParams) {
   const db = createAdminClient()
 
-  const metricsToInsert = metrics.map((metric) => ({
+  // Delete any existing metrics for this snapshot first (to handle retries/duplicates)
+  const { error: deleteError } = await db
+    .from('refresh_snapshot_metrics')
+    .delete()
+    .eq('snapshot_id', snapshotId)
+
+  console.log(
+    `[saveSnapshotMetrics] Attempted delete of existing metrics for snapshot ${snapshotId}`,
+  )
+
+  if (deleteError) {
+    console.error(
+      '[saveSnapshotMetrics] Error deleting existing metrics:',
+      deleteError.message,
+    )
+  }
+
+  // Deduplicate metrics by account_name (keep last occurrence)
+  const uniqueMetrics = new Map<string, (typeof metrics)[0]>()
+  for (const metric of metrics) {
+    uniqueMetrics.set(metric.account_name, metric)
+  }
+  const deduplicatedMetrics = Array.from(uniqueMetrics.values())
+
+  console.log(
+    `[saveSnapshotMetrics] Original: ${metrics.length}, Deduplicated: ${deduplicatedMetrics.length}`,
+  )
+
+  const metricsToInsert = deduplicatedMetrics.map((metric) => ({
     snapshot_id: snapshotId,
     ...metric,
   }))

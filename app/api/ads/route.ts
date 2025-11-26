@@ -206,7 +206,9 @@ export async function POST(request: NextRequest) {
       await appendDataToSheet(sheetID, sheetData)
 
       if (snapshotId) {
-        const { saveSnapshotMetrics } = await import(
+        console.log('[/api/ads] snapshotId received:', snapshotId)
+
+        const { saveSnapshotMetrics, updateSnapshotStatus } = await import(
           '@/lib/db/refresh-snapshots'
         )
 
@@ -217,10 +219,20 @@ export async function POST(request: NextRequest) {
           ...item.metrics,
         }))
 
-        await saveSnapshotMetrics({
+        console.log('[/api/ads] Saving metrics count:', metricsToSave.length)
+
+        const metricsResult = await saveSnapshotMetrics({
           snapshotId,
           metrics: metricsToSave,
         })
+
+        console.log('[/api/ads] saveSnapshotMetrics result:', metricsResult)
+
+        // Update snapshot status to completed
+        const statusResult = await updateSnapshotStatus(snapshotId, 'completed')
+        console.log('[/api/ads] updateSnapshotStatus result:', statusResult)
+      } else {
+        console.log('[/api/ads] No snapshotId provided, skipping metrics save')
       }
 
       return NextResponse.json({
