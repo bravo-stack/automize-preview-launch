@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from './server'
+import { createAdminClient } from './admin'
 
 export type RefreshType = 'financialx' | 'autometric'
 export type RefreshStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
@@ -54,7 +54,7 @@ export async function createRefreshSnapshot({
   datePreset,
   metadata = {},
 }: CreateSnapshotParams) {
-  const db = createClient()
+  const db = createAdminClient()
 
   const { data: existingSnapshot } = await db
     .from('sheet_refresh_snapshots')
@@ -119,7 +119,7 @@ export async function updateSnapshotStatus(
   status: RefreshStatus,
   errorMessage?: string,
 ) {
-  const db = createClient()
+  const db = createAdminClient()
 
   const updateData: any = {
     refresh_status: status,
@@ -146,7 +146,7 @@ export async function saveSnapshotMetrics({
   snapshotId,
   metrics,
 }: SaveMetricsParams) {
-  const db = createClient()
+  const db = createAdminClient()
 
   const metricsToInsert = metrics.map((metric) => ({
     snapshot_id: snapshotId,
@@ -168,7 +168,7 @@ export async function getLatestSnapshot(
   sheetId: number,
   refreshType: RefreshType,
 ) {
-  const db = createClient()
+  const db = createAdminClient()
 
   const { data, error } = await db
     .from('sheet_refresh_snapshots')
@@ -197,7 +197,7 @@ export async function getSnapshotHistory(
   refreshType: RefreshType,
   limit = 30,
 ) {
-  const db = createClient()
+  const db = createAdminClient()
 
   const { data, error } = await db
     .from('sheet_refresh_snapshots')
@@ -218,7 +218,7 @@ export async function compareSnapshots(
   snapshotId1: string,
   snapshotId2: string,
 ) {
-  const db = createClient()
+  const db = createAdminClient()
 
   const { data: snapshot1Metrics } = await db
     .from('refresh_snapshot_metrics')

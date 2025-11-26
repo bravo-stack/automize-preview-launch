@@ -18,6 +18,7 @@ export default function SheetCard({ sheet, stores, role }: SheetCardProps) {
 
   const handleRefresh = async () => {
     const sheetID = sheet.sheet_id
+    const sheetNumericId = sheet.id
     const datePreset = sheet.refresh
     const status = sheet.title === 'Churned' ? 'left' : 'active'
 
@@ -56,11 +57,31 @@ export default function SheetCard({ sheet, stores, role }: SheetCardProps) {
     })
 
     const allRows: any[][] = []
+    let snapshotId: string | null = null
 
     try {
       // Import financialize and appendDataToSheet for client-side processing
       const { financialize } = await import('@/lib/actions')
       const { appendDataToSheet } = await import('@/lib/api')
+      const {
+        createRefreshSnapshot,
+        updateSnapshotStatus,
+        saveSnapshotMetrics,
+      } = await import('@/lib/db/refresh-snapshots')
+
+      // Create snapshot record
+      const snapshotResult = await createRefreshSnapshot({
+        sheetId: sheetNumericId,
+        refreshType: 'financialx',
+        datePreset: datePreset,
+        metadata: { totalAccounts: accounts.length, totalBatches },
+      })
+
+      if (!snapshotResult.success) {
+        throw new Error(snapshotResult.error)
+      }
+
+      snapshotId = snapshotResult.snapshotId
 
       // Process in batches
       for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
@@ -211,12 +232,60 @@ export default function SheetCard({ sheet, stores, role }: SheetCardProps) {
       // Write to sheet
       await appendDataToSheet(sheetID, allRows)
 
+      // Save metrics to database
+      if (snapshotId) {
+        const metricsToSave = allRows
+          .filter((row) => row[1] !== 'TOTAL/AVG')
+          .map((row) => ({
+            account_name: row[1],
+            pod: row[2],
+            is_monitored: row[0] === 'Yes',
+            ad_spend_timeframe: typeof row[3] === 'number' ? row[3] : undefined,
+            roas_timeframe: typeof row[4] === 'number' ? row[4] : undefined,
+            fb_revenue_timeframe:
+              typeof row[5] === 'number' ? row[5] : undefined,
+            shopify_revenue_timeframe:
+              typeof row[6] === 'number' ? row[6] : undefined,
+            ad_spend_rebill: typeof row[7] === 'number' ? row[7] : undefined,
+            roas_rebill: typeof row[8] === 'number' ? row[8] : undefined,
+            fb_revenue_rebill: typeof row[9] === 'number' ? row[9] : undefined,
+            shopify_revenue_rebill:
+              typeof row[10] === 'number' ? row[10] : undefined,
+            rebill_status: typeof row[11] === 'string' ? row[11] : undefined,
+            last_rebill_date:
+              typeof row[12] === 'string' && row[12] !== 'Missing rebill date'
+                ? row[12]
+                : undefined,
+            orders_timeframe: typeof row[13] === 'number' ? row[13] : undefined,
+            orders_rebill: typeof row[14] === 'number' ? row[14] : undefined,
+          }))
+
+        await saveSnapshotMetrics({
+          snapshotId,
+          metrics: metricsToSave,
+        })
+
+        await updateSnapshotStatus(snapshotId, 'completed')
+      }
+
       setNotificationState({
         state: 'success',
         message: '✅ All batches processed and data saved!',
       })
     } catch (error) {
       console.error('Error refreshing data:', error)
+
+      if (snapshotId) {
+        const { updateSnapshotStatus } = await import(
+          '@/lib/db/refresh-snapshots'
+        )
+        await updateSnapshotStatus(
+          snapshotId,
+          'failed',
+          error instanceof Error ? error.message : 'Failed to refresh data',
+        )
+      }
+
       setNotificationState({
         state: 'error',
         message: `❌ Error during batch ${batchNumber}`,
