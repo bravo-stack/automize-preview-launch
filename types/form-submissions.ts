@@ -96,27 +96,27 @@ export interface CreateDayDropRequestPayload {
   offers: string
   link_to_products: string
   sms_required: boolean
-  sms_images?: string
-  sms_style?: string
-  sms_personalisation?: string
-  site_locked?: string
-  additional_notes?: string
+  sms_images?: string | null
+  sms_style?: string | null
+  sms_personalisation?: string | null
+  site_locked?: string | null
+  additional_notes?: string | null
 }
 
 export interface CreateWebsiteRevampRequestPayload {
   email: string
   brand_name: string
   media_buyer_name: string
-  home_page?: string
-  collection_page?: string
-  product_pages?: string
-  size_chart?: string
-  bundles?: string
-  description?: string
-  reviews?: string
-  policies?: string
-  backend?: string
-  track_order?: string
-  about_us?: string
-  additional_notes?: string
+  home_page?: string | null
+  collection_page?: string | null
+  product_pages?: string | null
+  size_chart?: string | null
+  bundles?: string | null
+  description?: string | null
+  reviews?: string | null
+  policies?: string | null
+  backend?: string | null
+  track_order?: string | null
+  about_us?: string | null
+  additional_notes?: string | null
 }

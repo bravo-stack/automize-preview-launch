@@ -1,11 +1,23 @@
 'use client'
 
+import { createWebsiteRevampRequest } from '@/lib/actions/form-submissions'
 import { useState } from 'react'
 
-export default function WebsiteRevampForm() {
+type ClientData = {
+  id: number
+  brand: string
+  email: string
+} | null
+
+type Props = {
+  clientId?: string
+  clientData?: ClientData
+}
+
+export default function WebsiteRevampForm({ clientId, clientData }: Props) {
   const [formData, setFormData] = useState({
-    email: '',
-    brandName: '',
+    email: clientData?.email || '',
+    brandName: clientData?.brand || '',
     mediaBuyerName: '',
     homePage: '',
     collectionPage: '',
@@ -41,7 +53,6 @@ export default function WebsiteRevampForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate required fields
     const requiredFields = ['email', 'brandName', 'mediaBuyerName']
     const missing = requiredFields.filter((field) => !formData[field])
 
@@ -54,17 +65,27 @@ export default function WebsiteRevampForm() {
     setLoading(true)
 
     try {
-      // TODO: Implement form submission logic
-      // const response = await fetch('/api/website-revamp', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData),
-      // })
+      const payload = {
+        email: formData.email,
+        brand_name: formData.brandName,
+        media_buyer_name: formData.mediaBuyerName,
+        home_page: formData.homePage || null,
+        collection_page: formData.collectionPage || null,
+        product_pages: formData.productPages || null,
+        size_chart: formData.sizeChart || null,
+        bundles: formData.bundles || null,
+        description: formData.description || null,
+        reviews: formData.reviews || null,
+        policies: formData.policies || null,
+        backend: formData.backend || null,
+        track_order: formData.trackOrder || null,
+        about_us: formData.aboutUs || null,
+        additional_notes: formData.additionalNotes || null,
+      }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const { error } = await createWebsiteRevampRequest(payload)
 
-      setSuccess(true)
+      setSuccess(!error)
     } catch (error) {
       setSuccess(false)
     } finally {
@@ -258,7 +279,7 @@ export default function WebsiteRevampForm() {
                 value="Yes"
                 checked={formData.reviews === 'Yes'}
                 onChange={handleChange}
-                className="h-4 w-4"
+                className="h-4 w-4 border-white"
               />
               <span className="text-base">Yes</span>
             </label>

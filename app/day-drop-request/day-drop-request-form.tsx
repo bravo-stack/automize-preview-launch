@@ -1,10 +1,22 @@
 'use client'
 
+import { createDayDropRequest } from '@/lib/actions/form-submissions'
 import { useState } from 'react'
 
-export default function DayDropRequestForm() {
+type ClientData = {
+  id: number
+  brand: string
+  email: string
+} | null
+
+type Props = {
+  clientId?: string
+  clientData?: ClientData
+}
+
+export default function DayDropRequestForm({ clientId, clientData }: Props) {
   const [formData, setFormData] = useState({
-    brandName: '',
+    brandName: clientData?.brand || '',
     discordUsername: '',
     dropName: '',
     collectionName: '',
@@ -40,7 +52,6 @@ export default function DayDropRequestForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate required fields
     const requiredFields = [
       'brandName',
       'discordUsername',
@@ -63,17 +74,26 @@ export default function DayDropRequestForm() {
     setLoading(true)
 
     try {
-      // TODO: Implement form submission logic
-      // const response = await fetch('/api/day-drop-request', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData),
-      // })
+      const payload = {
+        brand_name: formData.brandName,
+        discord_username: formData.discordUsername,
+        drop_name: formData.dropName,
+        collection_name: formData.collectionName,
+        drop_date: formData.dropDate,
+        timezone_and_time: formData.timezoneAndTime,
+        offers: formData.offers,
+        link_to_products: formData.linkToProducts,
+        sms_required: formData.smsRequired === 'Yes',
+        sms_images: formData.smsImages || null,
+        sms_style: formData.smsStyle || null,
+        sms_personalisation: formData.smsPersonalisation || null,
+        site_locked: formData.siteLocked || null,
+        additional_notes: formData.additionalNotes || null,
+      }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const { error } = await createDayDropRequest(payload)
 
-      setSuccess(true)
+      setSuccess(!error)
     } catch (error) {
       setSuccess(false)
     } finally {
