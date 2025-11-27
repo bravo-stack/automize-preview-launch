@@ -268,38 +268,45 @@ export default function FormLinks({ clients }: { clients: Client[] }) {
                         : 'Closer missing'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={generateRelativePath(client.id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded p-1.5 text-neutral-400 transition-colors hover:bg-zinc-700 hover:text-neutral-200"
-                      title="Open form"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                    <button
-                      onClick={() =>
-                        copyToClipboard(
-                          client.id,
-                          client.brand,
-                          `client-${client.id}`,
-                        )
-                      }
-                      className="flex items-center gap-1.5 rounded bg-zinc-700 px-2.5 py-1.5 text-sm text-neutral-200 transition-colors hover:bg-zinc-600"
-                    >
-                      {copiedId === `client-${client.id}` ? (
-                        <>
-                          <Check className="h-3.5 w-3.5" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3.5 w-3.5" />
-                          Copy
-                        </>
-                      )}
-                    </button>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <span className="text-xs text-neutral-500">
+                      {selectedFormData?.name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={generateRelativePath(client.id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded bg-zinc-800 px-2.5 py-1.5 text-sm text-neutral-300 transition-colors hover:bg-zinc-700 hover:text-neutral-200"
+                        title={`Open ${selectedFormData?.name} for ${client.brand}`}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Open
+                      </Link>
+                      <button
+                        onClick={() =>
+                          copyToClipboard(
+                            client.id,
+                            client.brand,
+                            `client-${client.id}`,
+                          )
+                        }
+                        className="flex items-center gap-1.5 rounded bg-zinc-700 px-2.5 py-1.5 text-sm text-neutral-200 transition-colors hover:bg-zinc-600"
+                        title={`Copy ${selectedFormData?.name} link for ${client.brand}`}
+                      >
+                        {copiedId === `client-${client.id}` ? (
+                          <>
+                            <Check className="h-3.5 w-3.5" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" />
+                            Copy Link
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </li>
