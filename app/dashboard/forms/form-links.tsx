@@ -16,6 +16,7 @@ type FormType = {
   name: string
   description: string
   path: string
+  linkStyle: 'path' | 'query'
 }
 
 /*
@@ -25,7 +26,10 @@ type FormType = {
  *   name: 'New Form Name',
  *   description: 'Form description',
  *   path: '/new-form-path',
+ *   linkStyle: 'path' | 'query',
  * }
+ * linkStyle 'path' creates: /form-path/{clientId}
+ * linkStyle 'query' creates: /form-path?clientId={clientId}
  */
 const FORM_TYPES: FormType[] = [
   {
@@ -33,18 +37,21 @@ const FORM_TYPES: FormType[] = [
     name: 'Onboarding Form',
     description: 'Initial client onboarding questionnaire',
     path: '/onboarding-form',
+    linkStyle: 'path',
   },
   {
     id: 'website-revamp',
     name: 'Website Revamp Request',
     description: 'Request website updates and improvements',
     path: '/website-revamp',
+    linkStyle: 'query',
   },
   {
     id: 'day-drop-request',
     name: 'Drop Day Request',
     description: 'Request brand drop day setup',
     path: '/day-drop-request',
+    linkStyle: 'query',
   },
 ]
 
@@ -95,34 +102,32 @@ export default function FormLinks({ clients }: { clients: Client[] }) {
     return ''
   }
 
-  const generateLink = (clientId?: number) => {
+  const generateLink = (clientId: number) => {
     const baseUrl = getBaseUrl()
-    if (clientId) {
-      return `${baseUrl}${selectedFormData?.path}/${clientId}`
+    if (selectedFormData?.linkStyle === 'query') {
+      return `${baseUrl}${selectedFormData?.path}?clientId=${clientId}`
     }
-    return `${baseUrl}${selectedFormData?.path}`
+    return `${baseUrl}${selectedFormData?.path}/${clientId}`
   }
 
-  const generateRelativePath = (clientId?: number) => {
-    if (clientId) {
-      return `${selectedFormData?.path}/${clientId}`
+  const generateRelativePath = (clientId: number) => {
+    if (selectedFormData?.linkStyle === 'query') {
+      return `${selectedFormData?.path}?clientId=${clientId}`
     }
-    return selectedFormData?.path || ''
+    return `${selectedFormData?.path}/${clientId}`
   }
 
   const copyToClipboard = async (
-    clientId?: number,
-    clientBrand?: string,
-    copyId?: string,
+    clientId: number,
+    clientBrand: string,
+    copyId: string,
   ) => {
     const link = generateLink(clientId)
-    const message = clientBrand
-      ? `${selectedFormData?.name} link for ${clientBrand}: ${link}`
-      : `${selectedFormData?.name} link: ${link}`
+    const message = `${selectedFormData?.name} link for ${clientBrand}: ${link}`
 
     try {
       await navigator.clipboard.writeText(message)
-      setCopiedId(copyId || 'general')
+      setCopiedId(copyId)
       setTimeout(() => setCopiedId(null), 2000)
     } catch {
       alert('Error copying link. Please try again.')
@@ -163,18 +168,35 @@ export default function FormLinks({ clients }: { clients: Client[] }) {
         </div>
       </div>
 
-      <div className="mb-4 rounded border border-zinc-700 bg-zinc-800/50 p-4">
-        <div>
-          <h3 className="font-medium text-neutral-200">
-            {selectedFormData?.name}
-          </h3>
-          <p className="text-sm text-neutral-400">
-            {selectedFormData?.description}
-          </p>
+      <div
+        key={selectedForm}
+        className="mb-4 rounded border border-zinc-700 bg-zinc-800/50 p-4 duration-200 animate-in fade-in slide-in-from-top-1"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-medium text-neutral-200">
+              {selectedFormData?.name}
+            </h3>
+            <p className="text-sm text-neutral-400">
+              {selectedFormData?.description}
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full bg-blue-500/20 px-2.5 py-0.5 text-xs font-medium text-blue-400">
+            Client-specific link
+          </span>
         </div>
+        <p className="mt-2 text-xs text-neutral-500">
+          Path: {selectedFormData?.path}
+          {selectedFormData?.linkStyle === 'query'
+            ? '?clientId={client_id}'
+            : '/{client_id}'}
+        </p>
       </div>
 
-      <div className="space-y-2">
+      <div
+        key={`clients-${selectedForm}`}
+        className="space-y-2 duration-200 animate-in fade-in"
+      >
         <div className="flex items-center justify-between">
           <p className="text-sm text-neutral-400">
             Select a client to generate their form link:
@@ -188,7 +210,7 @@ export default function FormLinks({ clients }: { clients: Client[] }) {
           {paginatedClients.length > 0 ? (
             paginatedClients.map((client) => (
               <li
-                key={client.id}
+                key={`${selectedForm}-${client.id}`}
                 className="flex items-center justify-between rounded border border-zinc-800 bg-night-starlit p-3 transition-colors hover:border-zinc-700"
               >
                 <div className="space-y-0.5">
