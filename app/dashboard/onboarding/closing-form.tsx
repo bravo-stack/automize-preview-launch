@@ -26,20 +26,20 @@ export default function ClosingForm() {
       alert('Please fill out all fields before submitting.')
       return
     }
-    
-	const closedClient = {
+
+    const closedClient = {
       brand: formData.brand,
       closed_by: formData.closed_by,
-	rebill_amt: formData.close_amt,
+      rebill_amt: formData.close_amt,
       team: formData.team.toUpperCase(),
       rebill_date: (() => {
         const today = new Date()
         const thirtyDaysAhead = new Date(today)
         thirtyDaysAhead.setDate(today.getDate() + 30)
         return thirtyDaysAhead
-      })(),
-    }
-    
+      })(),
+    }
+
     const { data, error } = await createItem('clients', closedClient)
 
     if (error) {
