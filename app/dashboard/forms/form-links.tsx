@@ -16,7 +16,6 @@ type FormType = {
   name: string
   description: string
   path: string
-  requiresClientId: boolean
 }
 
 /*
@@ -26,7 +25,6 @@ type FormType = {
  *   name: 'New Form Name',
  *   description: 'Form description',
  *   path: '/new-form-path',
- *   requiresClientId: true | false,
  * }
  */
 const FORM_TYPES: FormType[] = [
@@ -35,21 +33,18 @@ const FORM_TYPES: FormType[] = [
     name: 'Onboarding Form',
     description: 'Initial client onboarding questionnaire',
     path: '/onboarding-form',
-    requiresClientId: true,
   },
   {
     id: 'website-revamp',
     name: 'Website Revamp Request',
     description: 'Request website updates and improvements',
     path: '/website-revamp',
-    requiresClientId: false,
   },
   {
     id: 'day-drop-request',
     name: 'Drop Day Request',
     description: 'Request brand drop day setup',
     path: '/day-drop-request',
-    requiresClientId: false,
   },
 ]
 
@@ -88,12 +83,31 @@ export default function FormLinks({ clients }: { clients: Client[] }) {
     setCurrentPage(1)
   }
 
-  const generateLink = (clientId?: number, clientBrand?: string) => {
-    const baseUrl = 'https://automize.vercel.app'
-    if (selectedFormData?.requiresClientId && clientId) {
-      return `${baseUrl}${selectedFormData.path}/${clientId}`
+  const handleFormChange = (formId: string) => {
+    setSelectedForm(formId)
+    setCurrentPage(1)
+  }
+
+  const getBaseUrl = () => {
+    if (typeof window !== 'undefined') {
+      return window.location.origin
+    }
+    return ''
+  }
+
+  const generateLink = (clientId?: number) => {
+    const baseUrl = getBaseUrl()
+    if (clientId) {
+      return `${baseUrl}${selectedFormData?.path}/${clientId}`
     }
     return `${baseUrl}${selectedFormData?.path}`
+  }
+
+  const generateRelativePath = (clientId?: number) => {
+    if (clientId) {
+      return `${selectedFormData?.path}/${clientId}`
+    }
+    return selectedFormData?.path || ''
   }
 
   const copyToClipboard = async (
@@ -101,7 +115,7 @@ export default function FormLinks({ clients }: { clients: Client[] }) {
     clientBrand?: string,
     copyId?: string,
   ) => {
-    const link = generateLink(clientId, clientBrand)
+    const link = generateLink(clientId)
     const message = clientBrand
       ? `${selectedFormData?.name} link for ${clientBrand}: ${link}`
       : `${selectedFormData?.name} link: ${link}`
@@ -124,7 +138,7 @@ export default function FormLinks({ clients }: { clients: Client[] }) {
           </label>
           <select
             value={selectedForm}
-            onChange={(e) => setSelectedForm(e.target.value)}
+            onChange={(e) => handleFormChange(e.target.value)}
             className="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-neutral-200 focus:border-zinc-600 focus:outline-none"
           >
             {FORM_TYPES.map((form) => (
@@ -135,203 +149,172 @@ export default function FormLinks({ clients }: { clients: Client[] }) {
           </select>
         </div>
 
-        {selectedFormData?.requiresClientId && (
-          <div>
-            <label className="mb-1.5 block text-sm text-neutral-400">
-              Search Client
-            </label>
-            <input
-              type="text"
-              placeholder="Search by brand name..."
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-neutral-200 placeholder-neutral-500 focus:border-zinc-600 focus:outline-none"
-            />
-          </div>
-        )}
+        <div>
+          <label className="mb-1.5 block text-sm text-neutral-400">
+            Search Client
+          </label>
+          <input
+            type="text"
+            placeholder="Search by brand name..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-neutral-200 placeholder-neutral-500 focus:border-zinc-600 focus:outline-none"
+          />
+        </div>
       </div>
 
       <div className="mb-4 rounded border border-zinc-700 bg-zinc-800/50 p-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="font-medium text-neutral-200">
-              {selectedFormData?.name}
-            </h3>
-            <p className="text-sm text-neutral-400">
-              {selectedFormData?.description}
-            </p>
-          </div>
-          {!selectedFormData?.requiresClientId && (
-            <button
-              onClick={() => copyToClipboard()}
-              className="flex items-center gap-2 rounded bg-zinc-700 px-3 py-1.5 text-sm text-neutral-200 transition-colors hover:bg-zinc-600"
-            >
-              {copiedId === 'general' ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Copy Link
-                </>
-              )}
-            </button>
-          )}
-        </div>
-        {!selectedFormData?.requiresClientId && (
-          <p className="mt-2 text-xs text-neutral-500">
-            Link: {generateLink()}
+        <div>
+          <h3 className="font-medium text-neutral-200">
+            {selectedFormData?.name}
+          </h3>
+          <p className="text-sm text-neutral-400">
+            {selectedFormData?.description}
           </p>
-        )}
+        </div>
       </div>
 
-      {selectedFormData?.requiresClientId && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-neutral-400">
-              Select a client to generate their personalized form link:
-            </p>
-            <p className="text-sm text-neutral-500">
-              {filteredClients.length} client
-              {filteredClients.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <ul className="space-y-1.5">
-            {paginatedClients.length > 0 ? (
-              paginatedClients.map((client) => (
-                <li
-                  key={client.id}
-                  className="flex items-center justify-between rounded border border-zinc-800 bg-night-starlit p-3 transition-colors hover:border-zinc-700"
-                >
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium text-neutral-200">
-                      <Link
-                        href={`/dashboard/notes/${client.id}`}
-                        className="hover:underline"
-                      >
-                        {client.brand}
-                      </Link>
-                    </h4>
-                    {client.email && (
-                      <p className="text-sm text-neutral-500">
-                        {client.drive ? (
-                          <a
-                            href={client.drive}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:underline"
-                          >
-                            {client.email}
-                          </a>
-                        ) : (
-                          client.email
-                        )}
-                      </p>
-                    )}
-                    {client.closed_at && (
-                      <p className="text-xs text-neutral-600">
-                        {new Date(client.closed_at).toDateString()}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-end gap-2 text-right text-xs text-neutral-500">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-neutral-400">
+            Select a client to generate their form link:
+          </p>
+          <p className="text-sm text-neutral-500">
+            {filteredClients.length} client
+            {filteredClients.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <ul className="space-y-1.5">
+          {paginatedClients.length > 0 ? (
+            paginatedClients.map((client) => (
+              <li
+                key={client.id}
+                className="flex items-center justify-between rounded border border-zinc-800 bg-night-starlit p-3 transition-colors hover:border-zinc-700"
+              >
+                <div className="space-y-0.5">
+                  <h4 className="font-medium text-neutral-200">
+                    <Link
+                      href={`/dashboard/notes/${client.id}`}
+                      className="hover:underline"
+                    >
+                      {client.brand}
+                    </Link>
+                  </h4>
+                  {client.email && (
+                    <p className="text-sm text-neutral-500">
                       {client.drive ? (
                         <a
                           href={client.drive}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block text-foreground hover:underline"
+                          className="hover:underline"
                         >
-                          Open Drive
+                          {client.email}
                         </a>
                       ) : (
-                        <span>Drive Missing</span>
+                        client.email
                       )}
-                      <span
-                        className={cn({
-                          'text-foreground': client?.closed_by,
-                        })}
-                      >
-                        {client.closed_by
-                          ? `Closed by ${client.closed_by}`
-                          : 'Closer missing'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
+                    </p>
+                  )}
+                  {client.closed_at && (
+                    <p className="text-xs text-neutral-600">
+                      {new Date(client.closed_at).toDateString()}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-end gap-2 text-right text-xs text-neutral-500">
+                    {client.drive ? (
                       <a
-                        href={generateLink(client.id, client.brand)}
+                        href={client.drive}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded p-1.5 text-neutral-400 transition-colors hover:bg-zinc-700 hover:text-neutral-200"
-                        title="Open form"
+                        className="block text-foreground hover:underline"
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        Open Drive
                       </a>
-                      <button
-                        onClick={() =>
-                          copyToClipboard(
-                            client.id,
-                            client.brand,
-                            `client-${client.id}`,
-                          )
-                        }
-                        className="flex items-center gap-1.5 rounded bg-zinc-700 px-2.5 py-1.5 text-sm text-neutral-200 transition-colors hover:bg-zinc-600"
-                      >
-                        {copiedId === `client-${client.id}` ? (
-                          <>
-                            <Check className="h-3.5 w-3.5" />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3.5 w-3.5" />
-                            Copy
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    ) : (
+                      <span>Drive Missing</span>
+                    )}
+                    <span
+                      className={cn({
+                        'text-foreground': client?.closed_by,
+                      })}
+                    >
+                      {client.closed_by
+                        ? `Closed by ${client.closed_by}`
+                        : 'Closer missing'}
+                    </span>
                   </div>
-                </li>
-              ))
-            ) : (
-              <li className="py-4 text-center text-neutral-500">
-                {searchQuery
-                  ? 'No clients found matching your search.'
-                  : 'No clients available.'}
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={generateRelativePath(client.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded p-1.5 text-neutral-400 transition-colors hover:bg-zinc-700 hover:text-neutral-200"
+                      title="Open form"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                    <button
+                      onClick={() =>
+                        copyToClipboard(
+                          client.id,
+                          client.brand,
+                          `client-${client.id}`,
+                        )
+                      }
+                      className="flex items-center gap-1.5 rounded bg-zinc-700 px-2.5 py-1.5 text-sm text-neutral-200 transition-colors hover:bg-zinc-600"
+                    >
+                      {copiedId === `client-${client.id}` ? (
+                        <>
+                          <Check className="h-3.5 w-3.5" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </li>
-            )}
-          </ul>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="flex items-center gap-1 rounded px-3 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-zinc-700 hover:text-neutral-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </button>
-              <span className="text-sm text-neutral-500">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="flex items-center gap-1 rounded px-3 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-zinc-700 hover:text-neutral-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+            ))
+          ) : (
+            <li className="py-4 text-center text-neutral-500">
+              {searchQuery
+                ? 'No clients found matching your search.'
+                : 'No clients available.'}
+            </li>
           )}
-        </div>
-      )}
+        </ul>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex items-center gap-1 rounded px-3 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-zinc-700 hover:text-neutral-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </button>
+            <span className="text-sm text-neutral-500">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-1 rounded px-3 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-zinc-700 hover:text-neutral-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
