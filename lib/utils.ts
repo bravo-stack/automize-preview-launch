@@ -105,3 +105,24 @@ export function convertTo12HourFormat(time24: string) {
 export const normalizeToStartOfDay = (date) => {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
+
+export async function safeCompare(a: string, b: string) {
+  const encoder = new TextEncoder()
+  const aBytes = encoder.encode(a)
+  const bBytes = encoder.encode(b)
+
+  if (aBytes.length !== bBytes.length) return false
+
+  const aHash = await crypto.subtle.digest('SHA-256', aBytes)
+  const bHash = await crypto.subtle.digest('SHA-256', bBytes)
+
+  // Compare digests byte-by-byte (constant time)
+  const aView = new Uint8Array(aHash)
+  const bView = new Uint8Array(bHash)
+
+  let match = 1
+  for (let i = 0; i < aView.length; i++) {
+    match &= Number(aView[i] === bView[i])
+  }
+  return match === 1
+}

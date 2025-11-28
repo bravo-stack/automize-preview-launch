@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'Automize',
   description: 'The only business optimization solution you need.',
 }
-
+// vercel tax
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
