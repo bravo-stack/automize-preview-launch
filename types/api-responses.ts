@@ -32,6 +32,7 @@ export interface ApiSource {
 export interface ApiSnapshot {
   id: string
   source_id: string
+  client_id: number | null // NEW: Per-client snapshots
   snapshot_type: SnapshotType
   total_records: number
   status: SnapshotStatus
@@ -44,6 +45,7 @@ export interface ApiSnapshot {
 export interface ApiRecord {
   id: string
   snapshot_id: string
+  client_id: number | null // NEW: Per-client records
   external_id: string
   name: string | null
   email: string | null
@@ -85,9 +87,23 @@ export interface MetricDefinition {
 // Watch Tower Tables
 // ============================================================================
 
+export type LogicOperator = 'AND' | 'OR'
+export type DependencyType =
+  | 'requires_triggered'
+  | 'requires_not_triggered'
+  | 'requires_acknowledged'
+export type ScheduleType = 'immediate' | 'daily' | 'weekly' | 'custom_cron'
+export type TargetTable =
+  | 'api_records'
+  | 'communication_reports'
+  | 'clients'
+  | 'client_cvr_snapshots'
+
 export interface WatchtowerRule {
   id: string
-  source_id: string
+  source_id: string | null // Now optional
+  client_id: number | null // NEW: Rule can be client-specific
+  target_table: TargetTable | null // NEW: Can target other tables
   name: string
   description: string | null
   field_name: string
@@ -99,11 +115,51 @@ export interface WatchtowerRule {
   updated_at: string
 }
 
+// NEW: Compound rule conditions (ROAS < X AND Spend > Y)
+export interface WatchtowerRuleCondition {
+  id: string
+  rule_id: string
+  field_name: string
+  condition: RuleCondition
+  threshold_value: string | null
+  logic_operator: LogicOperator
+  sort_order: number
+  created_at: string
+}
+
+// NEW: Rule dependencies
+export interface WatchtowerRuleDependency {
+  id: string
+  rule_id: string
+  depends_on_rule_id: string
+  dependency_type: DependencyType
+  created_at: string
+}
+
+// NEW: Notification schedules
+export interface WatchtowerNotificationSchedule {
+  id: string
+  rule_id: string
+  schedule_type: ScheduleType
+  cron_expression: string | null
+  notify_time: string | null // TIME as string
+  notify_day_of_week: number | null // 0-6 (0 = Sunday)
+  notify_discord: boolean
+  notify_email: boolean
+  discord_channel_id: string | null
+  email_recipients: string[] | null
+  is_active: boolean
+  last_notified_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface WatchtowerAlert {
   id: string
   rule_id: string
   snapshot_id: string
   record_id: string | null
+  client_id: number | null // NEW: Client-specific alerts
   message: string
   severity: Severity
   current_value: string | null
@@ -111,6 +167,17 @@ export interface WatchtowerAlert {
   is_acknowledged: boolean
   acknowledged_at: string | null
   acknowledged_by: string | null
+  created_at: string
+}
+
+// NEW: CVR tracking
+export interface ClientCvrSnapshot {
+  id: string
+  client_id: number
+  cvr_value: number
+  period_start: string
+  period_end: string
+  source: 'scraper' | 'manual' | 'api'
   created_at: string
 }
 
@@ -128,6 +195,20 @@ export interface ApiRecordWithMetrics extends ApiRecord {
 
 export interface WatchtowerAlertWithRule extends WatchtowerAlert {
   rule: WatchtowerRule
+}
+
+// NEW: Rule with all related data
+export interface WatchtowerRuleWithConditions extends WatchtowerRule {
+  conditions: WatchtowerRuleCondition[]
+  dependencies: WatchtowerRuleDependency[]
+  notification_schedule: WatchtowerNotificationSchedule | null
+}
+
+// NEW: CVR with comparison
+export interface ClientCvrWithComparison extends ClientCvrSnapshot {
+  previous_cvr: number | null
+  change_absolute: number | null
+  change_percent: number | null
 }
 
 // ============================================================================
