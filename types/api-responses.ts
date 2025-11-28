@@ -88,22 +88,15 @@ export interface MetricDefinition {
 // ============================================================================
 
 export type LogicOperator = 'AND' | 'OR'
-export type DependencyType =
-  | 'requires_triggered'
-  | 'requires_not_triggered'
-  | 'requires_acknowledged'
-export type ScheduleType = 'immediate' | 'daily' | 'weekly' | 'custom_cron'
-export type TargetTable =
-  | 'api_records'
-  | 'communication_reports'
-  | 'clients'
-  | 'client_cvr_snapshots'
+export type DependencyCondition = 'triggered' | 'not_triggered' | 'acknowledged'
+export type NotifySchedule = 'daily' | 'weekly'
+export type TargetTable = 'api_records' | 'communication_reports' | 'clients'
 
 export interface WatchtowerRule {
   id: string
-  source_id: string | null // Now optional
-  client_id: number | null // NEW: Rule can be client-specific
-  target_table: TargetTable | null // NEW: Can target other tables
+  source_id: string | null
+  client_id: number | null
+  target_table: TargetTable | null
   name: string
   description: string | null
   field_name: string
@@ -111,45 +104,23 @@ export interface WatchtowerRule {
   threshold_value: string | null
   severity: Severity
   is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-// NEW: Compound rule conditions (ROAS < X AND Spend > Y)
-export interface WatchtowerRuleCondition {
-  id: string
-  rule_id: string
-  field_name: string
-  condition: RuleCondition
-  threshold_value: string | null
+  // Rule dependencies (self-referential)
+  parent_rule_id: string | null
+  dependency_condition: DependencyCondition | null
+  // Compound rules
   logic_operator: LogicOperator
-  sort_order: number
-  created_at: string
-}
-
-// NEW: Rule dependencies
-export interface WatchtowerRuleDependency {
-  id: string
-  rule_id: string
-  depends_on_rule_id: string
-  dependency_type: DependencyType
-  created_at: string
-}
-
-// NEW: Notification schedules
-export interface WatchtowerNotificationSchedule {
-  id: string
-  rule_id: string
-  schedule_type: ScheduleType
-  cron_expression: string | null
-  notify_time: string | null // TIME as string
-  notify_day_of_week: number | null // 0-6 (0 = Sunday)
+  group_id: string | null
+  // Notification settings (embedded, no separate table)
+  notify_immediately: boolean
+  notify_schedule: NotifySchedule | null
+  notify_time: string | null
+  notify_day_of_week: number | null
   notify_discord: boolean
   notify_email: boolean
   discord_channel_id: string | null
   email_recipients: string[] | null
-  is_active: boolean
   last_notified_at: string | null
+  // Timestamps
   created_at: string
   updated_at: string
 }
@@ -159,7 +130,7 @@ export interface WatchtowerAlert {
   rule_id: string
   snapshot_id: string
   record_id: string | null
-  client_id: number | null // NEW: Client-specific alerts
+  client_id: number | null
   message: string
   severity: Severity
   current_value: string | null
@@ -167,17 +138,6 @@ export interface WatchtowerAlert {
   is_acknowledged: boolean
   acknowledged_at: string | null
   acknowledged_by: string | null
-  created_at: string
-}
-
-// NEW: CVR tracking
-export interface ClientCvrSnapshot {
-  id: string
-  client_id: number
-  cvr_value: number
-  period_start: string
-  period_end: string
-  source: 'scraper' | 'manual' | 'api'
   created_at: string
 }
 
@@ -197,18 +157,10 @@ export interface WatchtowerAlertWithRule extends WatchtowerAlert {
   rule: WatchtowerRule
 }
 
-// NEW: Rule with all related data
-export interface WatchtowerRuleWithConditions extends WatchtowerRule {
-  conditions: WatchtowerRuleCondition[]
-  dependencies: WatchtowerRuleDependency[]
-  notification_schedule: WatchtowerNotificationSchedule | null
-}
-
-// NEW: CVR with comparison
-export interface ClientCvrWithComparison extends ClientCvrSnapshot {
-  previous_cvr: number | null
-  change_absolute: number | null
-  change_percent: number | null
+// Rule with child rules (for compound rules)
+export interface WatchtowerRuleWithChildren extends WatchtowerRule {
+  child_rules: WatchtowerRule[]
+  parent_rule: WatchtowerRule | null
 }
 
 // ============================================================================

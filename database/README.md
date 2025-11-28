@@ -1,294 +1,219 @@
-# API Response Storage
+# API Response Storage & Watch Tower
 
-Enterprise-grade system for storing and querying data from external services (Omnisend, Klaviyo, Shopify, etc.).
-
----
-
-## Overview
-
-1. **Stores API data** - Saves responses in queryable typed columns
-2. **Flexible metrics** - M2M table with self-documenting metric names
-3. **Time comparisons** - Compare data across different periods
-4. **Watch Tower** - Alerts when metrics cross thresholds
+Enterprise-grade system for storing external API data and monitoring it with configurable rules.
 
 ---
 
-## Database Tables (7 total)
+## Tables Overview (7 total)
 
-| Table                | Purpose                                                  |
-| -------------------- | -------------------------------------------------------- |
-| `api_sources`        | Registry of APIs we fetch from                           |
-| `api_snapshots`      | Tracks each fetch operation (date, status, record count) |
-| `api_records`        | The actual data, stored in queryable columns             |
-| `api_record_metrics` | **M2M table** for named metrics per record               |
-| `metric_definitions` | Registry of known metrics for validation/display         |
-| `watchtower_rules`   | Alert rules (e.g., "alert if revenue drops 30%")         |
-| `watchtower_alerts`  | Triggered alerts                                         |
-
----
-
-## How Records Are Stored
-
-### Core Fields (`api_records`)
-
-| Column        | Type      | Use for                                             |
-| ------------- | --------- | --------------------------------------------------- |
-| `external_id` | VARCHAR   | ID from the external service (order ID, contact ID) |
-| `name`        | VARCHAR   | Names, titles, labels                               |
-| `email`       | VARCHAR   | Email addresses                                     |
-| `status`      | VARCHAR   | Status values (completed, pending, subscribed)      |
-| `amount`      | DECIMAL   | Money values (order total, revenue, spend)          |
-| `quantity`    | INTEGER   | Counts (items, subscribers, clicks)                 |
-| `record_date` | TIMESTAMP | When the record occurred                            |
-| `category`    | VARCHAR   | Categories, types                                   |
-| `tags`        | TEXT[]    | Array of tags                                       |
-| `extra`       | JSONB     | Overflow for unmapped fields (rare edge cases only) |
-
-### Named Metrics (`api_record_metrics`) - M2M Table
-
-Instead of generic `metric_1`, `metric_2` columns, metrics are stored in a Many-to-Many table with **self-documenting names**:
-
-| Column         | Type    | Description                                             |
-| -------------- | ------- | ------------------------------------------------------- |
-| `record_id`    | UUID    | Links to `api_records`                                  |
-| `metric_name`  | VARCHAR | Self-documenting: `open_rate`, `revenue`, `bounce_rate` |
-| `metric_value` | DECIMAL | The numeric value                                       |
-| `metric_unit`  | VARCHAR | Optional: `percent`, `currency`, `count`                |
-
-**Benefits:**
-
-- ✅ Self-documenting column names
-- ✅ Unlimited metrics per record
-- ✅ Easy to add new metrics without schema changes
-- ✅ Queryable and indexable
+| Table                | Purpose                                                       |
+| -------------------- | ------------------------------------------------------------- |
+| `api_sources`        | Registry of data providers (Omnisend, Shopify, scraper, etc.) |
+| `api_snapshots`      | Point-in-time data captures, supports per-client scoping      |
+| `api_records`        | Individual records with typed columns                         |
+| `api_record_metrics` | M2M table for flexible named metrics                          |
+| `metric_definitions` | Optional metadata for known metrics                           |
+| `watchtower_rules`   | Surveillance rules with dependencies & notifications          |
+| `watchtower_alerts`  | Generated alerts when rules are breached                      |
 
 ---
 
-## SQL Query Examples
+## Data Flow
+
+```
+External APIs (Omnisend, Shopify, Scraper)
+         │
+         ▼
+    api_sources ─────► Defines what we fetch
+         │
+         ▼
+   api_snapshots ────► When we fetched (per client)
+         │
+         ▼
+    api_records ─────► What we fetched
+         │
+         ▼
+ api_record_metrics ─► Numeric metrics per record
+         │
+         ▼
+  watchtower_rules ──► What to watch for
+         │
+         ▼
+  watchtower_alerts ─► What was found
+```
+
+---
+
+## Key Features
+
+### 1. Per-Client Data Scoping
+
+All snapshots, records, and alerts can be scoped to a specific client:
 
 ```sql
--- Total revenue by date
-SELECT DATE(s.created_at), SUM(r.amount) as revenue
-FROM api_records r
-JOIN api_snapshots s ON r.snapshot_id = s.id
-GROUP BY DATE(s.created_at);
-
--- Find high-value orders
-SELECT * FROM api_records WHERE amount > 500;
-
--- Query specific metrics by name
-SELECT r.external_id, r.name, m.metric_name, m.metric_value
-FROM api_records r
-JOIN api_record_metrics m ON r.id = m.record_id
-WHERE m.metric_name = 'open_rate' AND m.metric_value > 20;
-
--- Aggregate metrics across a snapshot
-SELECT m.metric_name,
-       COUNT(*) as count,
-       AVG(m.metric_value) as avg_value,
-       MAX(m.metric_value) as max_value
-FROM api_records r
-JOIN api_record_metrics m ON r.id = m.record_id
-WHERE r.snapshot_id = 'snapshot-uuid'
-GROUP BY m.metric_name;
+-- Get latest CVR snapshot for a client
+SELECT * FROM api_snapshots s
+JOIN api_sources src ON s.source_id = src.id
+WHERE s.client_id = 123
+  AND src.provider = 'scraper'
+  AND src.endpoint = 'cvr'
+ORDER BY s.created_at DESC LIMIT 1;
 ```
 
----
+### 2. Flexible Metrics (M2M)
 
-## Field Mapping by Service
-
-When saving data, map each service's fields to the standard columns:
-
-### Omnisend Orders
-
-| Omnisend Field      | Maps To       |
-| ------------------- | ------------- |
-| `orderID`           | `external_id` |
-| `orderSum`          | `amount`      |
-| `fulfillmentStatus` | `status`      |
-| `createdAt`         | `record_date` |
-| `email`             | `email`       |
-| Product count       | `quantity`    |
-
-### Omnisend Campaigns (with metrics)
-
-| Omnisend Field | Maps To                              |
-| -------------- | ------------------------------------ |
-| `campaignID`   | `external_id`                        |
-| `name`         | `name`                               |
-| `status`       | `status`                             |
-| `sent`         | `quantity`                           |
-| `startDate`    | `record_date`                        |
-| `opened`       | metric: `opened_count`               |
-| `clicked`      | metric: `clicked_count`              |
-| `bounced`      | metric: `bounced_count`              |
-| `openRate`     | metric: `open_rate` (unit: percent)  |
-| `clickRate`    | metric: `click_rate` (unit: percent) |
-
-### Omnisend Contacts
-
-| Omnisend Field       | Maps To       |
-| -------------------- | ------------- |
-| `contactID`          | `external_id` |
-| `email`              | `email`       |
-| `firstName lastName` | `name`        |
-| `status`             | `status`      |
-| `createdAt`          | `record_date` |
-| `tags`               | `tags`        |
-
----
-
-## Usage
-
-### 1. Register a Source (one-time)
+Instead of rigid columns, metrics use self-documenting names:
 
 ```sql
-INSERT INTO api_sources (provider, endpoint, display_name)
-VALUES ('klaviyo', 'profiles', 'Klaviyo Profiles');
+-- Query open rates across all campaigns
+SELECT r.name, m.metric_value as open_rate
+FROM api_records r
+JOIN api_record_metrics m ON r.id = m.record_id
+WHERE m.metric_name = 'open_rate';
 ```
 
-### 2. Create a Snapshot and Save Records with Metrics
+### 3. Watch Tower Rules
 
-```typescript
-import {
-  createSnapshot,
-  saveRecordsWithMetrics,
-} from '@/lib/actions/api-responses'
+Rules support:
 
-// Create snapshot
-const snapshot = await createSnapshot(sourceId, 'manual')
+- **Single conditions**: `ROAS < 2.0`
+- **Compound conditions**: Multiple rules with same `group_id` + `logic_operator`
+- **Dependencies**: Rule A only fires if Rule B has/hasn't triggered
+- **Multi-target**: Watch `api_records`, `communication_reports`, or `clients` table
 
-// Save records with their metrics
-await saveRecordsWithMetrics(snapshot.id, [
-  {
-    external_id: 'campaign-123',
-    name: 'Summer Sale Email',
-    status: 'sent',
-    quantity: 5000,
-    record_date: '2025-11-28T10:30:00Z',
-    metrics: [
-      { metric_name: 'open_rate', metric_value: 24.5, metric_unit: 'percent' },
-      { metric_name: 'click_rate', metric_value: 3.2, metric_unit: 'percent' },
-      { metric_name: 'opened_count', metric_value: 1225, metric_unit: 'count' },
-      { metric_name: 'clicked_count', metric_value: 160, metric_unit: 'count' },
-      {
-        metric_name: 'revenue',
-        metric_value: 15420.5,
-        metric_unit: 'currency',
-      },
-    ],
-  },
-  {
-    external_id: 'campaign-124',
-    name: 'Flash Sale',
-    status: 'sent',
-    quantity: 8000,
-    record_date: '2025-11-28T14:00:00Z',
-    metrics: [
-      { metric_name: 'open_rate', metric_value: 28.1, metric_unit: 'percent' },
-      { metric_name: 'click_rate', metric_value: 4.5, metric_unit: 'percent' },
-      {
-        metric_name: 'revenue',
-        metric_value: 22350.0,
-        metric_unit: 'currency',
-      },
-    ],
-  },
-])
-```
+### 4. Scheduled Notifications
 
-### 3. Query Records with Metrics
+Built into `watchtower_rules` (no separate table):
 
-```typescript
-import {
-  getRecordsWithMetrics,
-  getMetricAggregations,
-} from '@/lib/actions/api-responses'
-
-// Get records with all their metrics
-const records = await getRecordsWithMetrics(snapshotId)
-// Returns records with metrics array attached
-
-// Get aggregations for a snapshot
-const aggregations = await getMetricAggregations(snapshotId)
-// [
-//   { metric_name: 'open_rate', count: 2, sum: 52.6, avg: 26.3, min: 24.5, max: 28.1 },
-//   { metric_name: 'revenue', count: 2, sum: 37770.50, avg: 18885.25, ... }
-// ]
-```
-
-### 4. Compare Periods
-
-```typescript
-import { compareSnapshots } from '@/lib/actions/api-responses'
-
-const comparison = await compareSnapshots(
-  lastWeekSnapshotId,
-  thisWeekSnapshotId,
-)
-// Returns:
-// {
-//   record_comparisons: [
-//     { field: 'amount', base_value: 4000, compare_value: 5000, change_percent: 25 },
-//   ],
-//   metric_comparisons: [
-//     { metric_name: 'open_rate', base_value: 22.0, compare_value: 26.3, change_percent: 19.5 },
-//     { metric_name: 'revenue', base_value: 30000, compare_value: 37770.50, change_percent: 25.9 },
-//   ]
-// }
-```
+- Immediate alerts
+- Daily/weekly digest
+- Discord and/or email channels
 
 ---
 
-## Watch Tower
+## Watch Tower Rule Examples
 
-Set up rules to monitor your data and get alerts.
-
-### Creating Rules
+### Simple Rule
 
 ```typescript
-import { createRule } from '@/lib/actions/watchtower'
-
-// Alert if open_rate drops below 15%
+// Alert if open rate drops below 15%
 await createRule({
-  source_id: sourceId,
-  name: 'Low Open Rate Alert',
-  field_name: 'open_rate', // Can reference metric names!
+  source_id: omnisendCampaignsSourceId,
+  name: 'Low Open Rate',
+  field_name: 'open_rate',
   condition: 'less_than',
   threshold_value: '15',
   severity: 'warning',
-})
-
-// Alert if revenue changes
-await createRule({
-  source_id: sourceId,
-  name: 'Revenue Change',
-  field_name: 'revenue',
-  condition: 'changed',
-  severity: 'info',
+  notify_immediately: true,
+  notify_discord: true,
+  discord_channel_id: '123456789',
 })
 ```
 
-### Conditions
-
-| Condition      | Meaning                     |
-| -------------- | --------------------------- |
-| `equals`       | Exactly matches value       |
-| `greater_than` | Above threshold             |
-| `less_than`    | Below threshold             |
-| `changed`      | Value changed from previous |
-| `contains`     | String contains value       |
-
-### Managing Alerts
+### Compound Rule (ROAS < X AND Spend > Y)
 
 ```typescript
-import { getAlerts, acknowledgeAlert } from '@/lib/actions/watchtower'
+const groupId = crypto.randomUUID()
 
-// Get unacknowledged alerts
-const alerts = await getAlerts({ is_acknowledged: false })
+// Condition 1: ROAS < 2
+await createRule({
+  name: 'Low ROAS + High Spend',
+  field_name: 'roas',
+  condition: 'less_than',
+  threshold_value: '2',
+  group_id: groupId,
+  logic_operator: 'AND',
+})
 
-// Acknowledge an alert
-await acknowledgeAlert(alertId, 'admin@example.com')
+// Condition 2: Spend > 1000
+await createRule({
+  name: 'Low ROAS + High Spend (Spend)',
+  field_name: 'spend',
+  condition: 'greater_than',
+  threshold_value: '1000',
+  group_id: groupId,
+  logic_operator: 'AND',
+})
+```
+
+### Dependent Rule
+
+```typescript
+// Only alert about low CVR if "No Communication" rule has triggered
+await createRule({
+  name: 'Low CVR (No Contact)',
+  field_name: 'cvr',
+  condition: 'less_than',
+  threshold_value: '2',
+  parent_rule_id: noContactRuleId,
+  dependency_condition: 'triggered', // Only fire if parent has triggered
+  severity: 'critical',
+})
+```
+
+### Comms Audit Rule
+
+```typescript
+// Watch communication_reports table
+await createRule({
+  target_table: 'communication_reports',
+  name: 'No Outreach for 7+ Days',
+  field_name: 'days_since_team_message',
+  condition: 'greater_than',
+  threshold_value: '7',
+  severity: 'warning',
+})
+```
+
+---
+
+## Field Mappings
+
+### CVR Data (from scraper)
+
+| Scraper Field  | Maps To                   |
+| -------------- | ------------------------- |
+| `client_id`    | `api_snapshots.client_id` |
+| `cvr`          | metric: `cvr`             |
+| `period_start` | `api_records.record_date` |
+
+### Omnisend Campaigns
+
+| Omnisend Field | Maps To              |
+| -------------- | -------------------- |
+| `campaignID`   | `external_id`        |
+| `name`         | `name`               |
+| `status`       | `status`             |
+| `sent`         | `quantity`           |
+| `openRate`     | metric: `open_rate`  |
+| `clickRate`    | metric: `click_rate` |
+
+### Omnisend Automations
+
+| Omnisend Field | Maps To                |
+| -------------- | ---------------------- |
+| `automationID` | `external_id`          |
+| `name`         | `name`                 |
+| `status`       | `status`               |
+| `sent`         | metric: `sent_count`   |
+| `opened`       | metric: `opened_count` |
+
+---
+
+## Seeded Data Sources
+
+| Provider   | Endpoint                | Description            |
+| ---------- | ----------------------- | ---------------------- |
+| `internal` | `communication_reports` | Discord comms tracking |
+| `internal` | `clients`               | Client master data     |
+| `scraper`  | `cvr`                   | Weekly CVR data        |
+| `scraper`  | `shopify_themes`        | Shopify theme data     |
+
+Add more as needed:
+
+```sql
+INSERT INTO api_sources (provider, endpoint, display_name, refresh_interval_minutes)
+VALUES ('omnisend', 'automations', 'Omnisend Automations', 60);
 ```
 
 ---
@@ -298,95 +223,39 @@ await acknowledgeAlert(alertId, 'admin@example.com')
 ```
 database/
   migrations/
-    001_api_response_storage.sql    # Creates all tables
-  seeds/
-    001_seed_omnisend_provider.sql  # Adds Omnisend sources
-  README.md
+    001_api_response_storage.sql  # Core tables
+    002_enhancements.sql          # Client scoping, rule enhancements
+  README.md                       # This file
 
 lib/actions/
-  api-responses.ts    # Snapshot, record, and metric functions
-  watchtower.ts       # Rule and alert functions
+  api-responses.ts    # Snapshot & record operations
+  watchtower.ts       # Rule & alert operations
 
 types/
-  api-responses.ts    # TypeScript types
-  omnisend.ts         # Omnisend-specific types
+  api-responses.ts    # TypeScript interfaces
 ```
 
 ---
 
-## Adding a New Service
+## Rule Dependency Conditions
 
-1. Add source to `api_sources`:
-
-```sql
-INSERT INTO api_sources (provider, endpoint, display_name, description)
-VALUES ('newservice', 'campaigns', 'NewService Campaigns', 'Campaign data from NewService');
-```
-
-2. Create a mapping function:
-
-```typescript
-function mapServiceCampaigns(
-  campaigns: ServiceCampaign[],
-): RecordWithMetricsInput[] {
-  return campaigns.map((campaign) => ({
-    external_id: campaign.id,
-    name: campaign.title,
-    status: campaign.status,
-    record_date: campaign.sent_at,
-    quantity: campaign.recipients,
-    metrics: [
-      {
-        metric_name: 'open_rate',
-        metric_value: campaign.openRate,
-        metric_unit: 'percent',
-      },
-      {
-        metric_name: 'click_rate',
-        metric_value: campaign.clickRate,
-        metric_unit: 'percent',
-      },
-      {
-        metric_name: 'revenue',
-        metric_value: campaign.revenue,
-        metric_unit: 'currency',
-      },
-    ],
-  }))
-}
-```
-
-3. Use `saveRecordsWithMetrics()`.
+| Condition       | When Rule Fires                                      |
+| --------------- | ---------------------------------------------------- |
+| `triggered`     | Parent rule has triggered (has unacknowledged alert) |
+| `not_triggered` | Parent rule has NOT triggered                        |
+| `acknowledged`  | Parent rule's alert has been acknowledged            |
 
 ---
 
-## Pre-seeded Metric Definitions
+## Notification Options
 
-The `metric_definitions` table comes pre-populated with common metrics:
-
-| metric_name        | display_name     | unit     |
-| ------------------ | ---------------- | -------- |
-| `open_rate`        | Open Rate        | percent  |
-| `click_rate`       | Click Rate       | percent  |
-| `bounce_rate`      | Bounce Rate      | percent  |
-| `unsubscribe_rate` | Unsubscribe Rate | percent  |
-| `conversion_rate`  | Conversion Rate  | percent  |
-| `revenue`          | Revenue          | currency |
-| `sent_count`       | Sent Count       | count    |
-| `delivered_count`  | Delivered Count  | count    |
-| `opened_count`     | Opened Count     | count    |
-| `clicked_count`    | Clicked Count    | count    |
-
-You can add more as needed - the M2M table accepts any metric name.
-
----
-
-## Design Decisions
-
-| Decision                 | Rationale                                                               |
-| ------------------------ | ----------------------------------------------------------------------- |
-| M2M metrics table        | Self-documenting names, unlimited flexibility, no schema changes needed |
-| Typed core columns       | Common fields (amount, status, email) are queryable without joins       |
-| Minimal JSONB use        | `extra` column only for rare edge cases                                 |
-| Metric definitions table | Provides validation/display metadata, but not required                  |
-| Cascading deletes        | Deleting a snapshot removes all associated records and metrics          |
+| Field                | Type                    | Description                   |
+| -------------------- | ----------------------- | ----------------------------- |
+| `notify_immediately` | boolean                 | Send alert when rule triggers |
+| `notify_schedule`    | `'daily'` \| `'weekly'` | Digest schedule               |
+| `notify_time`        | TIME                    | Time to send digest           |
+| `notify_day_of_week` | 0-6                     | Day for weekly (0=Sunday)     |
+| `notify_discord`     | boolean                 | Send to Discord               |
+| `notify_email`       | boolean                 | Send via email                |
+| `discord_channel_id` | string                  | Discord channel ID            |
+| `email_recipients`   | string[]                | Email addresses               |

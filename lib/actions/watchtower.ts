@@ -1,35 +1,88 @@
 'use server'
 
 import type {
+  DependencyCondition,
+  LogicOperator,
+  NotifySchedule,
   RuleCondition,
   Severity,
+  TargetTable,
   WatchtowerAlert,
   WatchtowerAlertWithRule,
   WatchtowerRule,
 } from '../../types/api-responses'
 import { createAdminClient } from '../db/admin'
 
+// ============================================================================
+// Rule Input Type
+// ============================================================================
+
+export interface CreateRuleInput {
+  // Required
+  name: string
+  field_name: string
+  condition: RuleCondition
+  // Targeting (at least one required)
+  source_id?: string
+  target_table?: TargetTable
+  client_id?: number
+  // Optional
+  description?: string
+  threshold_value?: string
+  severity?: Severity
+  // Dependencies & compound rules
+  parent_rule_id?: string
+  dependency_condition?: DependencyCondition
+  logic_operator?: LogicOperator
+  group_id?: string
+  // Notifications
+  notify_immediately?: boolean
+  notify_schedule?: NotifySchedule
+  notify_time?: string
+  notify_day_of_week?: number
+  notify_discord?: boolean
+  notify_email?: boolean
+  discord_channel_id?: string
+  email_recipients?: string[]
+}
+
+// ============================================================================
+// Rule Operations
+// ============================================================================
+
 export async function createRule(
-  sourceId: string,
-  name: string,
-  fieldName: string,
-  condition: RuleCondition,
-  thresholdValue: string | null,
-  options: { description?: string; severity?: Severity } = {},
+  input: CreateRuleInput,
 ): Promise<WatchtowerRule | null> {
   const db = createAdminClient()
 
   const { data, error } = await db
     .from('watchtower_rules')
     .insert({
-      source_id: sourceId,
-      name: name,
-      description: options.description || null,
-      field_name: fieldName,
-      condition: condition,
-      threshold_value: thresholdValue,
-      severity: options.severity || 'warning',
+      source_id: input.source_id || null,
+      target_table: input.target_table || null,
+      client_id: input.client_id || null,
+      name: input.name,
+      description: input.description || null,
+      field_name: input.field_name,
+      condition: input.condition,
+      threshold_value: input.threshold_value || null,
+      severity: input.severity || 'warning',
       is_active: true,
+      // Dependencies
+      parent_rule_id: input.parent_rule_id || null,
+      dependency_condition: input.dependency_condition || null,
+      // Compound rules
+      logic_operator: input.logic_operator || 'AND',
+      group_id: input.group_id || null,
+      // Notifications
+      notify_immediately: input.notify_immediately ?? true,
+      notify_schedule: input.notify_schedule || null,
+      notify_time: input.notify_time || null,
+      notify_day_of_week: input.notify_day_of_week ?? null,
+      notify_discord: input.notify_discord || false,
+      notify_email: input.notify_email || false,
+      discord_channel_id: input.discord_channel_id || null,
+      email_recipients: input.email_recipients || null,
     })
     .select()
     .single()
@@ -43,18 +96,7 @@ export async function createRule(
 
 export async function updateRule(
   ruleId: string,
-  updates: Partial<
-    Pick<
-      WatchtowerRule,
-      | 'name'
-      | 'description'
-      | 'field_name'
-      | 'condition'
-      | 'threshold_value'
-      | 'severity'
-      | 'is_active'
-    >
-  >,
+  updates: Partial<Omit<WatchtowerRule, 'id' | 'created_at' | 'updated_at'>>,
 ): Promise<boolean> {
   const db = createAdminClient()
   const { error } = await db
@@ -80,13 +122,58 @@ export async function deleteRule(ruleId: string): Promise<boolean> {
   return true
 }
 
-export async function getRules(sourceId?: string): Promise<WatchtowerRule[]> {
+export async function getRules(
+  options: {
+    sourceId?: string
+    clientId?: number
+    targetTable?: TargetTable
+    groupId?: string
+    includeInactive?: boolean
+  } = {},
+): Promise<WatchtowerRule[]> {
   const db = createAdminClient()
-  let query = db.from('watchtower_rules').select('*').eq('is_active', true)
+  let query = db.from('watchtower_rules').select('*')
 
-  if (sourceId) query = query.eq('source_id', sourceId)
+  if (!options.includeInactive) {
+    query = query.eq('is_active', true)
+  }
+  if (options.sourceId) query = query.eq('source_id', options.sourceId)
+  if (options.clientId) query = query.eq('client_id', options.clientId)
+  if (options.targetTable) query = query.eq('target_table', options.targetTable)
+  if (options.groupId) query = query.eq('group_id', options.groupId)
 
-  const { data, error } = await query
+  const { data, error } = await query.order('created_at', { ascending: false })
+  if (error) return []
+  return data || []
+}
+
+// Get rules that depend on a specific parent rule
+export async function getDependentRules(
+  parentRuleId: string,
+): Promise<WatchtowerRule[]> {
+  const db = createAdminClient()
+  const { data, error } = await db
+    .from('watchtower_rules')
+    .select('*')
+    .eq('parent_rule_id', parentRuleId)
+    .eq('is_active', true)
+
+  if (error) return []
+  return data || []
+}
+
+// Get all rules in a compound group
+export async function getCompoundRules(
+  groupId: string,
+): Promise<WatchtowerRule[]> {
+  const db = createAdminClient()
+  const { data, error } = await db
+    .from('watchtower_rules')
+    .select('*')
+    .eq('group_id', groupId)
+    .eq('is_active', true)
+    .order('created_at')
+
   if (error) return []
   return data || []
 }
@@ -97,8 +184,11 @@ export async function createAlert(
   severity: Severity,
   message: string,
   currentValue: string | null,
-  previousValue?: string | null,
-  recordId?: string,
+  options: {
+    previousValue?: string
+    recordId?: string
+    clientId?: number
+  } = {},
 ): Promise<WatchtowerAlert | null> {
   const db = createAdminClient()
 
@@ -107,11 +197,12 @@ export async function createAlert(
     .insert({
       rule_id: ruleId,
       snapshot_id: snapshotId,
-      record_id: recordId || null,
+      record_id: options.recordId || null,
+      client_id: options.clientId || null,
       severity,
       message,
       current_value: currentValue,
-      previous_value: previousValue || null,
+      previous_value: options.previousValue || null,
       is_acknowledged: false,
     })
     .select()
@@ -125,7 +216,13 @@ export async function createAlert(
 }
 
 export async function getAlerts(
-  options: { sourceId?: string; acknowledged?: boolean } = {},
+  options: {
+    clientId?: number
+    ruleId?: string
+    acknowledged?: boolean
+    severity?: Severity
+    limit?: number
+  } = {},
 ): Promise<WatchtowerAlertWithRule[]> {
   const db = createAdminClient()
   let query = db
@@ -133,9 +230,13 @@ export async function getAlerts(
     .select('*, rule:watchtower_rules(*)')
     .order('created_at', { ascending: false })
 
+  if (options.clientId) query = query.eq('client_id', options.clientId)
+  if (options.ruleId) query = query.eq('rule_id', options.ruleId)
   if (options.acknowledged !== undefined) {
     query = query.eq('is_acknowledged', options.acknowledged)
   }
+  if (options.severity) query = query.eq('severity', options.severity)
+  if (options.limit) query = query.limit(options.limit)
 
   const { data, error } = await query
   if (error) return []
@@ -190,20 +291,27 @@ export function evaluateRule(
   }
 }
 
-export async function getAlertStats(days: number = 30): Promise<{
+export async function getAlertStats(
+  options: { clientId?: number; days?: number } = {},
+): Promise<{
   total: number
   by_severity: Record<Severity, number>
   acknowledged: number
 }> {
   const db = createAdminClient()
+  const days = options.days ?? 30
   const startDate = new Date(
     Date.now() - days * 24 * 60 * 60 * 1000,
   ).toISOString()
 
-  const { data, error } = await db
+  let query = db
     .from('watchtower_alerts')
     .select('severity, is_acknowledged')
     .gte('created_at', startDate)
+
+  if (options.clientId) query = query.eq('client_id', options.clientId)
+
+  const { data, error } = await query
 
   if (error || !data) {
     return {
@@ -222,4 +330,70 @@ export async function getAlertStats(days: number = 30): Promise<{
     },
     acknowledged: data.filter((a) => a.is_acknowledged).length,
   }
+}
+
+// ============================================================================
+// Rule Dependency & Compound Rule Helpers
+// ============================================================================
+
+/**
+ * Check if a rule's dependency condition is satisfied
+ */
+export async function checkRuleDependency(
+  rule: WatchtowerRule,
+): Promise<boolean> {
+  if (!rule.parent_rule_id || !rule.dependency_condition) {
+    return true // No dependency, always satisfied
+  }
+
+  const db = createAdminClient()
+
+  // Get recent alerts for parent rule (last 24 hours)
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { data: parentAlerts } = await db
+    .from('watchtower_alerts')
+    .select('is_acknowledged')
+    .eq('rule_id', rule.parent_rule_id)
+    .gte('created_at', cutoff)
+
+  const hasTriggered = parentAlerts && parentAlerts.length > 0
+  const hasAcknowledged = parentAlerts?.some((a) => a.is_acknowledged)
+
+  switch (rule.dependency_condition) {
+    case 'triggered':
+      return hasTriggered === true
+    case 'not_triggered':
+      return hasTriggered === false
+    case 'acknowledged':
+      return hasAcknowledged === true
+    default:
+      return true
+  }
+}
+
+/**
+ * Evaluate a compound rule (multiple conditions with same group_id)
+ */
+export async function evaluateCompoundRule(
+  groupId: string,
+  valuesByField: Record<string, string | number>,
+): Promise<boolean> {
+  const rules = await getCompoundRules(groupId)
+  if (rules.length === 0) return false
+
+  let result = true
+  for (const rule of rules) {
+    const value = valuesByField[rule.field_name]
+    if (value === undefined) continue
+
+    const conditionMet = evaluateRule(rule, value)
+
+    if (rule.logic_operator === 'AND') {
+      result = result && conditionMet
+    } else {
+      result = result || conditionMet
+    }
+  }
+
+  return result
 }
