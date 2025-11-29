@@ -18,6 +18,158 @@ Enterprise-grade system for storing external API data and monitoring it with con
 
 ---
 
+## Table Schemas
+
+### 1. `api_sources`
+
+Registry of data sources/endpoints.
+
+| Column                     | Type         | Default        | Description                                                 |
+| -------------------------- | ------------ | -------------- | ----------------------------------------------------------- |
+| `id`                       | UUID         | auto-generated | Primary key                                                 |
+| `provider`                 | VARCHAR(50)  | NOT NULL       | Provider name: `omnisend`, `shopify`, `scraper`, `internal` |
+| `endpoint`                 | VARCHAR(100) | NOT NULL       | Endpoint identifier: `campaigns`, `automations`, `cvr`      |
+| `display_name`             | VARCHAR(100) | NOT NULL       | Human-readable name                                         |
+| `description`              | TEXT         | NULL           | Optional description                                        |
+| `refresh_interval_minutes` | INTEGER      | 60             | How often to refresh data                                   |
+| `is_active`                | BOOLEAN      | true           | Whether source is active                                    |
+| `created_at`               | TIMESTAMPTZ  | NOW()          | Creation timestamp                                          |
+| `updated_at`               | TIMESTAMPTZ  | NOW()          | Last update timestamp (auto-updated)                        |
+
+**Constraints:** `UNIQUE(provider, endpoint)`
+
+### 2. `api_snapshots`
+
+Point-in-time captures for comparison.
+
+| Column          | Type        | Default        | Description                                            |
+| --------------- | ----------- | -------------- | ------------------------------------------------------ |
+| `id`            | UUID        | auto-generated | Primary key                                            |
+| `source_id`     | UUID        | NOT NULL       | FK to `api_sources`                                    |
+| `client_id`     | INTEGER     | NULL           | Per-client data scoping                                |
+| `snapshot_type` | VARCHAR(20) | `scheduled`    | Type: `scheduled`, `manual`, `triggered`               |
+| `total_records` | INTEGER     | 0              | Number of records in snapshot                          |
+| `status`        | VARCHAR(20) | `pending`      | Status: `pending`, `processing`, `completed`, `failed` |
+| `error_message` | TEXT        | NULL           | Error details if failed                                |
+| `started_at`    | TIMESTAMPTZ | NOW()          | When processing started                                |
+| `completed_at`  | TIMESTAMPTZ | NULL           | When processing completed                              |
+| `created_at`    | TIMESTAMPTZ | NOW()          | Creation timestamp                                     |
+
+**Indexes:** `source_id`, `client_id`, `created_at DESC`, `status`
+
+### 3. `api_records`
+
+Individual records from API responses.
+
+| Column        | Type          | Default        | Description                         |
+| ------------- | ------------- | -------------- | ----------------------------------- |
+| `id`          | UUID          | auto-generated | Primary key                         |
+| `snapshot_id` | UUID          | NOT NULL       | FK to `api_snapshots`               |
+| `client_id`   | INTEGER       | NULL           | Per-client data scoping             |
+| `external_id` | VARCHAR(255)  | NOT NULL       | ID from the external API            |
+| `name`        | VARCHAR(255)  | NULL           | Record name                         |
+| `email`       | VARCHAR(255)  | NULL           | Email address (if applicable)       |
+| `status`      | VARCHAR(50)   | NULL           | Record status                       |
+| `category`    | VARCHAR(100)  | NULL           | Category classification             |
+| `tags`        | TEXT[]        | NULL           | Array of tags                       |
+| `amount`      | DECIMAL(15,4) | NULL           | Numeric amount (currency, etc.)     |
+| `quantity`    | INTEGER       | NULL           | Count/quantity value                |
+| `record_date` | TIMESTAMPTZ   | NULL           | Temporal reference for the record   |
+| `extra`       | JSONB         | `{}`           | Overflow for unmapped fields (rare) |
+| `created_at`  | TIMESTAMPTZ   | NOW()          | Creation timestamp                  |
+
+**Indexes:** `snapshot_id`, `client_id`, `external_id`, `status`, `email`, `category`, `record_date`
+
+### 4. `api_record_metrics`
+
+M2M table for flexible named metrics per record.
+
+| Column         | Type          | Default        | Description                                   |
+| -------------- | ------------- | -------------- | --------------------------------------------- |
+| `id`           | UUID          | auto-generated | Primary key                                   |
+| `record_id`    | UUID          | NOT NULL       | FK to `api_records`                           |
+| `metric_name`  | VARCHAR(100)  | NOT NULL       | Metric identifier: `open_rate`, `cvr`, `roas` |
+| `metric_value` | DECIMAL(20,6) | NOT NULL       | The metric value                              |
+| `metric_unit`  | VARCHAR(20)   | NULL           | Unit: `percent`, `currency`, `count`          |
+| `created_at`   | TIMESTAMPTZ   | NOW()          | Creation timestamp                            |
+
+**Constraints:** `UNIQUE(record_id, metric_name)`  
+**Indexes:** `record_id`, `metric_name`, `(metric_name, metric_value)`
+
+### 5. `metric_definitions`
+
+Registry of known metrics for UI/validation.
+
+| Column         | Type          | Default  | Description                                 |
+| -------------- | ------------- | -------- | ------------------------------------------- |
+| `metric_name`  | VARCHAR(100)  | NOT NULL | Primary key                                 |
+| `display_name` | VARCHAR(100)  | NOT NULL | Human-readable name                         |
+| `description`  | TEXT          | NULL     | Description of the metric                   |
+| `metric_unit`  | VARCHAR(20)   | NULL     | Unit: `percent`, `currency`, `count`        |
+| `min_value`    | DECIMAL(20,6) | NULL     | Minimum valid value                         |
+| `max_value`    | DECIMAL(20,6) | NULL     | Maximum valid value                         |
+| `provider`     | VARCHAR(50)   | NULL     | Provider-specific metric (null = universal) |
+| `created_at`   | TIMESTAMPTZ   | NOW()    | Creation timestamp                          |
+
+### 6. `watchtower_rules`
+
+Surveillance configuration for monitoring.
+
+| Column                 | Type         | Default        | Description                                                             |
+| ---------------------- | ------------ | -------------- | ----------------------------------------------------------------------- |
+| `id`                   | UUID         | auto-generated | Primary key                                                             |
+| `source_id`            | UUID         | NULL           | FK to `api_sources`                                                     |
+| `client_id`            | INTEGER      | NULL           | Rule can be client-specific                                             |
+| `target_table`         | VARCHAR(100) | NULL           | Target: `api_records`, `communication_reports`, `clients`               |
+| `name`                 | VARCHAR(100) | NOT NULL       | Rule name                                                               |
+| `description`          | TEXT         | NULL           | Rule description                                                        |
+| `field_name`           | VARCHAR(100) | NOT NULL       | Field to monitor: `status`, `open_rate`, etc.                           |
+| `condition`            | VARCHAR(20)  | NOT NULL       | Condition: `equals`, `greater_than`, `less_than`, `changed`, `contains` |
+| `threshold_value`      | VARCHAR(255) | NULL           | Comparison threshold                                                    |
+| `parent_rule_id`       | UUID         | NULL           | FK to `watchtower_rules` (self-referential)                             |
+| `dependency_condition` | VARCHAR(30)  | NULL           | When to fire: `triggered`, `not_triggered`, `acknowledged`              |
+| `logic_operator`       | VARCHAR(10)  | `AND`          | Compound logic: `AND`, `OR`                                             |
+| `group_id`             | UUID         | NULL           | Groups conditions together                                              |
+| `severity`             | VARCHAR(20)  | `warning`      | Alert level: `info`, `warning`, `critical`                              |
+| `is_active`            | BOOLEAN      | true           | Whether rule is active                                                  |
+| `notify_immediately`   | BOOLEAN      | true           | Send alert when rule triggers                                           |
+| `notify_schedule`      | VARCHAR(20)  | NULL           | Digest schedule: `daily`, `weekly`                                      |
+| `notify_time`          | TIME         | NULL           | Time to send digest                                                     |
+| `notify_day_of_week`   | INTEGER      | NULL           | Day for weekly digest (0=Sunday, 6=Saturday)                            |
+| `notify_discord`       | BOOLEAN      | false          | Send to Discord                                                         |
+| `notify_email`         | BOOLEAN      | false          | Send via email                                                          |
+| `discord_channel_id`   | VARCHAR(100) | NULL           | Discord channel ID                                                      |
+| `email_recipients`     | TEXT[]       | NULL           | Email addresses                                                         |
+| `last_notified_at`     | TIMESTAMPTZ  | NULL           | Last notification timestamp                                             |
+| `created_at`           | TIMESTAMPTZ  | NOW()          | Creation timestamp                                                      |
+| `updated_at`           | TIMESTAMPTZ  | NOW()          | Last update timestamp (auto-updated)                                    |
+
+**Indexes:** `source_id`, `client_id`, `target_table`, `parent_rule_id`, `group_id`, `is_active`
+
+### 7. `watchtower_alerts`
+
+Generated alerts when rules are breached.
+
+| Column            | Type         | Default        | Description                         |
+| ----------------- | ------------ | -------------- | ----------------------------------- |
+| `id`              | UUID         | auto-generated | Primary key                         |
+| `rule_id`         | UUID         | NOT NULL       | FK to `watchtower_rules`            |
+| `snapshot_id`     | UUID         | NOT NULL       | FK to `api_snapshots`               |
+| `record_id`       | UUID         | NULL           | FK to `api_records` (optional)      |
+| `client_id`       | INTEGER      | NULL           | Per-client alerts                   |
+| `message`         | TEXT         | NOT NULL       | Alert message                       |
+| `severity`        | VARCHAR(20)  | NOT NULL       | Alert severity                      |
+| `current_value`   | VARCHAR(255) | NULL           | Current value that triggered alert  |
+| `previous_value`  | VARCHAR(255) | NULL           | Previous value for comparison       |
+| `is_acknowledged` | BOOLEAN      | false          | Whether alert has been acknowledged |
+| `acknowledged_at` | TIMESTAMPTZ  | NULL           | When alert was acknowledged         |
+| `acknowledged_by` | VARCHAR(255) | NULL           | Who acknowledged the alert          |
+| `created_at`      | TIMESTAMPTZ  | NOW()          | Creation timestamp                  |
+
+**Indexes:** `rule_id`, `snapshot_id`, `client_id`, `is_acknowledged (partial: WHERE NOT is_acknowledged)`, `severity`, `created_at DESC`
+
+---
+
 ## Data Flow
 
 ```
@@ -200,14 +352,16 @@ await createRule({
 
 ---
 
-## Seeded Data Sources
+## Seeded Data
 
-| Provider   | Endpoint                | Description            |
-| ---------- | ----------------------- | ---------------------- |
-| `internal` | `communication_reports` | Discord comms tracking |
-| `internal` | `clients`               | Client master data     |
-| `scraper`  | `cvr`                   | Weekly CVR data        |
-| `scraper`  | `shopify_themes`        | Shopify theme data     |
+### Data Sources
+
+| Provider   | Endpoint                | Display Name         | Description                    | Refresh Interval   |
+| ---------- | ----------------------- | -------------------- | ------------------------------ | ------------------ |
+| `internal` | `communication_reports` | Communications Audit | Discord communication tracking | 60 min             |
+| `internal` | `clients`               | Clients              | Client master data             | 1440 min (daily)   |
+| `scraper`  | `cvr`                   | CVR Data             | Conversion rate data           | 10080 min (weekly) |
+| `scraper`  | `shopify_themes`        | Shopify Themes       | Theme data from Shopify        | 1440 min (daily)   |
 
 Add more as needed:
 
@@ -216,24 +370,35 @@ INSERT INTO api_sources (provider, endpoint, display_name, refresh_interval_minu
 VALUES ('omnisend', 'automations', 'Omnisend Automations', 60);
 ```
 
+### Metric Definitions
+
+| Metric Name        | Display Name     | Description                  | Unit       | Provider  |
+| ------------------ | ---------------- | ---------------------------- | ---------- | --------- |
+| `open_rate`        | Open Rate        | Email open rate percentage   | `percent`  | universal |
+| `click_rate`       | Click Rate       | Email click rate percentage  | `percent`  | universal |
+| `bounce_rate`      | Bounce Rate      | Email bounce rate percentage | `percent`  | universal |
+| `unsubscribe_rate` | Unsubscribe Rate | Unsubscribe rate percentage  | `percent`  | universal |
+| `revenue`          | Revenue          | Total revenue generated      | `currency` | universal |
+| `conversion_rate`  | Conversion Rate  | Conversion rate percentage   | `percent`  | universal |
+| `cvr`              | CVR              | Conversion rate from scraper | `percent`  | `scraper` |
+| `roas`             | ROAS             | Return on ad spend           | `currency` | universal |
+| `spend`            | Ad Spend         | Advertising spend            | `currency` | universal |
+| `sent_count`       | Sent Count       | Number of emails sent        | `count`    | universal |
+| `delivered_count`  | Delivered Count  | Number of emails delivered   | `count`    | universal |
+| `opened_count`     | Opened Count     | Number of emails opened      | `count`    | universal |
+| `clicked_count`    | Clicked Count    | Number of emails clicked     | `count`    | universal |
+
 ---
 
-## File Structure
+## Rule Conditions
 
-```
-database/
-  migrations/
-    001_api_response_storage.sql  # Core tables
-    002_enhancements.sql          # Client scoping, rule enhancements
-  README.md                       # This file
-
-lib/actions/
-  api-responses.ts    # Snapshot & record operations
-  watchtower.ts       # Rule & alert operations
-
-types/
-  api-responses.ts    # TypeScript interfaces
-```
+| Condition      | Description                                    | Example                      |
+| -------------- | ---------------------------------------------- | ---------------------------- |
+| `equals`       | Field equals threshold value                   | `status = 'failed'`          |
+| `greater_than` | Field is greater than threshold                | `spend > 1000`               |
+| `less_than`    | Field is less than threshold                   | `open_rate < 15`             |
+| `changed`      | Field value has changed from previous snapshot | `status changed`             |
+| `contains`     | Field contains the threshold string            | `tags contains 'high-value'` |
 
 ---
 
@@ -244,6 +409,75 @@ types/
 | `triggered`     | Parent rule has triggered (has unacknowledged alert) |
 | `not_triggered` | Parent rule has NOT triggered                        |
 | `acknowledged`  | Parent rule's alert has been acknowledged            |
+
+---
+
+## Snapshot Types & Statuses
+
+### Snapshot Types
+
+| Type        | Description                          |
+| ----------- | ------------------------------------ |
+| `scheduled` | Created by automated refresh job     |
+| `manual`    | Created by user action               |
+| `triggered` | Created in response to an event/rule |
+
+### Snapshot Statuses
+
+| Status       | Description                            |
+| ------------ | -------------------------------------- |
+| `pending`    | Snapshot created, not yet processing   |
+| `processing` | Currently fetching/processing data     |
+| `completed`  | Successfully finished                  |
+| `failed`     | Error occurred (check `error_message`) |
+
+---
+
+## Alert Severity Levels
+
+| Severity   | Description                                |
+| ---------- | ------------------------------------------ |
+| `info`     | Informational, no action required          |
+| `warning`  | Potential issue, should be reviewed        |
+| `critical` | Urgent issue requiring immediate attention |
+
+---
+
+## Database Triggers
+
+Auto-update `updated_at` timestamp on:
+
+- `api_sources` - When any source record is updated
+- `watchtower_rules` - When any rule is modified
+
+```sql
+-- Trigger function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+---
+
+## File Structure
+
+```
+database/
+  migrations/
+    001_schema.sql    # Core tables, indexes, triggers, seed data
+  README.md           # This file
+
+lib/actions/
+  api-responses.ts    # Snapshot & record operations
+  watchtower.ts       # Rule & alert operations
+
+types/
+  api-responses.ts    # TypeScript interfaces
+```
 
 ---
 
@@ -259,3 +493,30 @@ types/
 | `notify_email`       | boolean                 | Send via email                |
 | `discord_channel_id` | string                  | Discord channel ID            |
 | `email_recipients`   | string[]                | Email addresses               |
+
+---
+
+## Row Level Security
+
+RLS is prepared but commented out. Enable when auth is configured:
+
+```sql
+ALTER TABLE api_sources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_record_metrics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE watchtower_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE watchtower_alerts ENABLE ROW LEVEL SECURITY;
+```
+
+---
+
+## PostgreSQL Extensions
+
+Required extension:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+```
+
+Used for UUID primary key generation via `uuid_generate_v4()`.
