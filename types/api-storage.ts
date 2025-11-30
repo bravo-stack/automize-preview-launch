@@ -72,6 +72,18 @@ export interface ApiRecordMetric {
   created_at: string
 }
 
+// ============================================================================
+// M2M Attributes Table - For Non-Numeric Data
+// ============================================================================
+
+export interface ApiRecordAttribute {
+  id: string
+  record_id: string
+  attribute_name: string
+  attribute_value: unknown // JSONB - can be string, array, object
+  created_at: string
+}
+
 export interface MetricDefinition {
   metric_name: string
   display_name: string
@@ -151,6 +163,7 @@ export interface ApiSnapshotWithSource extends ApiSnapshot {
 
 export interface ApiRecordWithMetrics extends ApiRecord {
   metrics: ApiRecordMetric[]
+  attributes?: ApiRecordAttribute[]
 }
 
 export interface WatchtowerAlertWithRule extends WatchtowerAlert {
@@ -186,8 +199,14 @@ export interface MetricInput {
   metric_unit?: MetricUnit
 }
 
+export interface AttributeInput {
+  attribute_name: string
+  attribute_value: unknown // string, array, object, etc.
+}
+
 export interface RecordWithMetricsInput extends RecordInput {
   metrics?: MetricInput[]
+  attributes?: AttributeInput[]
 }
 
 // ============================================================================

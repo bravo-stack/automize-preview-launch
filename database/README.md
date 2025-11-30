@@ -4,17 +4,18 @@ Enterprise-grade system for storing external API data and monitoring it with con
 
 ---
 
-## Tables Overview (7 total)
+## Tables Overview (8 total)
 
-| Table                | Purpose                                                       |
-| -------------------- | ------------------------------------------------------------- |
-| `api_sources`        | Registry of data providers (Omnisend, Shopify, scraper, etc.) |
-| `api_snapshots`      | Point-in-time data captures, supports per-client scoping      |
-| `api_records`        | Individual records with typed columns                         |
-| `api_record_metrics` | M2M table for flexible named metrics                          |
-| `metric_definitions` | Optional metadata for known metrics                           |
-| `watchtower_rules`   | Surveillance rules with dependencies & notifications          |
-| `watchtower_alerts`  | Generated alerts when rules are breached                      |
+| Table                   | Purpose                                                       |
+| ----------------------- | ------------------------------------------------------------- |
+| `api_sources`           | Registry of data providers (Omnisend, Shopify, scraper, etc.) |
+| `api_snapshots`         | Point-in-time data captures, supports per-client scoping      |
+| `api_records`           | Individual records with typed columns                         |
+| `api_record_metrics`    | M2M table for numeric metrics (rates, counts, amounts)        |
+| `api_record_attributes` | M2M table for non-numeric data (strings, arrays, objects)     |
+| `metric_definitions`    | Optional metadata for known metrics                           |
+| `watchtower_rules`      | Surveillance rules with dependencies & notifications          |
+| `watchtower_alerts`     | Generated alerts when rules are breached                      |
 
 ---
 
@@ -96,7 +97,28 @@ M2M table for flexible named metrics per record.
 **Constraints:** `UNIQUE(record_id, metric_name)`  
 **Indexes:** `record_id`, `metric_name`, `(metric_name, metric_value)`
 
-### 5. `metric_definitions`
+### 5. `api_record_attributes`
+
+M2M table for non-numeric data per record (strings, arrays, objects).
+
+| Column            | Type         | Default        | Description                                         |
+| ----------------- | ------------ | -------------- | --------------------------------------------------- |
+| `id`              | UUID         | auto-generated | Primary key                                         |
+| `record_id`       | UUID         | NOT NULL       | FK to `api_records`                                 |
+| `attribute_name`  | VARCHAR(100) | NOT NULL       | Attribute identifier: `firstName`, `statuses`, etc. |
+| `attribute_value` | JSONB        | NOT NULL       | The attribute value (string, array, or object)      |
+| `created_at`      | TIMESTAMPTZ  | NOW()          | Creation timestamp                                  |
+
+**Constraints:** `UNIQUE(record_id, attribute_name)`  
+**Indexes:** `record_id`, `attribute_name`, GIN index on `attribute_value`
+
+**Use cases:**
+
+- Personal info: `firstName`, `lastName`, `address`, `phone`
+- Complex data: `statuses` (array), `consents` (array), `identifiers` (array)
+- Custom fields: `customProperties` (object)
+
+### 6. `metric_definitions`
 
 Registry of known metrics for UI/validation.
 
@@ -111,7 +133,7 @@ Registry of known metrics for UI/validation.
 | `provider`     | VARCHAR(50)   | NULL     | Provider-specific metric (null = universal) |
 | `created_at`   | TIMESTAMPTZ   | NOW()    | Creation timestamp                          |
 
-### 6. `watchtower_rules`
+### 7. `watchtower_rules`
 
 Surveillance configuration for monitoring.
 
@@ -146,7 +168,7 @@ Surveillance configuration for monitoring.
 
 **Indexes:** `source_id`, `client_id`, `target_table`, `parent_rule_id`, `group_id`, `is_active`
 
-### 7. `watchtower_alerts`
+### 8. `watchtower_alerts`
 
 Generated alerts when rules are breached.
 

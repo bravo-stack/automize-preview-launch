@@ -1,5 +1,6 @@
 import {
   createSnapshot,
+  createSource,
   getSource,
   saveRecordsWithMetrics,
   updateSnapshotStatus,
@@ -8,7 +9,6 @@ import { OmnisendClient } from '@/lib/services/omnisend-client'
 import type { RecordWithMetricsInput } from '@/types/api-storage'
 import { NextResponse } from 'next/server'
 
-// Response types from Omnisend API
 interface OmnisendContact {
   email: string
   contactID: string
@@ -57,26 +57,7 @@ interface OmnisendContactsResponse {
   }
 }
 
-/**
- * Maps an Omnisend contact to the API storage record format
- */
 function mapContactToRecord(contact: OmnisendContact): RecordWithMetricsInput {
-  // Get email and SMS status from identifiers
-  const emailIdentifier = contact.identifiers?.find((i) => i.channels?.email)
-    ?.channels?.email
-  const smsIdentifier = contact.identifiers?.find((i) => i.channels?.sms)
-    ?.channels?.sms
-
-  // Count subscribed channels
-  const subscribedChannels =
-    contact.statuses?.filter((s) => s.status === 'subscribed').length ?? 0
-
-  // Count opt-ins
-  const optInCount = contact.optIns?.length ?? 0
-
-  // Count consents
-  const consentCount = contact.consents?.length ?? 0
-
   return {
     external_id: contact.contactID,
     name:
@@ -84,85 +65,71 @@ function mapContactToRecord(contact: OmnisendContact): RecordWithMetricsInput {
       undefined,
     email: contact.email || undefined,
     status: contact.status || undefined,
-    category: contact.gender || undefined,
     tags: contact.tags?.length ? contact.tags : undefined,
     record_date: contact.createdAt || undefined,
-    extra: {
-      country: contact.country,
-      countryCode: contact.countryCode,
-      state: contact.state,
-      city: contact.city,
-      postalCode: contact.postalCode,
-      address: contact.address,
-      phone: contact.phone,
-      birthdate: contact.birthdate,
-      segments: contact.segments,
-      customProperties: contact.customProperties,
-      emailStatus: emailIdentifier?.status,
-      smsStatus: smsIdentifier?.status,
-    },
-    metrics: [
+    attributes: [
+      // Personal info
+      { attribute_name: 'firstName', attribute_value: contact.firstName },
+      { attribute_name: 'lastName', attribute_value: contact.lastName },
+      { attribute_name: 'gender', attribute_value: contact.gender },
+      { attribute_name: 'birthdate', attribute_value: contact.birthdate },
+      { attribute_name: 'phone', attribute_value: contact.phone },
+      { attribute_name: 'address', attribute_value: contact.address },
+      { attribute_name: 'city', attribute_value: contact.city },
+      { attribute_name: 'state', attribute_value: contact.state },
+      { attribute_name: 'postalCode', attribute_value: contact.postalCode },
+      { attribute_name: 'country', attribute_value: contact.country },
+      { attribute_name: 'countryCode', attribute_value: contact.countryCode },
+      // Subscription data
+      { attribute_name: 'statuses', attribute_value: contact.statuses },
+      { attribute_name: 'optIns', attribute_value: contact.optIns },
+      { attribute_name: 'consents', attribute_value: contact.consents },
+      // Segments & custom
+      { attribute_name: 'segments', attribute_value: contact.segments },
       {
-        metric_name: 'subscribed_channels',
-        metric_value: subscribedChannels,
-        metric_unit: 'count',
+        attribute_name: 'customProperties',
+        attribute_value: contact.customProperties,
       },
-      {
-        metric_name: 'opt_in_count',
-        metric_value: optInCount,
-        metric_unit: 'count',
-      },
-      {
-        metric_name: 'consent_count',
-        metric_value: consentCount,
-        metric_unit: 'count',
-      },
-      {
-        metric_name: 'tag_count',
-        metric_value: contact.tags?.length ?? 0,
-        metric_unit: 'count',
-      },
-      {
-        metric_name: 'segment_count',
-        metric_value: contact.segments?.length ?? 0,
-        metric_unit: 'count',
-      },
-    ],
+      // Identifiers
+      { attribute_name: 'identifiers', attribute_value: contact.identifiers },
+    ].filter((attr) => attr.attribute_value != null),
   }
 }
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const clientId = searchParams.get('clientId')
-      ? parseInt(searchParams.get('clientId')!, 10)
-      : undefined
-    const store = searchParams.get('store') === 'true'
+async function getOrCreateSource() {
+  let source = await getSource('omnisend', 'contacts')
 
+  if (!source) {
+    source = await createSource({
+      provider: 'omnisend',
+      endpoint: 'contacts',
+      display_name: 'Omnisend Contacts',
+      description: 'Contact data from Omnisend',
+      refresh_interval_minutes: 60,
+      is_active: true,
+    })
+  }
+
+  return source
+}
+
+export async function POST() {
+  try {
     // Fetch contacts from Omnisend
     const data =
       await OmnisendClient.request<OmnisendContactsResponse>('/v3/contacts')
 
-    // If store flag is not set, just return the raw data
-    if (!store) {
-      return NextResponse.json({ success: true, data })
-    }
-
-    // Get or validate the source exists
-    const source = await getSource('omnisend', 'contacts')
+    // Get or create the source
+    const source = await getOrCreateSource()
     if (!source) {
       return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Source "omnisend/contacts" not found. Please seed the database first.',
-        },
-        { status: 404 },
+        { success: false, error: 'Failed to get or create source' },
+        { status: 500 },
       )
     }
 
-    // Create a new snapshot
-    const snapshot = await createSnapshot(source.id, 'manual', clientId)
+    // Create snapshot
+    const snapshot = await createSnapshot(source.id, 'manual')
     if (!snapshot) {
       return NextResponse.json(
         { success: false, error: 'Failed to create snapshot' },
@@ -170,46 +137,25 @@ export async function GET(request: Request) {
       )
     }
 
-    try {
-      // Update snapshot to processing
-      await updateSnapshotStatus(snapshot.id, 'processing')
+    await updateSnapshotStatus(snapshot.id, 'processing')
 
-      // Map contacts to records
-      const records = data.contacts.map(mapContactToRecord)
+    // Map and save records
+    const records = data.contacts.map(mapContactToRecord)
+    const result = await saveRecordsWithMetrics(snapshot.id, records)
 
-      // Save records with metrics
-      const result = await saveRecordsWithMetrics(
-        snapshot.id,
-        records,
-        clientId,
+    if (result.error) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to save records' },
+        { status: 500 },
       )
-
-      if (result.error) {
-        return NextResponse.json(
-          { success: false, error: 'Failed to save records' },
-          { status: 500 },
-        )
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          snapshotId: snapshot.id,
-          totalContacts: data.contacts.length,
-          savedRecords: result.saved,
-          paging: data.paging,
-        },
-      })
-    } catch (err) {
-      // Update snapshot to failed on error
-      await updateSnapshotStatus(
-        snapshot.id,
-        'failed',
-        0,
-        err instanceof Error ? err.message : 'Unknown error',
-      )
-      throw err
     }
+
+    return NextResponse.json({
+      success: true,
+      snapshotId: snapshot.id,
+      totalContacts: data.contacts.length,
+      savedRecords: result.saved,
+    })
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },

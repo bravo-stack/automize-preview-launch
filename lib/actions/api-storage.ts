@@ -2,6 +2,7 @@
 
 import type {
   ApiRecord,
+  ApiRecordAttribute,
   ApiRecordMetric,
   ApiRecordWithMetrics,
   ApiSnapshot,
@@ -186,7 +187,7 @@ export async function getLatestSnapshotForClient(
 }
 
 // ============================================================================
-// Record Operations with M2M Metrics
+// Record Operations with M2M Metrics & Attributes
 // ============================================================================
 
 export async function saveRecordsWithMetrics(
@@ -230,15 +231,35 @@ export async function saveRecordsWithMetrics(
       metric_unit: string | null
     }> = []
 
+    // Build attributes to insert (M2M)
+    const attributesToInsert: Array<{
+      record_id: string
+      attribute_name: string
+      attribute_value: unknown
+    }> = []
+
     records.forEach((record, index) => {
+      const recordId = insertedRecords[index].id
+
+      // Collect metrics
       if (record.metrics && record.metrics.length > 0) {
-        const recordId = insertedRecords[index].id
         for (const metric of record.metrics) {
           metricsToInsert.push({
             record_id: recordId,
             metric_name: metric.metric_name,
             metric_value: metric.metric_value,
             metric_unit: metric.metric_unit || null,
+          })
+        }
+      }
+
+      // Collect attributes
+      if (record.attributes && record.attributes.length > 0) {
+        for (const attr of record.attributes) {
+          attributesToInsert.push({
+            record_id: recordId,
+            attribute_name: attr.attribute_name,
+            attribute_value: attr.attribute_value,
           })
         }
       }
@@ -252,7 +273,17 @@ export async function saveRecordsWithMetrics(
 
       if (metricsError) {
         console.error('Error saving metrics:', metricsError)
-        // Don't fail completely - records are saved
+      }
+    }
+
+    // Insert attributes if any
+    if (attributesToInsert.length > 0) {
+      const { error: attributesError } = await db
+        .from('api_record_attributes')
+        .insert(attributesToInsert)
+
+      if (attributesError) {
+        console.error('Error saving attributes:', attributesError)
       }
     }
 
@@ -305,10 +336,17 @@ export async function getRecordsWithMetrics(
 
   if (recordsError || !records) return []
 
-  // Get all metrics for these records
   const recordIds = records.map((r) => r.id)
+
+  // Get all metrics for these records
   const { data: metrics } = await db
     .from('api_record_metrics')
+    .select('*')
+    .in('record_id', recordIds)
+
+  // Get all attributes for these records
+  const { data: attributes } = await db
+    .from('api_record_attributes')
     .select('*')
     .in('record_id', recordIds)
 
@@ -320,10 +358,19 @@ export async function getRecordsWithMetrics(
     metricsByRecord.set(metric.record_id, existing)
   }
 
-  // Combine records with their metrics
+  // Group attributes by record_id
+  const attributesByRecord = new Map<string, ApiRecordAttribute[]>()
+  for (const attr of attributes || []) {
+    const existing = attributesByRecord.get(attr.record_id) || []
+    existing.push(attr)
+    attributesByRecord.set(attr.record_id, existing)
+  }
+
+  // Combine records with their metrics and attributes
   return records.map((record) => ({
     ...record,
     metrics: metricsByRecord.get(record.id) || [],
+    attributes: attributesByRecord.get(record.id) || [],
   }))
 }
 
