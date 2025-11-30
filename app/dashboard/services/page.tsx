@@ -15,44 +15,78 @@ type SyncStatus = 'idle' | 'loading' | 'success' | 'error'
 interface SyncResult {
   status: SyncStatus
   message?: string
-  data?: {
-    totalContacts?: number
-    savedRecords?: number
-  }
+  total?: number
+  saved?: number
 }
 
+type OmnisendEndpoint =
+  | 'contacts'
+  | 'products'
+  | 'orders'
+  | 'automations'
+  | 'campaigns'
+
+const OMNISEND_ENDPOINTS: { key: OmnisendEndpoint; label: string }[] = [
+  { key: 'contacts', label: 'Contacts' },
+  { key: 'products', label: 'Products' },
+  { key: 'orders', label: 'Orders' },
+  { key: 'automations', label: 'Automations' },
+  { key: 'campaigns', label: 'Campaigns' },
+]
+
 export default function ServicesPage() {
-  const [contactsSync, setContactsSync] = useState<SyncResult>({
-    status: 'idle',
+  const [syncState, setSyncState] = useState<
+    Record<OmnisendEndpoint, SyncResult>
+  >({
+    contacts: { status: 'idle' },
+    products: { status: 'idle' },
+    orders: { status: 'idle' },
+    automations: { status: 'idle' },
+    campaigns: { status: 'idle' },
   })
 
-  async function syncContacts() {
-    setContactsSync({ status: 'loading' })
+  async function syncEndpoint(endpoint: OmnisendEndpoint) {
+    setSyncState((prev) => ({
+      ...prev,
+      [endpoint]: { status: 'loading' },
+    }))
 
     try {
-      const res = await fetch('/api/omnisend/contacts', { method: 'POST' })
+      const res = await fetch(`/api/omnisend/${endpoint}`, { method: 'POST' })
       const data = await res.json()
 
       if (!data.success) {
-        setContactsSync({ status: 'error', message: data.error })
+        setSyncState((prev) => ({
+          ...prev,
+          [endpoint]: { status: 'error', message: data.error },
+        }))
         return
       }
 
-      setContactsSync({
-        status: 'success',
-        message: `Synced ${data.savedRecords} contacts`,
-        data: {
-          totalContacts: data.totalContacts,
-          savedRecords: data.savedRecords,
+      const totalKey = Object.keys(data).find((k) => k.startsWith('total'))
+      const total = totalKey ? data[totalKey] : 0
+
+      setSyncState((prev) => ({
+        ...prev,
+        [endpoint]: {
+          status: 'success',
+          message: `Synced ${data.savedRecords} records`,
+          total,
+          saved: data.savedRecords,
         },
-      })
+      }))
     } catch (err) {
-      setContactsSync({
-        status: 'error',
-        message: err instanceof Error ? err.message : 'Unknown error',
-      })
+      setSyncState((prev) => ({
+        ...prev,
+        [endpoint]: {
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Unknown error',
+        },
+      }))
     }
   }
+
+  const isSyncing = Object.values(syncState).some((s) => s.status === 'loading')
 
   return (
     <main className="min-h-screen px-24 pb-24 pt-10">
@@ -63,43 +97,43 @@ export default function ServicesPage() {
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Omnisend Card */}
-        <Card>
+        <Card className="col-span-full lg:col-span-2">
           <CardHeader>
             <CardTitle>Omnisend</CardTitle>
             <CardDescription>
-              Sync contacts from your Omnisend account
+              Sync data from your Omnisend account
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-3">
-              <Button
-                onClick={syncContacts}
-                disabled={contactsSync.status === 'loading'}
-              >
-                {contactsSync.status === 'loading'
-                  ? 'Syncing...'
-                  : 'Sync Contacts'}
-              </Button>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {OMNISEND_ENDPOINTS.map(({ key, label }) => {
+                const state = syncState[key]
+                return (
+                  <div key={key} className="space-y-2">
+                    <Button
+                      onClick={() => syncEndpoint(key)}
+                      disabled={isSyncing}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {state.status === 'loading'
+                        ? 'Syncing...'
+                        : `Sync ${label}`}
+                    </Button>
 
-              {contactsSync.status === 'success' && (
-                <span className="text-sm text-green-500">
-                  ✓ {contactsSync.message}
-                </span>
-              )}
+                    {state.status === 'success' && (
+                      <p className="text-xs text-green-500">
+                        ✓ {state.saved} saved
+                      </p>
+                    )}
 
-              {contactsSync.status === 'error' && (
-                <span className="text-sm text-red-500">
-                  ✗ {contactsSync.message}
-                </span>
-              )}
+                    {state.status === 'error' && (
+                      <p className="text-xs text-red-500">✗ {state.message}</p>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-
-            {contactsSync.data && (
-              <div className="text-sm text-muted-foreground">
-                <p>Total fetched: {contactsSync.data.totalContacts}</p>
-                <p>Saved to DB: {contactsSync.data.savedRecords}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
       </section>
