@@ -468,16 +468,107 @@ $$ LANGUAGE plpgsql;
 ```
 database/
   migrations/
-    001_schema.sql    # Core tables, indexes, triggers, seed data
-  README.md           # This file
+    001_schema.sql      # Core tables, indexes, triggers, seed data
+  README.md             # This file
 
 lib/actions/
-  api-responses.ts    # Snapshot & record operations
-  watchtower.ts       # Rule & alert operations
+  api-storage.ts        # Source, snapshot, record & metric operations
+  watchtower.ts         # Rule & alert operations
 
 types/
-  api-responses.ts    # TypeScript interfaces
+  api-storage.ts        # TypeScript interfaces
 ```
+
+---
+
+## Server Actions Reference
+
+### `lib/actions/api-storage.ts`
+
+#### Source Operations
+
+| Function               | Description                              | Parameters                             |
+| ---------------------- | ---------------------------------------- | -------------------------------------- |
+| `getSource`            | Get a single source by provider/endpoint | `provider: string, endpoint: string`   |
+| `getSourcesByProvider` | Get all sources for a provider           | `provider: string`                     |
+| `getAllSources`        | Get all active sources                   | -                                      |
+| `createSource`         | Create a new data source                 | `source: Omit<ApiSource, 'id' \| ...>` |
+| `updateSource`         | Update a source                          | `sourceId: string, updates: Partial<>` |
+| `deactivateSource`     | Soft-delete a source                     | `sourceId: string`                     |
+
+#### Snapshot Operations
+
+| Function                     | Description                        | Parameters                                                  |
+| ---------------------------- | ---------------------------------- | ----------------------------------------------------------- |
+| `createSnapshot`             | Create a new snapshot              | `sourceId: string, type?: SnapshotType, clientId?: number`  |
+| `updateSnapshotStatus`       | Update snapshot status             | `snapshotId: string, status: string, totalRecords?, error?` |
+| `getSnapshots`               | Query snapshots with filters       | `params: SnapshotQueryParams`                               |
+| `getLatestSnapshot`          | Get most recent completed snapshot | `sourceId: string, clientId?: number`                       |
+| `getLatestSnapshotForClient` | Get client's latest snapshot       | `clientId: number, provider?: string, endpoint?: string`    |
+
+#### Record Operations
+
+| Function                 | Description                       | Parameters                                                                 |
+| ------------------------ | --------------------------------- | -------------------------------------------------------------------------- |
+| `saveRecordsWithMetrics` | Save records with M2M metrics     | `snapshotId: string, records: RecordWithMetricsInput[], clientId?: number` |
+| `getRecords`             | Query records with filters        | `params: RecordQueryParams`                                                |
+| `getRecordsWithMetrics`  | Get records with their metrics    | `snapshotId: string`                                                       |
+| `getRecordsByClient`     | Get client's records with metrics | `clientId: number, options?: { sourceId?, status?, limit? }`               |
+
+#### Metric Operations
+
+| Function                 | Description                         | Parameters                                                             |
+| ------------------------ | ----------------------------------- | ---------------------------------------------------------------------- |
+| `getMetricsForRecord`    | Get all metrics for a record        | `recordId: string`                                                     |
+| `addMetricsToRecord`     | Add/update metrics on a record      | `recordId: string, metrics: MetricInput[]`                             |
+| `getMetricAggregations`  | Get aggregated metrics for snapshot | `snapshotId: string`                                                   |
+| `getClientMetricHistory` | Get metric history over time        | `clientId: number, metricName: string, options?: { sourceId?, days? }` |
+
+#### Metric Definitions
+
+| Function                 | Description                    | Parameters                                               |
+| ------------------------ | ------------------------------ | -------------------------------------------------------- |
+| `getMetricDefinitions`   | Get all metric definitions     | `provider?: string`                                      |
+| `getMetricDefinition`    | Get a single metric definition | `metricName: string`                                     |
+| `createMetricDefinition` | Create a new metric definition | `definition: Omit<MetricDefinition, 'created_at'>`       |
+| `updateMetricDefinition` | Update a metric definition     | `metricName: string, updates: Partial<MetricDefinition>` |
+
+#### Comparison & Utility
+
+| Function             | Description            | Parameters                                          |
+| -------------------- | ---------------------- | --------------------------------------------------- |
+| `compareSnapshots`   | Compare two snapshots  | `baseSnapshotId: string, compareSnapshotId: string` |
+| `deleteOldSnapshots` | Clean up old snapshots | `sourceId: string, keepDays?: number`               |
+
+### `lib/actions/watchtower.ts`
+
+#### Rule Operations
+
+| Function            | Description                       | Parameters                                                                     |
+| ------------------- | --------------------------------- | ------------------------------------------------------------------------------ |
+| `createRule`        | Create a new watch rule           | `input: CreateRuleInput`                                                       |
+| `updateRule`        | Update an existing rule           | `ruleId: string, updates: Partial<WatchtowerRule>`                             |
+| `deleteRule`        | Delete a rule                     | `ruleId: string`                                                               |
+| `getRules`          | Query rules with filters          | `options?: { sourceId?, clientId?, targetTable?, groupId?, includeInactive? }` |
+| `getDependentRules` | Get rules that depend on a parent | `parentRuleId: string`                                                         |
+| `getCompoundRules`  | Get all rules in a compound group | `groupId: string`                                                              |
+
+#### Alert Operations
+
+| Function           | Description                   | Parameters                                                           |
+| ------------------ | ----------------------------- | -------------------------------------------------------------------- |
+| `createAlert`      | Create a new alert            | `ruleId, snapshotId, severity, message, currentValue, options?`      |
+| `getAlerts`        | Query alerts with filters     | `options?: { clientId?, ruleId?, acknowledged?, severity?, limit? }` |
+| `acknowledgeAlert` | Mark an alert as acknowledged | `alertId: string, acknowledgedBy?: string`                           |
+| `getAlertStats`    | Get alert statistics          | `options?: { clientId?, days? }`                                     |
+
+#### Rule Evaluation
+
+| Function               | Description                       | Parameters                                              |
+| ---------------------- | --------------------------------- | ------------------------------------------------------- |
+| `evaluateRule`         | Evaluate a single rule            | `rule: WatchtowerRule, currentValue, previousValue?`    |
+| `checkRuleDependency`  | Check if rule's dependency is met | `rule: WatchtowerRule`                                  |
+| `evaluateCompoundRule` | Evaluate a compound rule group    | `groupId: string, valuesByField: Record<string, value>` |
 
 ---
 

@@ -10,7 +10,7 @@ import type {
   WatchtowerAlert,
   WatchtowerAlertWithRule,
   WatchtowerRule,
-} from '../../types/api-responses'
+} from '@/types/api-storage'
 import { createAdminClient } from '../db/admin'
 
 // ============================================================================

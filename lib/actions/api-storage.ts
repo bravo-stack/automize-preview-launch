@@ -9,11 +9,13 @@ import type {
   ComparisonResult,
   MetricAggregation,
   MetricComparison,
+  MetricDefinition,
   MetricInput,
   RecordQueryParams,
   RecordWithMetricsInput,
   SnapshotQueryParams,
-} from '@/types/api-responses'
+  SnapshotType,
+} from '@/types/api-storage'
 import { createAdminClient } from '../db/admin'
 
 // ============================================================================
@@ -69,7 +71,8 @@ export async function getAllSources(): Promise<ApiSource[]> {
 
 export async function createSnapshot(
   sourceId: string,
-  snapshotType: 'scheduled' | 'manual' | 'triggered' = 'manual',
+  snapshotType: SnapshotType = 'manual',
+  clientId?: number,
 ): Promise<ApiSnapshot | null> {
   const db = createAdminClient()
 
@@ -77,6 +80,7 @@ export async function createSnapshot(
     .from('api_snapshots')
     .insert({
       source_id: sourceId,
+      client_id: clientId || null,
       snapshot_type: snapshotType,
       status: 'pending',
       total_records: 0,
@@ -122,6 +126,7 @@ export async function getSnapshots(
     .order('created_at', { ascending: false })
 
   if (params.source_id) query = query.eq('source_id', params.source_id)
+  if (params.client_id) query = query.eq('client_id', params.client_id)
   if (params.status) query = query.eq('status', params.status)
   if (params.start_date) query = query.gte('created_at', params.start_date)
   if (params.end_date) query = query.lte('created_at', params.end_date)
@@ -133,17 +138,49 @@ export async function getSnapshots(
 
 export async function getLatestSnapshot(
   sourceId: string,
+  clientId?: number,
 ): Promise<ApiSnapshot | null> {
   const db = createAdminClient()
-  const { data, error } = await db
+  let query = db
     .from('api_snapshots')
     .select('*')
     .eq('source_id', sourceId)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
 
+  if (clientId) query = query.eq('client_id', clientId)
+
+  const { data, error } = await query.single()
+
+  if (error) return null
+  return data
+}
+
+export async function getLatestSnapshotForClient(
+  clientId: number,
+  provider?: string,
+  endpoint?: string,
+): Promise<ApiSnapshot | null> {
+  const db = createAdminClient()
+
+  let query = db
+    .from('api_snapshots')
+    .select('*, source:api_sources(*)')
+    .eq('client_id', clientId)
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  // If provider/endpoint specified, filter by source
+  if (provider || endpoint) {
+    const source = await getSource(provider || '', endpoint || '')
+    if (source) {
+      query = query.eq('source_id', source.id)
+    }
+  }
+
+  const { data, error } = await query.single()
   if (error) return null
   return data
 }
@@ -155,6 +192,7 @@ export async function getLatestSnapshot(
 export async function saveRecordsWithMetrics(
   snapshotId: string,
   records: RecordWithMetricsInput[],
+  clientId?: number,
 ): Promise<{ saved: number; error: boolean }> {
   const db = createAdminClient()
 
@@ -162,6 +200,7 @@ export async function saveRecordsWithMetrics(
     // Insert records first
     const recordsToInsert = records.map((r) => ({
       snapshot_id: snapshotId,
+      client_id: clientId || null,
       external_id: r.external_id,
       name: r.name || null,
       email: r.email || null,
@@ -240,6 +279,7 @@ export async function getRecords(
   let query = db.from('api_records').select('*')
 
   if (params.snapshot_id) query = query.eq('snapshot_id', params.snapshot_id)
+  if (params.client_id) query = query.eq('client_id', params.client_id)
   if (params.status) query = query.eq('status', params.status)
   if (params.category) query = query.eq('category', params.category)
   if (params.start_date) query = query.gte('record_date', params.start_date)
@@ -484,4 +524,245 @@ export async function deleteOldSnapshots(
 
   if (error) return 0
   return data?.length || 0
+}
+
+// ============================================================================
+// Metric Definitions Operations
+// ============================================================================
+
+export async function getMetricDefinitions(
+  provider?: string,
+): Promise<MetricDefinition[]> {
+  const db = createAdminClient()
+  let query = db.from('metric_definitions').select('*').order('metric_name')
+
+  if (provider) {
+    // Get provider-specific and universal metrics
+    query = query.or(`provider.eq.${provider},provider.is.null`)
+  }
+
+  const { data, error } = await query
+  if (error) return []
+  return data || []
+}
+
+export async function getMetricDefinition(
+  metricName: string,
+): Promise<MetricDefinition | null> {
+  const db = createAdminClient()
+  const { data, error } = await db
+    .from('metric_definitions')
+    .select('*')
+    .eq('metric_name', metricName)
+    .single()
+
+  if (error) return null
+  return data
+}
+
+export async function createMetricDefinition(
+  definition: Omit<MetricDefinition, 'created_at'>,
+): Promise<MetricDefinition | null> {
+  const db = createAdminClient()
+  const { data, error } = await db
+    .from('metric_definitions')
+    .insert(definition)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating metric definition:', error)
+    return null
+  }
+  return data
+}
+
+export async function updateMetricDefinition(
+  metricName: string,
+  updates: Partial<Omit<MetricDefinition, 'metric_name' | 'created_at'>>,
+): Promise<boolean> {
+  const db = createAdminClient()
+  const { error } = await db
+    .from('metric_definitions')
+    .update(updates)
+    .eq('metric_name', metricName)
+
+  return !error
+}
+
+// ============================================================================
+// Client-Scoped Convenience Functions
+// ============================================================================
+
+export async function getRecordsByClient(
+  clientId: number,
+  options: {
+    sourceId?: string
+    status?: string
+    limit?: number
+  } = {},
+): Promise<ApiRecordWithMetrics[]> {
+  const db = createAdminClient()
+
+  let query = db
+    .from('api_records')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+
+  if (options.status) query = query.eq('status', options.status)
+  if (options.limit) query = query.limit(options.limit)
+
+  // If sourceId is provided, filter by snapshots from that source
+  if (options.sourceId) {
+    const { data: snapshots } = await db
+      .from('api_snapshots')
+      .select('id')
+      .eq('source_id', options.sourceId)
+      .eq('client_id', clientId)
+
+    if (snapshots && snapshots.length > 0) {
+      const snapshotIds = snapshots.map((s) => s.id)
+      query = query.in('snapshot_id', snapshotIds)
+    } else {
+      return []
+    }
+  }
+
+  const { data: records, error } = await query
+  if (error || !records) return []
+
+  // Get metrics for these records
+  const recordIds = records.map((r) => r.id)
+  const { data: metrics } = await db
+    .from('api_record_metrics')
+    .select('*')
+    .in('record_id', recordIds)
+
+  // Group metrics by record_id
+  const metricsByRecord = new Map<string, ApiRecordMetric[]>()
+  for (const metric of metrics || []) {
+    const existing = metricsByRecord.get(metric.record_id) || []
+    existing.push(metric)
+    metricsByRecord.set(metric.record_id, existing)
+  }
+
+  return records.map((record) => ({
+    ...record,
+    metrics: metricsByRecord.get(record.id) || [],
+  }))
+}
+
+export async function getClientMetricHistory(
+  clientId: number,
+  metricName: string,
+  options: {
+    sourceId?: string
+    days?: number
+  } = {},
+): Promise<Array<{ date: string; value: number }>> {
+  const db = createAdminClient()
+  const days = options.days ?? 30
+  const startDate = new Date(
+    Date.now() - days * 24 * 60 * 60 * 1000,
+  ).toISOString()
+
+  // Get snapshots for this client
+  let snapshotQuery = db
+    .from('api_snapshots')
+    .select('id, created_at')
+    .eq('client_id', clientId)
+    .eq('status', 'completed')
+    .gte('created_at', startDate)
+    .order('created_at')
+
+  if (options.sourceId) {
+    snapshotQuery = snapshotQuery.eq('source_id', options.sourceId)
+  }
+
+  const { data: snapshots } = await snapshotQuery
+  if (!snapshots || snapshots.length === 0) return []
+
+  const snapshotIds = snapshots.map((s) => s.id)
+  const snapshotDates = new Map(snapshots.map((s) => [s.id, s.created_at]))
+
+  // Get records for these snapshots
+  const { data: records } = await db
+    .from('api_records')
+    .select('id, snapshot_id')
+    .in('snapshot_id', snapshotIds)
+
+  if (!records || records.length === 0) return []
+
+  const recordIds = records.map((r) => r.id)
+  const recordSnapshots = new Map(records.map((r) => [r.id, r.snapshot_id]))
+
+  // Get metrics
+  const { data: metrics } = await db
+    .from('api_record_metrics')
+    .select('record_id, metric_value')
+    .in('record_id', recordIds)
+    .eq('metric_name', metricName)
+
+  if (!metrics || metrics.length === 0) return []
+
+  // Aggregate by snapshot date
+  const valuesByDate = new Map<string, number[]>()
+  for (const metric of metrics) {
+    const snapshotId = recordSnapshots.get(metric.record_id)
+    if (!snapshotId) continue
+    const date = snapshotDates.get(snapshotId)
+    if (!date) continue
+
+    const dateKey = date.split('T')[0] // Just the date part
+    const existing = valuesByDate.get(dateKey) || []
+    existing.push(Number(metric.metric_value))
+    valuesByDate.set(dateKey, existing)
+  }
+
+  // Calculate average per date
+  return Array.from(valuesByDate.entries())
+    .map(([date, values]) => ({
+      date,
+      value: values.reduce((a, b) => a + b, 0) / values.length,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
+// ============================================================================
+// Source Management
+// ============================================================================
+
+export async function createSource(
+  source: Omit<ApiSource, 'id' | 'created_at' | 'updated_at'>,
+): Promise<ApiSource | null> {
+  const db = createAdminClient()
+  const { data, error } = await db
+    .from('api_sources')
+    .insert(source)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating source:', error)
+    return null
+  }
+  return data
+}
+
+export async function updateSource(
+  sourceId: string,
+  updates: Partial<Omit<ApiSource, 'id' | 'created_at' | 'updated_at'>>,
+): Promise<boolean> {
+  const db = createAdminClient()
+  const { error } = await db
+    .from('api_sources')
+    .update(updates)
+    .eq('id', sourceId)
+
+  return !error
+}
+
+export async function deactivateSource(sourceId: string): Promise<boolean> {
+  return updateSource(sourceId, { is_active: false })
 }

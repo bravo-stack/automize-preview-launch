@@ -196,6 +196,7 @@ export interface RecordWithMetricsInput extends RecordInput {
 
 export interface SnapshotQueryParams {
   source_id?: string
+  client_id?: number
   provider?: string
   start_date?: string
   end_date?: string
@@ -204,6 +205,7 @@ export interface SnapshotQueryParams {
 
 export interface RecordQueryParams {
   snapshot_id?: string
+  client_id?: number
   source_id?: string
   status?: string
   category?: string
