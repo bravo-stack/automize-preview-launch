@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { sendWhatsAppMessage } from '@/lib/actions/whatsapp'
 import { createAdminClient } from '@/lib/db/admin'
 import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
 
 // MAIN GET
 export async function GET(req: NextRequest) {
@@ -15,9 +16,10 @@ export async function GET(req: NextRequest) {
 
   const db = createAdminClient()
 
+  // Include whatsapp_number for WhatsApp notifications
   const { data: accounts } = (await db
     .from('clients')
-    .select('brand, fb_key, pod (discord_id, name)')
+    .select('brand, fb_key, pod (discord_id, name, whatsapp_number)')
     .eq('status', 'active')
     .order('brand', { ascending: true })) as unknown as { data: any[] }
 
@@ -105,7 +107,10 @@ export async function GET(req: NextRequest) {
     const adInsights = await fetchAllInsights()
 
     // Organize results by pod
-    const pods: Record<string, { accounts: any[]; discord_id: string }> = {}
+    const pods: Record<
+      string,
+      { accounts: any[]; discord_id: string; whatsapp_number?: string }
+    > = {}
 
     adInsights
       .filter(
@@ -120,6 +125,7 @@ export async function GET(req: NextRequest) {
           pods[account.pod.name] = {
             accounts: [],
             discord_id: account.pod.discord_id,
+            whatsapp_number: account.pod.whatsapp_number,
           }
         }
         pods[account.pod.name].accounts.push({
@@ -133,8 +139,10 @@ export async function GET(req: NextRequest) {
     // Send a message for each pod
     for (const pod in pods) {
       const channel = `${pod}-to-do-list` // `${pod}-test-7861` //
-      const { accounts, discord_id } = pods[pod]
-      const message = [
+      const { accounts, discord_id, whatsapp_number } = pods[pod]
+
+      // Discord message (with markdown)
+      const discordMessage = [
         `**DAILY LOW ROAS CHECK**\n`,
         ...accounts.map(
           (acc) =>
@@ -143,7 +151,20 @@ export async function GET(req: NextRequest) {
         `\n<@${discord_id}> <@989529544702689303> <@1293941738666197064>`, // pod, ismail, zain
       ].join('\n')
 
-      await sendDiscordMessage(channel, message)
+      await sendDiscordMessage(channel, discordMessage)
+
+      // WhatsApp message (plain text, no markdown)
+      if (whatsapp_number) {
+        const whatsappMessage = [
+          `📊 DAILY LOW ROAS CHECK\n`,
+          ...accounts.map(
+            (acc) =>
+              `${acc.name}:\n• ROAS: ${acc.roas}\n• SPEND: ${acc.spend}\n• CPA: ${acc.cpa}`,
+          ),
+        ].join('\n')
+
+        await sendWhatsAppMessage(whatsapp_number, whatsappMessage)
+      }
     }
 
     return NextResponse.json({
