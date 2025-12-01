@@ -236,29 +236,98 @@ export default function SheetCard({ sheet, stores, role }: SheetCardProps) {
       if (snapshotId) {
         const metricsToSave = allRows
           .filter((row) => row[1] !== 'TOTAL/AVG')
-          .map((row) => ({
-            account_name: row[1],
-            pod: row[2],
-            is_monitored: row[0] === 'Yes',
-            ad_spend_timeframe: typeof row[3] === 'number' ? row[3] : undefined,
-            roas_timeframe: typeof row[4] === 'number' ? row[4] : undefined,
-            fb_revenue_timeframe:
-              typeof row[5] === 'number' ? row[5] : undefined,
-            shopify_revenue_timeframe:
-              typeof row[6] === 'number' ? row[6] : undefined,
-            ad_spend_rebill: typeof row[7] === 'number' ? row[7] : undefined,
-            roas_rebill: typeof row[8] === 'number' ? row[8] : undefined,
-            fb_revenue_rebill: typeof row[9] === 'number' ? row[9] : undefined,
-            shopify_revenue_rebill:
-              typeof row[10] === 'number' ? row[10] : undefined,
-            rebill_status: typeof row[11] === 'string' ? row[11] : undefined,
-            last_rebill_date:
-              typeof row[12] === 'string' && row[12] !== 'Missing rebill date'
-                ? row[12]
-                : undefined,
-            orders_timeframe: typeof row[13] === 'number' ? row[13] : undefined,
-            orders_rebill: typeof row[14] === 'number' ? row[14] : undefined,
-          }))
+          .map((row) => {
+            // Helper to extract numeric value and detect errors
+            const extractNumeric = (
+              val: any,
+              fieldName: string,
+              errors: Array<{
+                field: string
+                message: string
+                raw_value?: string | number | null
+              }>,
+            ): number | undefined => {
+              if (typeof val === 'number') return val
+              if (typeof val === 'string') {
+                // Check if it's an error message (contains common error patterns)
+                const isError =
+                  /log in|access token|error|invalid|expired|could not|bad request|forbidden|not found|rate limit|network|no data|missing/i.test(
+                    val,
+                  )
+                if (isError) {
+                  errors.push({
+                    field: fieldName,
+                    message: val,
+                    raw_value: val,
+                  })
+                  return undefined
+                }
+              }
+              return undefined
+            }
+
+            const errors: Array<{
+              field: string
+              message: string
+              raw_value?: string | number | null
+            }> = []
+
+            const metric = {
+              account_name: row[1],
+              pod: row[2],
+              is_monitored: row[0] === 'Yes',
+              ad_spend_timeframe: extractNumeric(
+                row[3],
+                'ad_spend_timeframe',
+                errors,
+              ),
+              roas_timeframe: extractNumeric(row[4], 'roas_timeframe', errors),
+              fb_revenue_timeframe: extractNumeric(
+                row[5],
+                'fb_revenue_timeframe',
+                errors,
+              ),
+              shopify_revenue_timeframe: extractNumeric(
+                row[6],
+                'shopify_revenue_timeframe',
+                errors,
+              ),
+              ad_spend_rebill: extractNumeric(
+                row[7],
+                'ad_spend_rebill',
+                errors,
+              ),
+              roas_rebill: extractNumeric(row[8], 'roas_rebill', errors),
+              fb_revenue_rebill: extractNumeric(
+                row[9],
+                'fb_revenue_rebill',
+                errors,
+              ),
+              shopify_revenue_rebill: extractNumeric(
+                row[10],
+                'shopify_revenue_rebill',
+                errors,
+              ),
+              rebill_status: typeof row[11] === 'string' ? row[11] : undefined,
+              last_rebill_date:
+                typeof row[12] === 'string' && row[12] !== 'Missing rebill date'
+                  ? row[12]
+                  : undefined,
+              orders_timeframe: extractNumeric(
+                row[13],
+                'orders_timeframe',
+                errors,
+              ),
+              orders_rebill: extractNumeric(row[14], 'orders_rebill', errors),
+              is_error: errors.length > 0,
+              error_detail:
+                errors.length > 0
+                  ? { errors, error_count: errors.length }
+                  : undefined,
+            }
+
+            return metric
+          })
 
         await saveSnapshotMetrics({
           snapshotId,

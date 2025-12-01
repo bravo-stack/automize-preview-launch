@@ -5,6 +5,12 @@ import { createAdminClient } from './admin'
 export type RefreshType = 'financialx' | 'autometric'
 export type RefreshStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
 
+export interface SnapshotMetricError {
+  field: string
+  message: string
+  raw_value?: string | number | null
+}
+
 export interface SnapshotMetric {
   account_name: string
   pod?: string
@@ -34,6 +40,11 @@ export interface SnapshotMetric {
   ic_rate?: number
   purchase_rate?: number
   bounce_rate?: number
+  is_error?: boolean
+  error_detail?: {
+    errors: SnapshotMetricError[]
+    error_count: number
+  }
 }
 
 export interface CreateSnapshotParams {
@@ -41,6 +52,107 @@ export interface CreateSnapshotParams {
   refreshType: RefreshType
   datePreset?: string
   metadata?: Record<string, any>
+}
+
+/**
+ * Common error patterns from Facebook API and other data sources
+ */
+const ERROR_PATTERNS = [
+  /log in to www\.facebook\.com/i,
+  /access token/i,
+  /invalid/i,
+  /expired/i,
+  /error/i,
+  /could not retrieve/i,
+  /bad request/i,
+  /forbidden/i,
+  /not found/i,
+  /rate limit/i,
+  /network/i,
+  /no data available/i,
+  /missing/i,
+]
+
+/**
+ * Checks if a value contains an error message
+ */
+function isErrorValue(value: any): boolean {
+  if (value === null || value === undefined) return false
+  if (typeof value !== 'string') return false
+  return ERROR_PATTERNS.some((pattern) => pattern.test(value))
+}
+
+/**
+ * Extracts error information from a metric row
+ */
+export function extractMetricErrors(metric: SnapshotMetric): {
+  is_error: boolean
+  error_detail: { errors: SnapshotMetricError[]; error_count: number } | null
+} {
+  const errors: SnapshotMetricError[] = []
+
+  // Define which fields to check for errors and their expected types
+  const numericFields: Array<{ key: keyof SnapshotMetric; label: string }> = [
+    { key: 'ad_spend_timeframe', label: 'Ad Spend (Timeframe)' },
+    { key: 'roas_timeframe', label: 'ROAS (Timeframe)' },
+    { key: 'fb_revenue_timeframe', label: 'FB Revenue (Timeframe)' },
+    { key: 'shopify_revenue_timeframe', label: 'Shopify Revenue (Timeframe)' },
+    { key: 'orders_timeframe', label: 'Orders (Timeframe)' },
+    { key: 'ad_spend_rebill', label: 'Ad Spend (Rebill)' },
+    { key: 'roas_rebill', label: 'ROAS (Rebill)' },
+    { key: 'fb_revenue_rebill', label: 'FB Revenue (Rebill)' },
+    { key: 'shopify_revenue_rebill', label: 'Shopify Revenue (Rebill)' },
+    { key: 'orders_rebill', label: 'Orders (Rebill)' },
+    { key: 'cpa_purchase', label: 'CPA Purchase' },
+    { key: 'cpc', label: 'CPC' },
+    { key: 'cpm', label: 'CPM' },
+    { key: 'ctr', label: 'CTR' },
+    { key: 'impressions', label: 'Impressions' },
+    { key: 'hook_rate', label: 'Hook Rate' },
+    { key: 'atc_rate', label: 'ATC Rate' },
+    { key: 'ic_rate', label: 'IC Rate' },
+    { key: 'purchase_rate', label: 'Purchase Rate' },
+    { key: 'bounce_rate', label: 'Bounce Rate' },
+  ]
+
+  for (const { key, label } of numericFields) {
+    const value = metric[key]
+
+    // Check if it's an error string value (typically means the API returned an error)
+    if (typeof value === 'string' && isErrorValue(value)) {
+      errors.push({
+        field: key,
+        message: value,
+        raw_value: value,
+      })
+    }
+  }
+
+  // Check for string fields that might contain errors
+  const stringFields: Array<{ key: keyof SnapshotMetric; label: string }> = [
+    { key: 'rebill_status', label: 'Rebill Status' },
+    { key: 'quality_ranking', label: 'Quality Ranking' },
+    { key: 'engagement_rate_ranking', label: 'Engagement Rate Ranking' },
+    { key: 'conversion_rate_ranking', label: 'Conversion Rate Ranking' },
+  ]
+
+  for (const { key, label } of stringFields) {
+    const value = metric[key]
+    if (typeof value === 'string' && isErrorValue(value)) {
+      errors.push({
+        field: key,
+        message: value,
+        raw_value: value,
+      })
+    }
+  }
+
+  const hasErrors = errors.length > 0
+
+  return {
+    is_error: hasErrors,
+    error_detail: hasErrors ? { errors, error_count: errors.length } : null,
+  }
 }
 
 export interface SaveMetricsParams {
@@ -184,10 +296,34 @@ export async function saveSnapshotMetrics({
     `[saveSnapshotMetrics] Original: ${metrics.length}, Deduplicated: ${deduplicatedMetrics.length}`,
   )
 
-  const metricsToInsert = deduplicatedMetrics.map((metric) => ({
-    snapshot_id: snapshotId,
-    ...metric,
-  }))
+  // Process metrics and extract errors
+  const metricsToInsert = deduplicatedMetrics.map((metric) => {
+    // If is_error and error_detail are already provided, use them
+    // Otherwise, extract errors from the metric data
+    const { is_error, error_detail } =
+      metric.is_error !== undefined
+        ? { is_error: metric.is_error, error_detail: metric.error_detail }
+        : extractMetricErrors(metric)
+
+    return {
+      snapshot_id: snapshotId,
+      ...metric,
+      is_error,
+      error_detail,
+    }
+  })
+
+  // Log metrics with errors
+  const errorMetrics = metricsToInsert.filter((m) => m.is_error)
+  if (errorMetrics.length > 0) {
+    console.log(
+      `[saveSnapshotMetrics] Found ${errorMetrics.length} metrics with errors:`,
+      errorMetrics.map((m) => ({
+        account: m.account_name,
+        errors: m.error_detail?.errors.map((e) => e.message),
+      })),
+    )
+  }
 
   const { error } = await db
     .from('refresh_snapshot_metrics')

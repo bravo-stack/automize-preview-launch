@@ -13,6 +13,12 @@ export interface SheetRefreshSnapshot {
   metadata: Record<string, any>
 }
 
+export interface RefreshSnapshotMetricError {
+  field: string
+  message: string
+  raw_value?: string | number | null
+}
+
 export interface RefreshSnapshotMetric {
   id: string
   snapshot_id: string
@@ -45,6 +51,11 @@ export interface RefreshSnapshotMetric {
   purchase_rate: number | null
   bounce_rate: number | null
   created_at: string
+  is_error: boolean
+  error_detail: {
+    errors: RefreshSnapshotMetricError[]
+    error_count: number
+  } | null
 }
 
 export interface SnapshotWithMetrics extends SheetRefreshSnapshot {

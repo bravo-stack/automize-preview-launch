@@ -212,12 +212,72 @@ export async function POST(request: NextRequest) {
           '@/lib/db/refresh-snapshots'
         )
 
-        const metricsToSave = enrichedData.map((item) => ({
-          account_name: item.name,
-          pod: item.pod,
-          is_monitored: item.isMonitored,
-          ...item.metrics,
-        }))
+        // Error patterns that indicate a failed data fetch
+        const errorPatterns = [
+          /missing permissions/i,
+          /incorrect id/i,
+          /no data for/i,
+          /log in/i,
+          /access token/i,
+          /error/i,
+          /invalid/i,
+          /expired/i,
+        ]
+
+        const isErrorPod = (pod: string): boolean => {
+          return errorPatterns.some((pattern) => pattern.test(pod))
+        }
+
+        const metricsToSave = enrichedData.map((item) => {
+          const errors: Array<{
+            field: string
+            message: string
+            raw_value?: string | number | null
+          }> = []
+          const hasErrorPod = isErrorPod(item.pod)
+
+          if (hasErrorPod) {
+            errors.push({
+              field: 'api_response',
+              message: item.pod,
+              raw_value: item.pod,
+            })
+          }
+
+          // Check for missing/empty metrics that indicate errors
+          const metricsToCheck: Array<{
+            key: keyof typeof item.metrics
+            label: string
+          }> = [
+            { key: 'ad_spend_timeframe', label: 'Ad Spend' },
+            { key: 'roas_timeframe', label: 'ROAS' },
+            { key: 'fb_revenue_timeframe', label: 'FB Revenue' },
+            { key: 'impressions', label: 'Impressions' },
+          ]
+
+          for (const { key, label } of metricsToCheck) {
+            const value = item.metrics[key]
+            if (hasErrorPod && (value === undefined || value === 0)) {
+              errors.push({
+                field: key,
+                message: `${label} unavailable due to API error`,
+                raw_value: value,
+              })
+            }
+          }
+
+          return {
+            account_name: item.name,
+            pod: hasErrorPod ? undefined : item.pod, // Don't store error message as pod
+            is_monitored: item.isMonitored,
+            ...item.metrics,
+            is_error: errors.length > 0,
+            error_detail:
+              errors.length > 0
+                ? { errors, error_count: errors.length }
+                : undefined,
+          }
+        })
 
         console.log('[/api/ads] Saving metrics count:', metricsToSave.length)
 
