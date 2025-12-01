@@ -1,23 +1,23 @@
 'use server'
 
 import type { WhatsAppSendResult } from '@/types/whatsapp'
+import twilio from 'twilio'
 
 // ============================================================================
-// WhatsApp Server Actions (via WhatsApp Cloud API)
+// WhatsApp Server Actions (via Twilio WhatsApp Business API)
 // ============================================================================
 
 export async function sendWhatsAppMessage(
   to: string,
   message: string,
 ): Promise<WhatsAppSendResult> {
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER
 
   // Validate environment variables
-  if (!accessToken || !phoneNumberId) {
-    console.error(
-      'Missing WhatsApp Cloud API credentials in environment variables',
-    )
+  if (!accountSid || !authToken || !twilioWhatsAppNumber) {
+    console.error('Missing Twilio credentials in environment variables')
     return {
       success: false,
       error: 'WhatsApp service not configured',
@@ -32,7 +32,7 @@ export async function sendWhatsAppMessage(
     }
   }
 
-  // Clean phone number (remove whatsapp: prefix if present, ensure E.164 format)
+  // Clean phone number and ensure E.164 format
   let cleanTo = to.replace('whatsapp:', '').trim()
 
   // Ensure number starts with + for E.164 format
@@ -40,46 +40,27 @@ export async function sendWhatsAppMessage(
     cleanTo = `+${cleanTo}`
   }
 
+  // Twilio requires whatsapp: prefix for WhatsApp messages
+  const twilioFormattedTo = `whatsapp:${cleanTo}`
+  const twilioFormattedFrom = `whatsapp:${twilioWhatsAppNumber}`
+
   try {
-    const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`
+    // Initialize Twilio client
+    const client = twilio(accountSid, authToken)
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: cleanTo,
-        type: 'text',
-        text: {
-          preview_url: false,
-          body: message,
-        },
-      }),
+    // Send WhatsApp message via Twilio
+    const messageResponse = await client.messages.create({
+      body: message,
+      from: twilioFormattedFrom,
+      to: twilioFormattedTo,
     })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      console.error('WhatsApp Cloud API error:', data)
-      return {
-        success: false,
-        error:
-          data.error?.message ||
-          data.error?.error_user_msg ||
-          'Failed to send WhatsApp message',
-      }
-    }
 
     return {
       success: true,
-      messageId: data.messages?.[0]?.id,
+      messageId: messageResponse.sid,
     }
   } catch (error) {
-    console.error('WhatsApp send error:', error)
+    console.error('Twilio WhatsApp send error:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

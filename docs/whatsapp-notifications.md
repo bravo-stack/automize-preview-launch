@@ -1,23 +1,26 @@
 # WhatsApp Notifications
 
-Send WhatsApp alerts to media buyers using Meta's WhatsApp Cloud API.
+Send WhatsApp alerts to media buyers using Twilio's WhatsApp Business API.
 
 ## Quick Setup
 
-### 1. Get Meta Credentials
+### 1. Get Twilio Credentials
 
-1. Go to [developers.facebook.com/apps](https://developers.facebook.com/apps)
-2. Create App → Business → Add WhatsApp product
-3. Copy from **WhatsApp > Getting Started**:
-   - **Phone Number ID**
-   - **Access Token** (use temporary for testing)
-4. Add test recipients (up to 5 numbers for testing)
+1. Go to [twilio.com/console](https://www.twilio.com/console)
+2. Create a new account or log in
+3. Navigate to **Messaging > Try it out > Send a WhatsApp message**
+4. Copy your credentials:
+   - **Account SID**
+   - **Auth Token**
+   - **Twilio WhatsApp Number** (e.g., +14155238886 for sandbox)
+5. For production, request WhatsApp Business approval and get your own number
 
 ### 2. Environment Variables
 
 ```env
-WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
-WHATSAPP_ACCESS_TOKEN=your_access_token
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_WHATSAPP_NUMBER=+14155238886
 WHATSAPP_API_KEY=random_string_for_api_auth
 WHATSAPP_CRON_KEY=random_string_for_cron_auth
 ```
@@ -107,10 +110,11 @@ await sendWhatsAppMessage('+1234567890', 'Hello!')
 
 ## Production Notes
 
-- **Free tier**: 1,000 conversations/month
+- **Sandbox**: Twilio provides a sandbox number for testing (+14155238886). Recipients must join via WhatsApp first.
+- **Production**: Request WhatsApp Business approval from Twilio to get your own number and remove sandbox restrictions
 - **Phone numbers**: Must be E.164 format (+1234567890)
 - **Schedules**: All times stored in UTC
-- **Production**: Verify business, get permanent access token, add payment method
+- **Pricing**: Pay-as-you-go per message sent (check Twilio pricing for your region)
 - **Cron**: Use your private server scheduler (not Vercel cron)
 
 ---

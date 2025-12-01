@@ -309,7 +309,7 @@ export default function ServicesPage() {
                 <div className="space-y-1 text-xs">
                   <p className="text-green-500">✓ Sync completed</p>
                   <p className="text-white/60">
-                    {shopifyThemesState.saved} themes saved
+                    {shopifyThemesState.saved} theme(s) saved
                   </p>
                   <p className="text-white/40">
                     {shopifyThemesState.totalClients} clients processed
