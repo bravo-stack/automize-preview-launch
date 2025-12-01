@@ -84,8 +84,9 @@ function isErrorValue(value: any): boolean {
 
 /**
  * Extracts error information from a metric row
+ * Note: This is an internal function, not exported as a server action
  */
-export function extractMetricErrors(metric: SnapshotMetric): {
+function extractMetricErrors(metric: SnapshotMetric): {
   is_error: boolean
   error_detail: { errors: SnapshotMetricError[]; error_count: number } | null
 } {
