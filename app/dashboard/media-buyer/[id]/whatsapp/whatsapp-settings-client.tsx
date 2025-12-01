@@ -6,6 +6,7 @@ import {
   toggleScheduleActive,
   updatePodWhatsAppNumber,
 } from '@/lib/actions/whatsapp-schedules'
+import { runTestWhatsAppJob } from '@/lib/actions/whatsapp-test'
 import type {
   DayOfWeek,
   ScheduleFrequency,
@@ -39,6 +40,23 @@ export default function WhatsAppSettingsClient({
     useState<WhatsAppSchedule[]>(initialSchedules)
   const [isSavingNumber, setIsSavingNumber] = useState(false)
   const [numberSaved, setNumberSaved] = useState(false)
+  const [isTestRunning, setIsTestRunning] = useState(false)
+  const [testResults, setTestResults] = useState<{
+    messagesSent: number
+    results: { type: string; sent: boolean; preview: string; error?: string }[]
+  } | null>(null)
+
+  // Handle test job
+  const handleTestJob = async () => {
+    setIsTestRunning(true)
+    setTestResults(null)
+    const result = await runTestWhatsAppJob(podName)
+    setIsTestRunning(false)
+    setTestResults({
+      messagesSent: result.messagesSent,
+      results: result.results,
+    })
+  }
 
   // Handle WhatsApp number save
   const handleSaveNumber = async () => {
@@ -99,6 +117,58 @@ export default function WhatsAppSettingsClient({
 
   return (
     <div className="space-y-8">
+      {/* Test Job Section */}
+      <section className="rounded-lg border border-amber-800 bg-amber-950/20 p-6">
+        <h2 className="mb-2 text-lg font-semibold text-amber-400">
+          🧪 Test WhatsApp Job
+        </h2>
+        <p className="mb-4 text-sm text-amber-200/70">
+          Test all WhatsApp notifications. Messages will be sent to:{' '}
+          <code className="rounded bg-amber-900/30 px-2 py-0.5">
+            +2349048188177
+          </code>
+        </p>
+        <button
+          onClick={handleTestJob}
+          disabled={isTestRunning}
+          className="rounded-md bg-amber-600 px-6 py-2 font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+        >
+          {isTestRunning ? 'Running Job...' : 'Run Test Job'}
+        </button>
+
+        {/* Test Results */}
+        {testResults && (
+          <div className="mt-4 space-y-2 rounded-md border border-amber-700 bg-amber-950/30 p-4">
+            <div className="mb-3 text-sm font-medium text-amber-300">
+              ✅ Job Complete - {testResults.messagesSent} message
+              {testResults.messagesSent !== 1 ? 's' : ''} sent
+            </div>
+            {testResults.results.map((result, index) => (
+              <div
+                key={index}
+                className={`rounded border p-3 text-sm ${
+                  result.sent
+                    ? 'border-green-800 bg-green-950/30'
+                    : 'border-red-800 bg-red-950/30'
+                }`}
+              >
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="font-medium">
+                    {result.sent ? '✓' : '✗'} {result.type}
+                  </span>
+                </div>
+                <div className="text-xs text-zinc-400">{result.preview}</div>
+                {result.error && (
+                  <div className="mt-1 text-xs text-red-400">
+                    Error: {result.error}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* WhatsApp Number Section */}
       <section className="rounded-lg border border-zinc-800 bg-night-starlit p-6">
         <h2 className="mb-4 text-lg font-semibold">WhatsApp Number</h2>

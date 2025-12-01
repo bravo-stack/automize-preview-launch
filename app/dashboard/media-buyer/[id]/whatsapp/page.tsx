@@ -44,7 +44,7 @@ export default async function WhatsAppSettingsPage({
     return (
       <main className="p-7">
         <Section title="WhatsApp Settings">
-          <div className="text-zinc-400">
+          <div className="p-4 text-center font-medium text-zinc-400">
             No pod found for this user. Please contact an administrator.
           </div>
         </Section>

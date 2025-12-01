@@ -1,8 +1,6 @@
-import {
-  formatSummaryMessage,
-  sendWhatsAppMessage,
-} from '@/lib/actions/whatsapp'
+import { sendWhatsAppMessage } from '@/lib/actions/whatsapp'
 import { createAdminClient } from '@/lib/db/admin'
+import { formatSummaryMessage } from '@/lib/utils/whatsapp-formatters'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ============================================================================

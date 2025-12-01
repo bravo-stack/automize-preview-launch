@@ -40,9 +40,19 @@ export async function sendWhatsAppMessage(
     cleanTo = `+${cleanTo}`
   }
 
+  // Clean the from number (remove whatsapp: prefix if present)
+  const cleanFrom = twilioWhatsAppNumber.replace('whatsapp:', '').trim()
+
   // Twilio requires whatsapp: prefix for WhatsApp messages
   const twilioFormattedTo = `whatsapp:${cleanTo}`
-  const twilioFormattedFrom = `whatsapp:${twilioWhatsAppNumber}`
+  const twilioFormattedFrom = `whatsapp:${cleanFrom}`
+
+  // Debug logging
+  console.log('📱 Sending WhatsApp via Twilio:', {
+    from: twilioFormattedFrom,
+    to: twilioFormattedTo,
+    messagePreview: message.substring(0, 50) + '...',
+  })
 
   try {
     // Initialize Twilio client
@@ -61,9 +71,19 @@ export async function sendWhatsAppMessage(
     }
   } catch (error) {
     console.error('Twilio WhatsApp send error:', error)
+
+    // Provide helpful error messages for common issues
+    let errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+    if (errorMessage.includes('Channel with the specified From address')) {
+      errorMessage = `The Twilio number ${cleanFrom} is not WhatsApp-enabled. For sandbox testing, make sure both sender and recipient have joined the sandbox by sending "join <keyword>" to the Twilio sandbox number.`
+    } else if (errorMessage.includes('not a valid')) {
+      errorMessage = `Invalid phone number format. Ensure numbers are in E.164 format (e.g., +14155238886)`
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: errorMessage,
     }
   }
 }
@@ -80,33 +100,4 @@ export async function sendWhatsAppToMany(
   )
 
   return results
-}
-
-export function formatSummaryMessage(
-  customMessage: string,
-  clients: string[],
-): string {
-  if (clients.length === 0) {
-    return `${customMessage}\n\n✅ All clients have been responded to!`
-  }
-
-  const clientList = clients.map((client) => `• ${client}`).join('\n')
-
-  return `${customMessage}\n\nClient List:\n${clientList}`
-}
-
-export function formatAdErrorMessage(
-  brandName: string,
-  errorType: string,
-  daysSinceDetected: number,
-): string {
-  const urgency = daysSinceDetected > 3 ? '🚨 URGENT' : '⚠️ Alert'
-
-  return `${urgency}: Ad Account Error
-
-Brand: ${brandName}
-Error: ${errorType}
-Days Active: ${daysSinceDetected}
-
-Please check the ad account and resolve the issue.`
 }
