@@ -8,21 +8,17 @@ export type ScheduleFrequency = 'daily' | 'weekly' | 'custom'
 // Days of the week (0 = Sunday, 6 = Saturday)
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6
 
-// Configuration for when to send scheduled summaries
-export interface ScheduleConfig {
-  frequency: ScheduleFrequency
-  time: string // 24h format: '09:00', '14:30'
-  timezone: string // e.g., 'America/New_York'
-  days_of_week?: DayOfWeek[] // For weekly/custom: [1,2,3,4,5] = Mon-Fri
-}
-
-// A scheduled WhatsApp summary configuration Stored in `whatsapp_schedules` table
+// A scheduled WhatsApp summary configuration stored in `whatsapp_schedules` table
 export interface WhatsAppSchedule {
   id: string
   pod_name: string // References pod.name (text)
-  schedule: ScheduleConfig
+  frequency: ScheduleFrequency
+  time: string // TIME column: '09:00' format (stored as TIME in PostgreSQL)
+  timezone: string // IANA timezone string, defaults to 'UTC'
+  days_of_week: DayOfWeek[] // 0 = Sunday, 6 = Saturday; defaults to [1,2,3,4,5]
   custom_message: string // Message shown before the client list
   is_active: boolean
+  last_sent_at: string | null
   created_at: string
   updated_at: string
 }

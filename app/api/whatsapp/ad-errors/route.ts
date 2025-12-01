@@ -11,7 +11,8 @@ import { NextRequest, NextResponse } from 'next/server'
 // Daily cron that alerts media buyers AND clients about ad account errors
 // Keeps alerting daily until the error is resolved
 //
-// Called by: Vercel Cron (once daily, e.g., 9 AM)
+// Called by: Private server cron job (daily at 9 AM UTC)
+// Auth: Cron secret key in query params
 // ============================================================================
 
 export async function GET(request: NextRequest) {

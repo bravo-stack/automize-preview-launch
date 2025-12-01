@@ -79,7 +79,7 @@ export async function updateSchedule(
         custom_message: input.custom_message,
       }),
       ...(input.is_active !== undefined && { is_active: input.is_active }),
-      updated_at: new Date().toISOString(),
+      // Note: updated_at is handled by database trigger
     })
     .eq('id', id)
 
@@ -128,10 +128,13 @@ export async function updatePodWhatsAppNumber(
 ): Promise<{ success: boolean; error?: string }> {
   const db = createAdminClient()
 
-  // Basic phone number validation
+  // E.164 format validation (e.g., +1234567890)
   const cleanNumber = whatsappNumber.replace(/\s/g, '')
   if (cleanNumber && !cleanNumber.match(/^\+?[1-9]\d{6,14}$/)) {
-    return { success: false, error: 'Invalid phone number format' }
+    return {
+      success: false,
+      error: 'Invalid phone number format (use E.164: +1234567890)',
+    }
   }
 
   const { error } = await db

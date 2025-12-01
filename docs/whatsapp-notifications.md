@@ -1,153 +1,126 @@
 # WhatsApp Notifications
 
-This module enables WhatsApp notifications for media buyers using Twilio's WhatsApp Business API.
+Send WhatsApp alerts to media buyers using Meta's WhatsApp Cloud API.
 
-## Features
+## Quick Setup
 
-1. **Direct Messages** - Send WhatsApp messages via API
-2. **Scheduled Summaries** - Daily/weekly summaries of clients needing responses
-3. **Ad Error Alerts** - Daily alerts for ad account errors until resolved
+### 1. Get Meta Credentials
 
-## Setup
+1. Go to [developers.facebook.com/apps](https://developers.facebook.com/apps)
+2. Create App → Business → Add WhatsApp product
+3. Copy from **WhatsApp > Getting Started**:
+   - **Phone Number ID**
+   - **Access Token** (use temporary for testing)
+4. Add test recipients (up to 5 numbers for testing)
 
-### 1. Environment Variables
-
-Add these to your `.env.local`:
+### 2. Environment Variables
 
 ```env
-# Twilio WhatsApp Credentials
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886  # Your Twilio WhatsApp number
-
-# API Keys for external triggers
-WHATSAPP_API_KEY=your_secure_random_key
-WHATSAPP_CRON_KEY=your_cron_secret_key
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+WHATSAPP_ACCESS_TOKEN=your_access_token
+WHATSAPP_API_KEY=random_string_for_api_auth
+WHATSAPP_CRON_KEY=random_string_for_cron_auth
 ```
 
-### 2. Database Migration
+### 3. Run Database Migration
 
-Run the SQL migration in Supabase:
+Execute in Supabase SQL editor:
 
 ```
 lib/db/migrations/001_whatsapp_notifications.sql
 ```
 
-This creates:
+Creates: `pod.whatsapp_number`, `whatsapp_schedules`, `ad_account_errors`
 
-- `whatsapp_number` column on `pod` table
-- `whatsapp_schedules` table (uses `pod_name` text FK to `pod.name`)
-- `ad_account_errors` table (uses `client_id` bigint FK to `clients.id`)
+### 4. Configure Cron Jobs (Private Server)
 
-### 3. Vercel Cron Jobs
+Set up these endpoints on your cron scheduler:
 
-Add to `vercel.json`:
+```bash
+# Scheduled summaries (runs every hour, checks which schedules to fire)
+GET /api/whatsapp/scheduled-summary?key=YOUR_CRON_KEY
 
-```json
-{
-  "crons": [
-    {
-      "path": "/api/whatsapp/scheduled-summary?key=YOUR_CRON_KEY",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/whatsapp/ad-errors?key=YOUR_CRON_KEY",
-      "schedule": "0 9 * * *"
-    }
-  ]
-}
+# Ad error alerts (runs daily at 9 AM UTC)
+GET /api/whatsapp/ad-errors?key=YOUR_CRON_KEY
 ```
 
-## API Routes
-
-### POST `/api/whatsapp/send`
-
-Send a direct WhatsApp message.
-
-```typescript
-// Headers
-{ "x-api-key": "your_api_key" }
-
-// Body
-{
-  "to": "+1234567890",
-  "message": "Hello from Automize!"
-}
-```
-
-### GET `/api/whatsapp/scheduled-summary`
-
-Cron endpoint - sends scheduled summaries to media buyers.
-
-### GET `/api/whatsapp/ad-errors`
-
-Cron endpoint - sends daily ad error alerts.
-
-### POST `/api/whatsapp/ad-errors`
-
-Log a new ad account error.
-
-### PATCH `/api/whatsapp/ad-errors`
-
-Mark an error as resolved.
-
-## File Structure
+Example cron schedule:
 
 ```
-lib/
-├── actions/
-│   ├── whatsapp.ts           # Core send functions
-│   └── whatsapp-schedules.ts # Schedule CRUD operations
-├── db/
-│   └── migrations/
-│       └── 001_whatsapp_notifications.sql
-
-app/
-├── api/
-│   └── whatsapp/
-│       ├── send/route.ts
-│       ├── scheduled-summary/route.ts
-│       └── ad-errors/route.ts
-└── dashboard/
-    └── media-buyer/
-        └── [id]/
-            └── whatsapp/
-                ├── page.tsx
-                └── whatsapp-settings-client.tsx
-
-types/
-└── whatsapp.ts               # TypeScript definitions
+0 * * * * curl "https://your-domain.com/api/whatsapp/scheduled-summary?key=YOUR_CRON_KEY"
+0 9 * * * curl "https://your-domain.com/api/whatsapp/ad-errors?key=YOUR_CRON_KEY"
 ```
 
-## Usage Examples
+---
 
-### Send a message programmatically
+## Features
+
+**Scheduled Summaries**
+
+- Send daily/weekly client lists to media buyers
+- Customizable time, frequency, and message
+- Shows clients needing responses (from `communication_reports` table)
+
+**Ad Error Alerts**
+
+- Notifies media buyer + client when ad account errors occur
+- Daily alerts until marked as resolved
+- Tracks error duration and urgency
+
+**Direct Messages**
+
+- Send WhatsApp via API endpoint
+- Protected by API key
+
+---
+
+## Usage
+
+### Configure WhatsApp Number (UI)
+
+Go to `/dashboard/media-buyer/[id]/whatsapp`:
+
+1. Add pod's WhatsApp number (+1234567890 format)
+2. Create schedules (daily/weekly/custom)
+3. Customize message for each schedule
+
+### Send Message (Code)
 
 ```typescript
 import { sendWhatsAppMessage } from '@/lib/actions/whatsapp'
 
-const result = await sendWhatsAppMessage('+1234567890', 'Hello!')
-if (result.success) {
-  console.log('Sent:', result.messageId)
+await sendWhatsAppMessage('+1234567890', 'Hello!')
+```
+
+### Log Ad Error (Code)
+
+```typescript
+// POST /api/whatsapp/ad-errors
+{
+  "client_id": 123,
+  "error_type": "invalid_token",
+  "error_message": "Facebook token expired"
 }
 ```
 
-### Create a schedule
+---
 
-```typescript
-import { createSchedule } from '@/lib/actions/whatsapp-schedules'
+## Production Notes
 
-await createSchedule({
-  pod_id: 1,
-  frequency: 'daily',
-  time: '09:00',
-  timezone: 'America/New_York',
-  custom_message: 'Good morning! These clients need attention:',
-})
-```
+- **Free tier**: 1,000 conversations/month
+- **Phone numbers**: Must be E.164 format (+1234567890)
+- **Schedules**: All times stored in UTC
+- **Production**: Verify business, get permanent access token, add payment method
+- **Cron**: Use your private server scheduler (not Vercel cron)
 
-## Notes
+---
 
-- WhatsApp numbers must include country code (e.g., `+1234567890`)
-- Twilio requires WhatsApp Business API approval for production
-- Test with Twilio Sandbox first: https://www.twilio.com/docs/whatsapp/sandbox
+## API Reference
+
+| Endpoint                          | Method | Auth     | Purpose                  |
+| --------------------------------- | ------ | -------- | ------------------------ |
+| `/api/whatsapp/send`              | POST   | API Key  | Send direct message      |
+| `/api/whatsapp/scheduled-summary` | GET    | Cron Key | Send scheduled summaries |
+| `/api/whatsapp/ad-errors`         | GET    | Cron Key | Send ad error alerts     |
+| `/api/whatsapp/ad-errors`         | POST   | API Key  | Log new error            |
+| `/api/whatsapp/ad-errors`         | PATCH  | API Key  | Mark error resolved      |

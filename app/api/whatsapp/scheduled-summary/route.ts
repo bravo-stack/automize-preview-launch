@@ -11,8 +11,8 @@ import { NextRequest, NextResponse } from 'next/server'
 // Cron endpoint that sends scheduled WhatsApp summaries to media buyers
 // Lists clients that need to be responded to based on communication_reports
 //
-// Called by: Vercel Cron or external scheduler
-// Schedule: Every hour (checks which schedules should fire)
+// Called by: Private server cron job (hourly)
+// Auth: Cron secret key in query params
 // ============================================================================
 
 export async function GET(request: NextRequest) {
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Get current time info for schedule matching
+    // Note: Comparing UTC time to schedule.time since DB default timezone is UTC
     const now = new Date()
     const currentHour = now.getUTCHours()
     const currentMinute = now.getUTCMinutes()

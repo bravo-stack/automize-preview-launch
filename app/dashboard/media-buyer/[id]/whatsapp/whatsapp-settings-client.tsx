@@ -85,7 +85,7 @@ export default function WhatsAppSettingsClient({
       pod_name: podName,
       frequency: data.frequency,
       time: data.time,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone: 'UTC', // All schedules use UTC timezone (convert in UI if needed)
       days_of_week: data.daysOfWeek,
       custom_message: data.customMessage,
     })
@@ -173,7 +173,7 @@ interface ScheduleCardProps {
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function ScheduleCard({ schedule, onToggle, onDelete }: ScheduleCardProps) {
-  const daysDisplay = (schedule.schedule?.days_of_week || [])
+  const daysDisplay = (schedule.days_of_week || [])
     .map((d) => DAYS[d])
     .join(', ')
 
@@ -194,8 +194,7 @@ function ScheduleCard({ schedule, onToggle, onDelete }: ScheduleCardProps) {
               }`}
             />
             <span className="font-medium capitalize">
-              {schedule.schedule?.frequency || 'daily'} at{' '}
-              {schedule.schedule?.time || '09:00'}
+              {schedule.frequency || 'daily'} at {schedule.time || '09:00'} UTC
             </span>
           </div>
           {daysDisplay && (
@@ -311,7 +310,7 @@ function AddScheduleButton({ onAdd }: AddScheduleButtonProps) {
 
         {/* Time */}
         <div className="mb-4">
-          <label className="mb-1 block text-sm text-zinc-400">Time</label>
+          <label className="mb-1 block text-sm text-zinc-400">Time (UTC)</label>
           <input
             type="time"
             value={formData.time}
@@ -320,6 +319,9 @@ function AddScheduleButton({ onAdd }: AddScheduleButtonProps) {
             }
             className="w-full rounded-md border border-zinc-700 bg-night-midnight px-3 py-2 text-white"
           />
+          <p className="mt-1 text-xs text-zinc-500">
+            Schedule runs in UTC timezone
+          </p>
         </div>
 
         {/* Days of Week (for weekly/custom) */}
