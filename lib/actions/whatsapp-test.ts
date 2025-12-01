@@ -68,6 +68,13 @@ export async function runTestWhatsAppJob(
       .gt('days_since_ixm_message', 1) // More than 1 day since team response
       .order('days_since_ixm_message', { ascending: false })
 
+    console.log('📊 Debug - Communication Reports:', {
+      today,
+      serverIds,
+      totalReports: reports?.length || 0,
+      reports: reports?.slice(0, 5), // Show first 5
+    })
+
     const clientsNeedingResponse = (reports || []).map(
       (r) => `${r.channel_name} (${r.days_since_ixm_message}d)`,
     )
