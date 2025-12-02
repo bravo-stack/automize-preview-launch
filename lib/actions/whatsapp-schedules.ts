@@ -3,10 +3,6 @@
 import { createAdminClient } from '@/lib/db/admin'
 import type { WhatsAppSchedule, WhatsAppScheduleInput } from '@/types/whatsapp'
 
-// ============================================================================
-// WhatsApp Schedule Server Actions
-// ============================================================================
-
 /**
  * Get all WhatsApp schedules for a pod
  */

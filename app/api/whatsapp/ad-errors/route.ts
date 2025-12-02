@@ -1,13 +1,12 @@
 import { sendWhatsAppMessage } from '@/lib/actions/whatsapp'
 import { createAdminClient } from '@/lib/db/admin'
-import { formatAdErrorMessage } from '@/lib/utils/whatsapp-formatters'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ============================================================================
 // GET /api/whatsapp/ad-errors
 // ============================================================================
-// Daily cron that alerts media buyers AND clients about ad account errors
-// Keeps alerting daily until the error is resolved
+// Daily cron that alerts media buyers about sheet refresh errors
+// Detects errors from refresh_snapshot_metrics table where is_error = true
 //
 // Called by: Private server cron job (daily at 9 AM UTC)
 // Auth: Cron secret key in query params
@@ -23,21 +22,14 @@ export async function GET(request: NextRequest) {
   const db = createAdminClient()
 
   try {
-    // Fetch all unresolved ad account errors with client info
-    const { data: errors, error: fetchError } = await db
-      .from('ad_account_errors')
+    // Fetch refresh snapshot metrics with errors from the database
+    const { data: sheetData, error: fetchError } = await db
+      .from('refresh_snapshot_metrics')
       .select(
-        `
-        *,
-        client:client_id(
-          id,
-          brand,
-          phone_number,
-          pod
-        )
-      `,
+        'id, snapshot_id, is_error, error_detail, pod (name, whatsapp_number), sheet_refresh_snapshots(sheet_id, data_preset, refresh_type, snapshot_date)',
       )
-      .eq('is_resolved', false)
+      .eq('is_error', true)
+      .order('created_at', { ascending: false })
 
     if (fetchError) {
       console.error('Error fetching ad errors:', fetchError)
@@ -47,75 +39,53 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!errors || errors.length === 0) {
+    if (!sheetData || sheetData.length === 0) {
       return NextResponse.json({ message: 'No unresolved ad errors' })
     }
 
-    const now = new Date()
     const results: {
-      brand: string
+      podName: string
+      sheetType: string
+      dataPreset: string
       mediaBuyerNotified: boolean
-      clientNotified: boolean
-      daysSinceDetected: number
+      sheetId: string
     }[] = []
 
-    for (const error of errors) {
-      const client = error.client
-      if (!client) continue
+    for (const sheet of sheetData) {
+      const pod = Array.isArray(sheet.pod) ? sheet.pod[0] : sheet.pod
+      const sheetSnapshot = Array.isArray(sheet.sheet_refresh_snapshots)
+        ? sheet.sheet_refresh_snapshots[0]
+        : sheet.sheet_refresh_snapshots
 
-      // Calculate days since error was first detected
-      const firstDetected = new Date(error.first_detected_at)
-      const daysSinceDetected = Math.floor(
-        (now.getTime() - firstDetected.getTime()) / (1000 * 60 * 60 * 24),
-      )
+      if (!pod || !sheetSnapshot) continue
 
-      // Format the alert message
-      const message = formatAdErrorMessage(
-        client.brand,
-        error.error_type,
-        daysSinceDetected,
-      )
+      // Format the error message
+      const errorMessage = `Ad Account Error for ${sheetSnapshot.refresh_type === 'autometric' ? 'Facebook' : 'Finance'}-${sheetSnapshot.data_preset} Sheet
+
+Pod: ${pod.name}
+Google Sheet ID: ${sheetSnapshot.sheet_id}
+Date Refreshed: ${sheetSnapshot.snapshot_date}
+Error Details: ${sheet.error_detail || 'See sheet for details'}
+
+Please check and resolve the issue.`
 
       let mediaBuyerNotified = false
-      let clientNotified = false
 
-      // Get pod info for the client (pod is stored as name text)
-      let podWhatsAppNumber: string | null = null
-      if (client.pod) {
-        const { data: podData } = await db
-          .from('pod')
-          .select('whatsapp_number')
-          .eq('name', client.pod)
-          .single()
-        podWhatsAppNumber = podData?.whatsapp_number || null
-      }
-
-      // Alert the media buyer (pod)
-      if (podWhatsAppNumber) {
-        const mbResult = await sendWhatsAppMessage(podWhatsAppNumber, message)
+      // Alert the media buyer (pod) via WhatsApp
+      if (pod.whatsapp_number) {
+        const mbResult = await sendWhatsAppMessage(
+          pod.whatsapp_number,
+          errorMessage,
+        )
         mediaBuyerNotified = mbResult.success
       }
 
-      // Alert the client (if they have a phone number)
-      if (client.phone_number) {
-        const clientResult = await sendWhatsAppMessage(
-          client.phone_number,
-          message,
-        )
-        clientNotified = clientResult.success
-      }
-
-      // Update last_alerted_at
-      await db
-        .from('ad_account_errors')
-        .update({ last_alerted_at: now.toISOString() })
-        .eq('id', error.id)
-
       results.push({
-        brand: client.brand,
+        podName: pod.name,
+        sheetType: sheetSnapshot.refresh_type,
+        dataPreset: sheetSnapshot.data_preset,
         mediaBuyerNotified,
-        clientNotified,
-        daysSinceDetected,
+        sheetId: sheetSnapshot.sheet_id,
       })
     }
 
@@ -136,7 +106,7 @@ export async function GET(request: NextRequest) {
 // ============================================================================
 // POST /api/whatsapp/ad-errors
 // ============================================================================
-// Manually log a new ad account error (called from other parts of the app)
+// Manually trigger ad error detection and alerts for a specific pod
 // ============================================================================
 
 export async function POST(request: NextRequest) {
@@ -147,61 +117,86 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { client_id, error_type, error_message } = body
+    const { pod_name } = body
 
-    if (!client_id || !error_type) {
+    if (!pod_name) {
       return NextResponse.json(
-        { error: 'Missing required fields: client_id, error_type' },
+        { error: 'Missing required field: pod_name' },
         { status: 400 },
       )
     }
 
     const db = createAdminClient()
 
-    // Check if this error already exists (upsert logic)
-    const { data: existing } = await db
-      .from('ad_account_errors')
-      .select('id')
-      .eq('client_id', client_id)
-      .eq('error_type', error_type)
-      .eq('is_resolved', false)
-      .single()
+    // Fetch refresh snapshot metrics with errors for the specific pod
+    const { data: sheetData, error: fetchError } = await db
+      .from('refresh_snapshot_metrics')
+      .select(
+        'id, snapshot_id, is_error, error_detail, pod (name, whatsapp_number), sheet_refresh_snapshots(sheet_id, data_preset, refresh_type, snapshot_date)',
+      )
+      .eq('is_error', true)
+      .eq('pod.name', pod_name)
+      .order('created_at', { ascending: false })
 
-    if (existing) {
-      // Error already tracked, just update the message
-      await db
-        .from('ad_account_errors')
-        .update({ error_message })
-        .eq('id', existing.id)
-
-      return NextResponse.json({
-        message: 'Error already tracked',
-        id: existing.id,
-      })
-    }
-
-    // Insert new error
-    const { data: newError, error: insertError } = await db
-      .from('ad_account_errors')
-      .insert({
-        client_id,
-        error_type,
-        error_message: error_message || error_type,
-      })
-      .select()
-      .single()
-
-    if (insertError) {
-      console.error('Error inserting ad error:', insertError)
+    if (fetchError) {
+      console.error('Error fetching ad errors:', fetchError)
       return NextResponse.json(
-        { error: 'Failed to log error' },
+        { error: 'Failed to fetch errors' },
         { status: 500 },
       )
     }
 
+    if (!sheetData || sheetData.length === 0) {
+      return NextResponse.json({
+        message: 'No ad errors found for this pod',
+        pod_name,
+      })
+    }
+
+    const results: {
+      sheetType: string
+      dataPreset: string
+      notified: boolean
+    }[] = []
+
+    for (const sheet of sheetData) {
+      const pod = Array.isArray(sheet.pod) ? sheet.pod[0] : sheet.pod
+      const sheetSnapshot = Array.isArray(sheet.sheet_refresh_snapshots)
+        ? sheet.sheet_refresh_snapshots[0]
+        : sheet.sheet_refresh_snapshots
+
+      if (!pod || !sheetSnapshot) continue
+
+      const errorMessage = `Ad Account Error for ${sheetSnapshot.refresh_type === 'autometric' ? 'Facebook' : 'Finance'}-${sheetSnapshot.data_preset} Sheet
+
+Pod: ${pod.name}
+Google Sheet ID: ${sheetSnapshot.sheet_id}
+Date Refreshed: ${sheetSnapshot.snapshot_date}
+Error Details: ${sheet.error_detail || 'See sheet for details'}
+
+Please check and resolve the issue.`
+
+      let notified = false
+      if (pod.whatsapp_number) {
+        const result = await sendWhatsAppMessage(
+          pod.whatsapp_number,
+          errorMessage,
+        )
+        notified = result.success
+      }
+
+      results.push({
+        sheetType: sheetSnapshot.refresh_type,
+        dataPreset: sheetSnapshot.data_preset,
+        notified,
+      })
+    }
+
     return NextResponse.json({
-      message: 'Error logged successfully',
-      id: newError.id,
+      message: 'Ad errors processed for pod',
+      pod_name,
+      errorCount: results.length,
+      results,
     })
   } catch (error) {
     console.error('POST ad-errors error:', error)
@@ -215,7 +210,7 @@ export async function POST(request: NextRequest) {
 // ============================================================================
 // PATCH /api/whatsapp/ad-errors
 // ============================================================================
-// Mark an ad account error as resolved
+// Mark ad account errors as resolved (update is_error flag)
 // ============================================================================
 
 export async function PATCH(request: NextRequest) {
@@ -226,28 +221,26 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { error_id, client_id, error_type } = body
+    const { snapshot_id, metric_id } = body
+
+    if (!snapshot_id && !metric_id) {
+      return NextResponse.json(
+        { error: 'Provide snapshot_id or metric_id' },
+        { status: 400 },
+      )
+    }
 
     const db = createAdminClient()
 
-    // Can resolve by error_id OR by client_id + error_type
-    let query = db.from('ad_account_errors').update({
-      is_resolved: true,
-      resolved_at: new Date().toISOString(),
+    let query = db.from('refresh_snapshot_metrics').update({
+      is_error: false,
+      error_detail: null,
     })
 
-    if (error_id) {
-      query = query.eq('id', error_id)
-    } else if (client_id && error_type) {
-      query = query
-        .eq('client_id', client_id)
-        .eq('error_type', error_type)
-        .eq('is_resolved', false)
-    } else {
-      return NextResponse.json(
-        { error: 'Provide error_id or (client_id + error_type)' },
-        { status: 400 },
-      )
+    if (metric_id) {
+      query = query.eq('id', metric_id)
+    } else if (snapshot_id) {
+      query = query.eq('snapshot_id', snapshot_id)
     }
 
     const { error: updateError } = await query

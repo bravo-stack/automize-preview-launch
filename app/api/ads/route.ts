@@ -225,7 +225,8 @@ export async function POST(request: NextRequest) {
         ]
 
         const isErrorPod = (pod: string): boolean => {
-          return errorPatterns.some((pattern) => pattern.test(pod))
+          const cleanPod = pod.trim().replace(/\s+/g, ' ')
+          return errorPatterns.some((pattern) => pattern.test(cleanPod))
         }
 
         const metricsToSave = enrichedData.map((item) => {

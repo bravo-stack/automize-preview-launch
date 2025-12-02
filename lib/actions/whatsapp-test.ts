@@ -1,11 +1,9 @@
 'use server'
 
 import { createAdminClient } from '@/lib/db/admin'
-import {
-  formatAdErrorMessage,
-  formatSummaryMessage,
-} from '@/lib/utils/whatsapp-formatters'
+import { formatSummaryMessage } from '@/lib/utils/whatsapp-formatters'
 import { sendWhatsAppMessage } from './whatsapp'
+import { createSchedule } from './whatsapp-schedules'
 
 // ============================================================================
 // Test WhatsApp Job - Sends all notifications to hardcoded test number
@@ -68,7 +66,7 @@ export async function runTestWhatsAppJob(
       //   .gt('days_since_ixm_message', 1) // More than 1 day since team response
       .in('status', [
         'Client responded - awaiting team reply',
-        `IXM didn't reach out for 48 hours`,
+        // `IXM didn't reach out for 48 hours`,
       ])
       .order('days_since_ixm_message', { ascending: false })
 
@@ -96,6 +94,16 @@ export async function runTestWhatsAppJob(
     // 2. AD ACCOUNT ERRORS - Alert about unresolved errors
     // ========================================================================
 
+    // fetch refreshed sheet from db
+    const { data: sheetData } = await db
+      .from('refresh_snapshot_metrics')
+      .select(
+        'id, snapshot_id, is_error, error_detail, pod (name), sheet_refresh_snapshots(sheet_id, data_preset, refresh_type, snapshot_date)',
+      )
+      .eq('is_error', true)
+      .eq('pod.name', podName)
+      .order('created_at', { ascending: false })
+
     // Fetch clients associated with this pod
     const { data: clients } = await db
       .from('client')
@@ -104,48 +112,30 @@ export async function runTestWhatsAppJob(
 
     const clientIds = (clients || []).map((c) => c.id)
 
-    if (clientIds.length > 0) {
-      // Fetch unresolved ad errors for these clients
-      const { data: errors } = await db
-        .from('ad_account_errors')
-        .select(
-          `
-          *,
-          client:client_id(
-            id,
-            brand,
-            phone_number,
-            pod
-          )
-        `,
-        )
-        .in('client_id', clientIds)
-        .eq('is_resolved', false)
+    if (sheetData && sheetData.length > 0) {
+      for (const sheet of sheetData) {
+        const pod = Array.isArray(sheet.pod) ? sheet.pod[0] : sheet.pod
+        const sheetSnapshot = Array.isArray(sheet.sheet_refresh_snapshots)
+          ? sheet.sheet_refresh_snapshots[0]
+          : sheet.sheet_refresh_snapshots
 
-      if (errors && errors.length > 0) {
-        const now = new Date()
-
-        for (const error of errors) {
-          const client = error.client
-          if (!client) continue
-
-          const firstDetected = new Date(error.first_detected_at)
-          const daysSinceDetected = Math.floor(
-            (now.getTime() - firstDetected.getTime()) / (1000 * 60 * 60 * 24),
-          )
-
-          const errorMessage = formatAdErrorMessage(
-            client.brand,
-            error.error_type,
-            daysSinceDetected,
-          )
+        if (sheet.is_error) {
+          const { success } = await createSchedule({
+            pod_name: pod.name,
+            frequency: 'daily',
+            time: '09:00',
+            timezone: 'UTC',
+            custom_message: 'Check the following add account error',
+            is_active: true,
+          })
+          const errorMessage = `Ad Account Error for ${sheetSnapshot.refresh_type === 'autometric' ? 'Facebook' : 'Finance'}-${sheetSnapshot.data_preset} Sheet; With Details As Follows. \n\n\nPod: ${pod.name}.\nGoogle Sheet ID: ${sheetSnapshot.sheet_id}.Date Refreshed: ${sheetSnapshot.snapshot_date} `
 
           const errorResult = await sendWhatsAppMessage(
             TEST_NUMBER,
             errorMessage,
           )
           results.push({
-            type: `Ad Error - ${client.brand}`,
+            type: `Ad Error - ${sheetSnapshot.refresh_type}`,
             sent: errorResult.success,
             preview:
               errorMessage.substring(0, 100) +
@@ -153,14 +143,23 @@ export async function runTestWhatsAppJob(
             error: errorResult.error,
           })
           if (errorResult.success) messagesSent++
+        } else {
+          const { success } = await createSchedule({
+            pod_name: pod.name,
+            frequency: 'daily',
+            time: '09:00',
+            timezone: 'UTC',
+            custom_message: 'Check the following add account error',
+            is_active: false,
+          })
         }
-      } else {
-        results.push({
-          type: 'Ad Errors',
-          sent: true,
-          preview: 'No unresolved ad account errors',
-        })
       }
+    } else {
+      results.push({
+        type: 'Ad Errors',
+        sent: true,
+        preview: 'No unresolved ad account errors',
+      })
     }
 
     return {
