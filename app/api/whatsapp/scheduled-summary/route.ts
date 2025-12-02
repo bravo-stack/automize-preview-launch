@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
 
       // Format and send the message
       const message = formatSummaryMessage(
-        schedule.custom_message || 'Clients needing response:',
+        `Late Response Alert!\n\nClients needing response:`,
         clientsNeedingResponse,
       )
 

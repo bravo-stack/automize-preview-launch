@@ -60,7 +60,9 @@ export async function runTestWhatsAppJob(
 
     const { data: reports } = await db
       .from('communication_reports')
-      .select('channel_name, days_since_ixm_message, guild_name')
+      .select(
+        'channel_name, days_since_ixm_message, guild_name, guild_id, category_name',
+      )
       //   .eq('report_date', today)
       .in('guild_id', serverIds)
       //   .gt('days_since_ixm_message', 1) // More than 1 day since team response
@@ -68,10 +70,15 @@ export async function runTestWhatsAppJob(
         'Client responded - awaiting team reply',
         // `IXM didn't reach out for 48 hours`,
       ])
+      .limit(20)
       .order('days_since_ixm_message', { ascending: false })
 
+    // const uniquePods = Array.from(
+    //   new Map(reports?.map((p) => [p.guild_id, p]) || []).values(),
+    // )
+
     const clientsNeedingResponse = (reports || []).map(
-      (r) => `${r.channel_name} (${r.days_since_ixm_message}d)`,
+      (r) => `${r?.category_name ?? 'category name'} - ${r?.guild_name ?? ''}`,
     )
 
     const summaryMessage = formatSummaryMessage(
