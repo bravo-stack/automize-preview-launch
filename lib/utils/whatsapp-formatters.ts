@@ -9,7 +9,7 @@ export function formatSummaryMessage(
   clients: string[],
 ): string {
   if (clients.length === 0) {
-    return `${customMessage}\n\n✅ All clients have been responded to!`
+    return `${customMessage}\n\n All clients have been responded to!`
   }
 
   const clientList = clients.map((client) => `• ${client}`).join('\n')

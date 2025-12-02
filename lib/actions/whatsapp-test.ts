@@ -63,24 +63,21 @@ export async function runTestWhatsAppJob(
     const { data: reports } = await db
       .from('communication_reports')
       .select('channel_name, days_since_ixm_message, guild_name')
-      .eq('report_date', today)
+      //   .eq('report_date', today)
       .in('guild_id', serverIds)
-      .gt('days_since_ixm_message', 1) // More than 1 day since team response
+      //   .gt('days_since_ixm_message', 1) // More than 1 day since team response
+      .in('status', [
+        'Client responded - awaiting team reply',
+        `IXM didn't reach out for 48 hours`,
+      ])
       .order('days_since_ixm_message', { ascending: false })
-
-    console.log('📊 Debug - Communication Reports:', {
-      today,
-      serverIds,
-      totalReports: reports?.length || 0,
-      reports: reports?.slice(0, 5), // Show first 5
-    })
 
     const clientsNeedingResponse = (reports || []).map(
       (r) => `${r.channel_name} (${r.days_since_ixm_message}d)`,
     )
 
     const summaryMessage = formatSummaryMessage(
-      '📋 DAILY SUMMARY - Clients needing response:',
+      'DAILY SUMMARY - Clients needing response:',
       clientsNeedingResponse,
     )
 
@@ -161,7 +158,7 @@ export async function runTestWhatsAppJob(
         results.push({
           type: 'Ad Errors',
           sent: true,
-          preview: '✅ No unresolved ad account errors',
+          preview: 'No unresolved ad account errors',
         })
       }
     }

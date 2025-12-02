@@ -13,26 +13,32 @@ import type {
   WhatsAppSchedule,
 } from '@/types/whatsapp'
 import { useState } from 'react'
-
-// ============================================================================
-// Types
-// ============================================================================
-
 interface WhatsAppSettingsClientProps {
   podName: string
   initialWhatsAppNumber: string | null
   initialSchedules: WhatsAppSchedule[]
 }
-
-// ============================================================================
-// Main Component
-// ============================================================================
+interface AddScheduleButtonProps {
+  onAdd: (data: {
+    frequency: ScheduleFrequency
+    time: string
+    daysOfWeek: DayOfWeek[]
+    customMessage: string
+  }) => Promise<void>
+}
+interface ScheduleCardProps {
+  schedule: WhatsAppSchedule
+  onToggle: () => void
+  onDelete: () => void
+}
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export default function WhatsAppSettingsClient({
   podName,
   initialWhatsAppNumber,
   initialSchedules,
 }: WhatsAppSettingsClientProps) {
+  // STATES
   const [whatsappNumber, setWhatsappNumber] = useState(
     initialWhatsAppNumber || '',
   )
@@ -46,7 +52,7 @@ export default function WhatsAppSettingsClient({
     results: { type: string; sent: boolean; preview: string; error?: string }[]
   } | null>(null)
 
-  // Handle test job
+  // HANDLERS
   const handleTestJob = async () => {
     setIsTestRunning(true)
     setTestResults(null)
@@ -57,8 +63,6 @@ export default function WhatsAppSettingsClient({
       results: result.results,
     })
   }
-
-  // Handle WhatsApp number save
   const handleSaveNumber = async () => {
     setIsSavingNumber(true)
     const result = await updatePodWhatsAppNumber(podName, whatsappNumber)
@@ -71,8 +75,6 @@ export default function WhatsAppSettingsClient({
       alert(result.error || 'Failed to save')
     }
   }
-
-  // Handle schedule toggle
   const handleToggle = async (id: string, currentState: boolean) => {
     const result = await toggleScheduleActive(id, !currentState)
     if (result.success) {
@@ -81,8 +83,6 @@ export default function WhatsAppSettingsClient({
       )
     }
   }
-
-  // Handle schedule delete
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this schedule?')) return
 
@@ -91,8 +91,6 @@ export default function WhatsAppSettingsClient({
       setSchedules((prev) => prev.filter((s) => s.id !== id))
     }
   }
-
-  // Handle new schedule creation
   const handleCreateSchedule = async (data: {
     frequency: ScheduleFrequency
     time: string
@@ -120,7 +118,7 @@ export default function WhatsAppSettingsClient({
       {/* Test Job Section */}
       <section className="rounded-lg border border-amber-800 bg-amber-950/20 p-6">
         <h2 className="mb-2 text-lg font-semibold text-amber-400">
-          🧪 Test WhatsApp Job
+          Test WhatsApp Job
         </h2>
         <p className="mb-4 text-sm text-amber-200/70">
           Test all WhatsApp notifications. Messages will be sent to:{' '}
@@ -140,7 +138,7 @@ export default function WhatsAppSettingsClient({
         {testResults && (
           <div className="mt-4 space-y-2 rounded-md border border-amber-700 bg-amber-950/30 p-4">
             <div className="mb-3 text-sm font-medium text-amber-300">
-              ✅ Job Complete - {testResults.messagesSent} message
+              Job Complete - {testResults.messagesSent} message
               {testResults.messagesSent !== 1 ? 's' : ''} sent
             </div>
             {testResults.results.map((result, index) => (
@@ -230,18 +228,7 @@ export default function WhatsAppSettingsClient({
   )
 }
 
-// ============================================================================
-// Schedule Card Component
-// ============================================================================
-
-interface ScheduleCardProps {
-  schedule: WhatsAppSchedule
-  onToggle: () => void
-  onDelete: () => void
-}
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
+// HANDLERS
 function ScheduleCard({ schedule, onToggle, onDelete }: ScheduleCardProps) {
   const daysDisplay = (schedule.days_of_week || [])
     .map((d) => DAYS[d])
@@ -297,20 +284,8 @@ function ScheduleCard({ schedule, onToggle, onDelete }: ScheduleCardProps) {
   )
 }
 
-// ============================================================================
-// Add Schedule Button/Modal
-// ============================================================================
-
-interface AddScheduleButtonProps {
-  onAdd: (data: {
-    frequency: ScheduleFrequency
-    time: string
-    daysOfWeek: DayOfWeek[]
-    customMessage: string
-  }) => Promise<void>
-}
-
 function AddScheduleButton({ onAdd }: AddScheduleButtonProps) {
+  // STATES
   const [isOpen, setIsOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
@@ -320,6 +295,7 @@ function AddScheduleButton({ onAdd }: AddScheduleButtonProps) {
     customMessage: 'Please respond to these clients today:',
   })
 
+  // HANDLERS
   const handleSubmit = async () => {
     setIsSubmitting(true)
     await onAdd(formData)
@@ -333,7 +309,6 @@ function AddScheduleButton({ onAdd }: AddScheduleButtonProps) {
       customMessage: 'Please respond to these clients today:',
     })
   }
-
   const toggleDay = (day: DayOfWeek) => {
     setFormData((prev) => ({
       ...prev,

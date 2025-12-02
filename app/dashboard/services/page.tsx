@@ -49,6 +49,7 @@ const OMNISEND_ENDPOINTS: { key: OmnisendEndpoint; label: string }[] = [
 ]
 
 export default function ServicesPage() {
+  // STATES
   const [syncState, setSyncState] = useState<
     Record<OmnisendEndpoint, SyncResult>
   >({
@@ -58,11 +59,11 @@ export default function ServicesPage() {
     automations: { status: 'idle' },
     campaigns: { status: 'idle' },
   })
-
   const [shopifyThemesState, setShopifyThemesState] = useState<SyncResult>({
     status: 'idle',
   })
 
+  // HANDLERS
   async function syncEndpoint(endpoint: OmnisendEndpoint) {
     setSyncState((prev) => ({
       ...prev,
@@ -111,7 +112,6 @@ export default function ServicesPage() {
       }))
     }
   }
-
   async function syncShopifyThemes() {
     setShopifyThemesState({
       status: 'loading',
@@ -180,6 +180,7 @@ export default function ServicesPage() {
     }
   }
 
+  // DATA INIT
   const isSyncing =
     Object.values(syncState).some((s) => s.status === 'loading') ||
     shopifyThemesState.status === 'loading'
