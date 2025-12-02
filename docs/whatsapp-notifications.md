@@ -45,6 +45,9 @@ GET /api/whatsapp/scheduled-summary?key=YOUR_CRON_KEY
 
 # Ad error alerts (runs daily at 9 AM UTC)
 GET /api/whatsapp/ad-errors?key=YOUR_CRON_KEY
+
+# Late response alerts (runs every 15 minutes during work hours)
+GET /api/whatsapp/late-response?key=YOUR_CRON_KEY
 ```
 
 Example cron schedule:
@@ -52,6 +55,7 @@ Example cron schedule:
 ```
 0 * * * * curl "https://your-domain.com/api/whatsapp/scheduled-summary?key=YOUR_CRON_KEY"
 0 9 * * * curl "https://your-domain.com/api/whatsapp/ad-errors?key=YOUR_CRON_KEY"
+*/15 9-17 * * 1-5 curl "https://your-domain.com/api/whatsapp/late-response?key=YOUR_CRON_KEY"
 ```
 
 ---
@@ -69,6 +73,13 @@ Example cron schedule:
 - Notifies media buyer + client when ad account errors occur
 - Daily alerts until marked as resolved
 - Tracks error duration and urgency
+
+**Late Response Alerts** 🆕
+
+- Monitors client messages and alerts if no team response within 1 hour
+- Only fires during work hours (Mon-Fri 9 AM - 5 PM UTC)
+- Stateless: queries `communication_reports` directly each run
+- Configurable threshold: 1 hour (production) / 30 seconds (test mode)
 
 **Direct Messages**
 
@@ -121,10 +132,11 @@ await sendWhatsAppMessage('+1234567890', 'Hello!')
 
 ## API Reference
 
-| Endpoint                          | Method | Auth     | Purpose                  |
-| --------------------------------- | ------ | -------- | ------------------------ |
-| `/api/whatsapp/send`              | POST   | API Key  | Send direct message      |
-| `/api/whatsapp/scheduled-summary` | GET    | Cron Key | Send scheduled summaries |
-| `/api/whatsapp/ad-errors`         | GET    | Cron Key | Send ad error alerts     |
-| `/api/whatsapp/ad-errors`         | POST   | API Key  | Log new error            |
-| `/api/whatsapp/ad-errors`         | PATCH  | API Key  | Mark error resolved      |
+| Endpoint                          | Method | Auth     | Purpose                   |
+| --------------------------------- | ------ | -------- | ------------------------- |
+| `/api/whatsapp/send`              | POST   | API Key  | Send direct message       |
+| `/api/whatsapp/scheduled-summary` | GET    | Cron Key | Send scheduled summaries  |
+| `/api/whatsapp/ad-errors`         | GET    | Cron Key | Send ad error alerts      |
+| `/api/whatsapp/ad-errors`         | POST   | API Key  | Log new error             |
+| `/api/whatsapp/ad-errors`         | PATCH  | API Key  | Mark error resolved       |
+| `/api/whatsapp/late-response`     | GET    | Cron Key | Send late response alerts |

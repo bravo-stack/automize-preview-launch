@@ -9,7 +9,7 @@ import { createSchedule } from './whatsapp-schedules'
 // Test WhatsApp Job - Sends all notifications to hardcoded test number
 // ============================================================================
 
-const TEST_NUMBER = '+2349048188177'
+// const TEST_NUMBER = '+2349048188177'
 
 interface TestJobResult {
   success: boolean
@@ -33,7 +33,7 @@ export async function runTestWhatsAppJob(
     // Get pod info
     const { data: pod } = await db
       .from('pod')
-      .select('name, servers')
+      .select('name, servers, whatsapp_number')
       .eq('name', podName)
       .single()
 
@@ -86,7 +86,10 @@ export async function runTestWhatsAppJob(
       clientsNeedingResponse,
     )
 
-    const summaryResult = await sendWhatsAppMessage(TEST_NUMBER, summaryMessage)
+    const summaryResult = await sendWhatsAppMessage(
+      pod?.whatsapp_number,
+      summaryMessage,
+    )
     results.push({
       type: 'Scheduled Summary',
       sent: summaryResult.success,
@@ -98,14 +101,85 @@ export async function runTestWhatsAppJob(
     if (summaryResult.success) messagesSent++
 
     // ========================================================================
-    // 2. AD ACCOUNT ERRORS - Alert about unresolved errors
+    // 2. LATE RESPONSE ALERTS - Channels needing urgent response
+    // ========================================================================
+
+    const now = new Date()
+    const ALERT_THRESHOLD_HOURS = 1 // 1 hour threshold
+
+    const { data: lateReports } = await db
+      .from('communication_reports')
+      .select('*')
+      .eq('report_date', today)
+      .in('guild_id', serverIds)
+      .eq('status', 'Client responded - awaiting team reply')
+      .order('days_since_ixm_message', { ascending: false })
+      .limit(10)
+
+    const lateResponseAlerts: string[] = []
+
+    for (const report of lateReports || []) {
+      let hoursSinceResponse = 0
+
+      if (report.last_ixm_message_at) {
+        hoursSinceResponse =
+          (now.getTime() - new Date(report.last_ixm_message_at).getTime()) /
+          (1000 * 60 * 60)
+      } else if (report.days_since_ixm_message !== null) {
+        hoursSinceResponse = report.days_since_ixm_message * 24
+      }
+
+      if (hoursSinceResponse >= ALERT_THRESHOLD_HOURS) {
+        lateResponseAlerts.push(
+          `${report.channel_name || 'Unknown'} - ${hoursSinceResponse.toFixed(1)}h (${report.guild_name || 'Unknown'})`,
+        )
+      }
+    }
+
+    if (lateResponseAlerts.length > 0) {
+      const lateResponseMessage = [
+        '🚨 *LATE RESPONSE ALERTS*',
+        '',
+        `*Pod:* ${pod.name}`,
+        `*Threshold:* ${ALERT_THRESHOLD_HOURS} hour(s)`,
+        '',
+        '*Channels needing urgent response:*',
+        ...lateResponseAlerts.map((alert) => `• ${alert}`),
+        '',
+        '_Please respond immediately._',
+      ].join('\n')
+
+      const lateResponseResult = await sendWhatsAppMessage(
+        pod?.whatsapp_number,
+        lateResponseMessage,
+      )
+
+      results.push({
+        type: 'Late Response Alerts',
+        sent: lateResponseResult.success,
+        preview:
+          lateResponseMessage.substring(0, 100) +
+          (lateResponseMessage.length > 100 ? '...' : ''),
+        error: lateResponseResult.error,
+      })
+      if (lateResponseResult.success) messagesSent++
+    } else {
+      results.push({
+        type: 'Late Response Alerts',
+        sent: true,
+        preview: 'No late responses detected',
+      })
+    }
+
+    // ========================================================================
+    // 3. AD ACCOUNT ERRORS - Alert about unresolved errors
     // ========================================================================
 
     // fetch refreshed sheet from db
     const { data: sheetData } = await db
       .from('refresh_snapshot_metrics')
       .select(
-        'id, snapshot_id, is_error, error_detail, pod (name), sheet_refresh_snapshots(sheet_id, data_preset, refresh_type, snapshot_date)',
+        'id, snapshot_id, is_error, error_detail, pod (name, whatsapp_number), sheet_refresh_snapshots(sheet_id, data_preset, refresh_type, snapshot_date)',
       )
       .eq('is_error', true)
       .eq('pod.name', podName)
@@ -138,7 +212,7 @@ export async function runTestWhatsAppJob(
           const errorMessage = `Ad Account Error for ${sheetSnapshot.refresh_type === 'autometric' ? 'Facebook' : 'Finance'}-${sheetSnapshot.data_preset} Sheet; With Details As Follows. \n\n\nPod: ${pod.name}.\nGoogle Sheet ID: ${sheetSnapshot.sheet_id}.Date Refreshed: ${sheetSnapshot.snapshot_date} `
 
           const errorResult = await sendWhatsAppMessage(
-            TEST_NUMBER,
+            pod?.whatsapp_number,
             errorMessage,
           )
           results.push({
