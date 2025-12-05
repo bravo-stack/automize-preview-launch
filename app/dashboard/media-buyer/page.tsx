@@ -52,7 +52,7 @@ export default async function MediaBuyerPage() {
               {pods.map((pod) => (
                 <li key={pod.id}>
                   <Link
-                    href={`/dashboard/media-buyer/${pod.user_id}/whatsapp`}
+                    href={`/dashboard/media-buyer/${pod.id}/whatsapp`}
                     className="block rounded-lg border border-zinc-800 bg-night-starlit p-4 transition-all hover:border-zinc-700 hover:bg-zinc-900/50"
                   >
                     <div className="flex items-center justify-between">

@@ -1,49 +1,64 @@
 'use client'
 
 import {
-  createSchedule,
-  deleteSchedule,
-  toggleScheduleActive,
+  toggleConfigActive,
   updatePodWhatsAppNumber,
-} from '@/lib/actions/whatsapp-schedules'
+  upsertConfig,
+} from '@/lib/actions/pod-whatsapp-configs'
 import { runTestWhatsAppJob } from '@/lib/actions/whatsapp-test'
-import type {
-  DayOfWeek,
-  ScheduleFrequency,
-  WhatsAppSchedule,
-} from '@/types/whatsapp'
+import type { PodWhatsAppConfig, WaFeatureType } from '@/types/whatsapp'
 import { useState } from 'react'
+
 interface WhatsAppSettingsClientProps {
   podName: string
   initialWhatsAppNumber: string | null
-  initialSchedules: WhatsAppSchedule[]
+  initialConfigs: PodWhatsAppConfig[]
+  podServers: string[]
+  podWhatsappNumber: string | null
 }
-interface AddScheduleButtonProps {
-  onAdd: (data: {
-    frequency: ScheduleFrequency
-    time: string
-    daysOfWeek: DayOfWeek[]
-    customMessage: string
-  }) => Promise<void>
+
+interface FeatureConfigCardProps {
+  podName: string
+  featureType: WaFeatureType
+  config: PodWhatsAppConfig | undefined
+  onUpdate: (config: PodWhatsAppConfig) => void
 }
-interface ScheduleCardProps {
-  schedule: WhatsAppSchedule
-  onToggle: () => void
-  onDelete: () => void
-}
+
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+const FEATURE_INFO: Record<
+  WaFeatureType,
+  { title: string; description: string; defaultMessage: string }
+> = {
+  daily_summary: {
+    title: 'Daily Summary',
+    description: 'Get a list of clients that need responses from your team',
+    defaultMessage: 'DAILY SUMMARY - Clients needing response:',
+  },
+  late_alert: {
+    title: 'Late Response Alerts',
+    description: 'Urgent alerts when clients are waiting too long for replies',
+    defaultMessage: '🚨 LATE RESPONSE ALERTS',
+  },
+  ad_error: {
+    title: 'Ad Account Errors',
+    description: 'Notifications when ad account errors are detected',
+    defaultMessage: '⚠️ Ad Account Error Detected',
+  },
+}
 
 export default function WhatsAppSettingsClient({
   podName,
   initialWhatsAppNumber,
-  initialSchedules,
+  initialConfigs,
+  podServers,
+  podWhatsappNumber,
 }: WhatsAppSettingsClientProps) {
   // STATES
   const [whatsappNumber, setWhatsappNumber] = useState(
     initialWhatsAppNumber || '',
   )
-  const [schedules, setSchedules] =
-    useState<WhatsAppSchedule[]>(initialSchedules)
+  const [configs, setConfigs] = useState<PodWhatsAppConfig[]>(initialConfigs)
   const [isSavingNumber, setIsSavingNumber] = useState(false)
   const [numberSaved, setNumberSaved] = useState(false)
   const [isTestRunning, setIsTestRunning] = useState(false)
@@ -56,13 +71,18 @@ export default function WhatsAppSettingsClient({
   const handleTestJob = async () => {
     setIsTestRunning(true)
     setTestResults(null)
-    const result = await runTestWhatsAppJob(podName)
+    const result = await runTestWhatsAppJob(
+      podName,
+      podServers,
+      podWhatsappNumber,
+    )
     setIsTestRunning(false)
     setTestResults({
       messagesSent: result.messagesSent,
       results: result.results,
     })
   }
+
   const handleSaveNumber = async () => {
     setIsSavingNumber(true)
     const result = await updatePodWhatsAppNumber(podName, whatsappNumber)
@@ -75,42 +95,27 @@ export default function WhatsAppSettingsClient({
       alert(result.error || 'Failed to save')
     }
   }
-  const handleToggle = async (id: string, currentState: boolean) => {
-    const result = await toggleScheduleActive(id, !currentState)
-    if (result.success) {
-      setSchedules((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, is_active: !currentState } : s)),
+
+  const handleConfigUpdate = (updatedConfig: PodWhatsAppConfig) => {
+    setConfigs((prev) => {
+      const index = prev.findIndex(
+        (c) =>
+          c.pod_name === updatedConfig.pod_name &&
+          c.feature_type === updatedConfig.feature_type,
       )
-    }
-  }
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this schedule?')) return
-
-    const result = await deleteSchedule(id)
-    if (result.success) {
-      setSchedules((prev) => prev.filter((s) => s.id !== id))
-    }
-  }
-  const handleCreateSchedule = async (data: {
-    frequency: ScheduleFrequency
-    time: string
-    daysOfWeek: DayOfWeek[]
-    customMessage: string
-  }) => {
-    const result = await createSchedule({
-      pod_name: podName,
-      frequency: data.frequency,
-      time: data.time,
-      timezone: 'UTC', // All schedules use UTC timezone (convert in UI if needed)
-      days_of_week: data.daysOfWeek,
-      custom_message: data.customMessage,
+      if (index >= 0) {
+        const newConfigs = [...prev]
+        newConfigs[index] = updatedConfig
+        return newConfigs
+      }
+      return [...prev, updatedConfig]
     })
+  }
 
-    if (result.success && result.schedule) {
-      setSchedules((prev) => [result.schedule!, ...prev])
-    } else {
-      alert(result.error || 'Failed to create schedule')
-    }
+  const getConfigForFeature = (
+    featureType: WaFeatureType,
+  ): PodWhatsAppConfig | undefined => {
+    return configs.find((c) => c.feature_type === featureType)
   }
 
   return (
@@ -192,245 +197,310 @@ export default function WhatsAppSettingsClient({
         </div>
       </section>
 
-      {/* Scheduled Summaries Section */}
-      <section className="rounded-lg border border-zinc-800 bg-night-starlit p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Scheduled Summaries</h2>
-            <p className="text-sm text-zinc-400">
-              Get WhatsApp messages with clients that need responses.
-            </p>
-          </div>
-          <AddScheduleButton onAdd={handleCreateSchedule} />
+      {/* Feature Configurations */}
+      <section className="space-y-6">
+        <div>
+          <h2 className="mb-1 text-lg font-semibold">Notification Features</h2>
+          <p className="text-sm text-zinc-400">
+            Configure when and how each notification type is sent
+          </p>
         </div>
 
-        {schedules.length === 0 ? (
-          <div className="rounded-md border border-dashed border-zinc-700 p-8 text-center">
-            <p className="text-zinc-400">No schedules configured yet.</p>
-            <p className="text-sm text-zinc-500">
-              Click &quot;Add Schedule&quot; to get started.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {schedules.map((schedule) => (
-              <ScheduleCard
-                key={schedule.id}
-                schedule={schedule}
-                onToggle={() => handleToggle(schedule.id, schedule.is_active)}
-                onDelete={() => handleDelete(schedule.id)}
-              />
-            ))}
-          </div>
-        )}
+        <FeatureConfigCard
+          podName={podName}
+          featureType="daily_summary"
+          config={getConfigForFeature('daily_summary')}
+          onUpdate={handleConfigUpdate}
+        />
+        <FeatureConfigCard
+          podName={podName}
+          featureType="late_alert"
+          config={getConfigForFeature('late_alert')}
+          onUpdate={handleConfigUpdate}
+        />
+        <FeatureConfigCard
+          podName={podName}
+          featureType="ad_error"
+          config={getConfigForFeature('ad_error')}
+          onUpdate={handleConfigUpdate}
+        />
       </section>
     </div>
   )
 }
 
-// HANDLERS
-function ScheduleCard({ schedule, onToggle, onDelete }: ScheduleCardProps) {
-  const daysDisplay = (schedule.days_of_week || [])
-    .map((d) => DAYS[d])
-    .join(', ')
-
-  return (
-    <div
-      className={`rounded-md border p-4 transition-colors ${
-        schedule.is_active
-          ? 'border-zinc-700 bg-night-midnight'
-          : 'border-zinc-800 bg-night-dusk opacity-60'
-      }`}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-block h-2 w-2 rounded-full ${
-                schedule.is_active ? 'bg-green-500' : 'bg-zinc-500'
-              }`}
-            />
-            <span className="font-medium capitalize">
-              {schedule.frequency || 'daily'} at {schedule.time || '09:00'} UTC
-            </span>
-          </div>
-          {daysDisplay && (
-            <p className="mt-1 text-sm text-zinc-400">{daysDisplay}</p>
-          )}
-          <p className="mt-2 text-sm text-zinc-300">
-            &quot;{schedule.custom_message}&quot;
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={onToggle}
-            className={`rounded px-3 py-1 text-sm transition-colors ${
-              schedule.is_active
-                ? 'bg-zinc-700 hover:bg-zinc-600'
-                : 'bg-green-600 hover:bg-green-500'
-            }`}
-          >
-            {schedule.is_active ? 'Pause' : 'Enable'}
-          </button>
-          <button
-            onClick={onDelete}
-            className="rounded bg-red-600/20 px-3 py-1 text-sm text-red-400 transition-colors hover:bg-red-600/40"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AddScheduleButton({ onAdd }: AddScheduleButtonProps) {
-  // STATES
-  const [isOpen, setIsOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+function FeatureConfigCard({
+  podName,
+  featureType,
+  config,
+  onUpdate,
+}: FeatureConfigCardProps) {
+  const info = FEATURE_INFO[featureType]
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState({
-    frequency: 'daily' as ScheduleFrequency,
-    time: '09:00',
-    daysOfWeek: [1, 2, 3, 4, 5] as DayOfWeek[],
-    customMessage: 'Please respond to these clients today:',
+    isActive: config?.is_active ?? false,
+    customMessage: config?.custom_message_header || '',
+    frequency: config?.frequency || 'daily',
+    scheduledTime: config?.scheduled_time || '09:00:00',
+    activeDays: config?.active_days || '',
   })
 
-  // HANDLERS
-  const handleSubmit = async () => {
-    setIsSubmitting(true)
-    await onAdd(formData)
-    setIsSubmitting(false)
-    setIsOpen(false)
-    // Reset form
-    setFormData({
-      frequency: 'daily',
-      time: '09:00',
-      daysOfWeek: [1, 2, 3, 4, 5],
-      customMessage: 'Please respond to these clients today:',
-    })
+  const handleToggle = async () => {
+    const newState = !formData.isActive
+    setFormData((prev) => ({ ...prev, isActive: newState }))
+
+    // If no config exists, create one with defaults
+    if (!config) {
+      const result = await upsertConfig({
+        pod_name: podName,
+        feature_type: featureType,
+        is_active: newState,
+        custom_message_header: null,
+        frequency: formData.frequency,
+        scheduled_time: formData.scheduledTime,
+        active_days: formData.activeDays || null,
+      })
+
+      if (result.success && result.config) {
+        onUpdate(result.config)
+      } else {
+        alert(result.error || 'Failed to enable feature')
+        setFormData((prev) => ({ ...prev, isActive: !newState }))
+      }
+    } else {
+      // Update existing config
+      const result = await toggleConfigActive(podName, featureType, newState)
+      if (result.success) {
+        onUpdate({ ...config, is_active: newState })
+      } else {
+        alert(result.error || 'Failed to toggle feature')
+        setFormData((prev) => ({ ...prev, isActive: !newState }))
+      }
+    }
   }
-  const toggleDay = (day: DayOfWeek) => {
+
+  const handleSave = async () => {
+    setIsSaving(true)
+
+    const result = await upsertConfig({
+      pod_name: podName,
+      feature_type: featureType,
+      is_active: formData.isActive,
+      custom_message_header: formData.customMessage || null,
+      frequency: formData.frequency,
+      scheduled_time: formData.scheduledTime,
+      active_days: formData.activeDays || null,
+    })
+
+    setIsSaving(false)
+
+    if (result.success && result.config) {
+      onUpdate(result.config)
+      setIsEditing(false)
+    } else {
+      alert(result.error || 'Failed to save configuration')
+    }
+  }
+
+  const toggleDay = (day: string) => {
+    const days = formData.activeDays
+      ? formData.activeDays.split(',').map((d) => d.trim())
+      : []
+    const newDays = days.includes(day)
+      ? days.filter((d) => d !== day)
+      : [...days, day]
+
     setFormData((prev) => ({
       ...prev,
-      daysOfWeek: prev.daysOfWeek.includes(day)
-        ? prev.daysOfWeek.filter((d) => d !== day)
-        : [...prev.daysOfWeek, day].sort(),
+      activeDays: newDays.join(','),
     }))
   }
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-      >
-        + Add Schedule
-      </button>
-    )
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg border border-zinc-700 bg-night-starlit p-6">
-        <h3 className="mb-4 text-lg font-semibold">New Schedule</h3>
-
-        {/* Frequency */}
-        <div className="mb-4">
-          <label className="mb-1 block text-sm text-zinc-400">Frequency</label>
-          <select
-            value={formData.frequency}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                frequency: e.target.value as ScheduleFrequency,
-              }))
-            }
-            className="w-full rounded-md border border-zinc-700 bg-night-midnight px-3 py-2 text-white"
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="custom">Custom Days</option>
-          </select>
-        </div>
-
-        {/* Time */}
-        <div className="mb-4">
-          <label className="mb-1 block text-sm text-zinc-400">Time (UTC)</label>
-          <input
-            type="time"
-            value={formData.time}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, time: e.target.value }))
-            }
-            className="w-full rounded-md border border-zinc-700 bg-night-midnight px-3 py-2 text-white"
-          />
-          <p className="mt-1 text-xs text-zinc-500">
-            Schedule runs in UTC timezone
-          </p>
-        </div>
-
-        {/* Days of Week (for weekly/custom) */}
-        {formData.frequency !== 'daily' && (
-          <div className="mb-4">
-            <label className="mb-2 block text-sm text-zinc-400">Days</label>
-            <div className="flex gap-1">
-              {DAYS.map((day, index) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => toggleDay(index as DayOfWeek)}
-                  className={`flex-1 rounded px-2 py-1 text-xs transition-colors ${
-                    formData.daysOfWeek.includes(index as DayOfWeek)
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
-                  }`}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
+    <div
+      className={`rounded-lg border p-6 transition-all ${
+        formData.isActive
+          ? 'border-zinc-700 bg-night-starlit'
+          : 'border-zinc-800 bg-night-dusk opacity-70'
+      }`}
+    >
+      {/* Header */}
+      <div className="mb-4 flex items-start justify-between">
+        <div className="flex-1">
+          <div className="mb-1 flex items-center gap-3">
+            <h3 className="text-lg font-semibold">{info.title}</h3>
+            <span
+              className={`inline-block h-2 w-2 rounded-full ${
+                formData.isActive ? 'bg-green-500' : 'bg-zinc-500'
+              }`}
+            />
           </div>
-        )}
-
-        {/* Custom Message */}
-        <div className="mb-6">
-          <label className="mb-1 block text-sm text-zinc-400">
-            Custom Message
-          </label>
-          <textarea
-            value={formData.customMessage}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                customMessage: e.target.value,
-              }))
-            }
-            rows={3}
-            placeholder="Message shown before the client list..."
-            className="w-full rounded-md border border-zinc-700 bg-night-midnight px-3 py-2 text-white placeholder-zinc-500"
-          />
-          <p className="mt-1 text-xs text-zinc-500">
-            The client list will appear after this message.
-          </p>
+          <p className="text-sm text-zinc-400">{info.description}</p>
         </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3">
+        <div className="flex gap-2">
           <button
-            onClick={() => setIsOpen(false)}
-            className="rounded-md px-4 py-2 text-sm text-zinc-400 hover:text-white"
+            onClick={handleToggle}
+            className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              formData.isActive
+                ? 'bg-zinc-700 text-white hover:bg-zinc-600'
+                : 'bg-green-600 text-white hover:bg-green-500'
+            }`}
           >
-            Cancel
+            {formData.isActive ? 'Disable' : 'Enable'}
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting || !formData.customMessage}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isSubmitting ? 'Creating...' : 'Create Schedule'}
-          </button>
+          {!isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="rounded bg-blue-600/20 px-3 py-1.5 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-600/30"
+            >
+              Configure
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Current Configuration Display */}
+      {!isEditing && config && (
+        <div className="space-y-2 rounded-md border border-zinc-800 bg-night-midnight p-4 text-sm">
+          <div>
+            <span className="text-zinc-500">Schedule:</span>{' '}
+            <span className="text-white">
+              {config.frequency} at {config.scheduled_time}
+            </span>
+          </div>
+          {config.active_days && (
+            <div>
+              <span className="text-zinc-500">Active Days:</span>{' '}
+              <span className="text-white">{config.active_days}</span>
+            </div>
+          )}
+          <div>
+            <span className="text-zinc-500">Message:</span>{' '}
+            <span className="text-white">
+              {config.custom_message_header || (
+                <em className="text-zinc-500">Using default message</em>
+              )}
+            </span>
+          </div>
+          {config.last_sent_at && (
+            <div>
+              <span className="text-zinc-500">Last Sent:</span>{' '}
+              <span className="text-white">
+                {new Date(config.last_sent_at).toLocaleString()}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Configuration Form */}
+      {isEditing && (
+        <div className="space-y-4 rounded-md border border-zinc-700 bg-night-midnight p-4">
+          {/* Frequency */}
+          <div>
+            <label className="mb-1 block text-sm text-zinc-400">
+              Frequency
+            </label>
+            <select
+              value={formData.frequency}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, frequency: e.target.value }))
+              }
+              className="w-full rounded-md border border-zinc-700 bg-night-dusk px-3 py-2 text-white"
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </div>
+
+          {/* Scheduled Time */}
+          <div>
+            <label className="mb-1 block text-sm text-zinc-400">
+              Scheduled Time (UTC)
+            </label>
+            <input
+              type="time"
+              value={formData.scheduledTime}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  scheduledTime: e.target.value + ':00',
+                }))
+              }
+              className="w-full rounded-md border border-zinc-700 bg-night-dusk px-3 py-2 text-white"
+            />
+          </div>
+
+          {/* Active Days */}
+          <div>
+            <label className="mb-2 block text-sm text-zinc-400">
+              Active Days (leave empty for all days)
+            </label>
+            <div className="flex gap-1">
+              {DAYS.map((day) => {
+                const days = formData.activeDays
+                  ? formData.activeDays.split(',').map((d) => d.trim())
+                  : []
+                const isSelected = days.includes(day)
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => toggleDay(day)}
+                    className={`flex-1 rounded px-2 py-1.5 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Custom Message Header */}
+          <div>
+            <label className="mb-1 block text-sm text-zinc-400">
+              Custom Message Header (optional)
+            </label>
+            <textarea
+              value={formData.customMessage}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  customMessage: e.target.value,
+                }))
+              }
+              rows={2}
+              placeholder={info.defaultMessage}
+              className="w-full rounded-md border border-zinc-700 bg-night-dusk px-3 py-2 text-white placeholder-zinc-500"
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Leave empty to use default: &quot;{info.defaultMessage}&quot;
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => setIsEditing(false)}
+              className="rounded-md px-4 py-2 text-sm text-zinc-400 hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isSaving ? 'Saving...' : 'Save Configuration'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -4,23 +4,8 @@ import { createClient } from '@/lib/db/server'
 import { redirect } from 'next/navigation'
 import WhatsAppSettingsClient from './whatsapp-settings-client'
 
-// ============================================================================
-// WhatsApp Settings Page
-// ============================================================================
-// Allows media buyers to:
-// 1. Set their WhatsApp number for notifications
-// 2. Configure scheduled summary messages
-// 3. Customize message content and timing
-// ============================================================================
-
-interface WhatsAppSettingsPageProps {
-  params: { id: string }
-}
-
-export default async function WhatsAppSettingsPage({
-  params,
-}: WhatsAppSettingsPageProps) {
-  const { id } = params
+export default async function WhatsAppSettingsPage({ params }) {
+  const { id } = await params
   const authDb = createClient()
   const db = createAdminClient()
 
@@ -36,8 +21,8 @@ export default async function WhatsAppSettingsPage({
   // Get pod info for this user
   const { data: pod } = await db
     .from('pod')
-    .select('id, name, whatsapp_number')
-    .eq('user_id', id)
+    .select('id, name, servers, whatsapp_number')
+    .eq('id', id)
     .single()
 
   if (!pod) {
@@ -52,12 +37,12 @@ export default async function WhatsAppSettingsPage({
     )
   }
 
-  // Get existing schedules for this pod
-  const { data: schedules } = await db
-    .from('whatsapp_schedules')
+  // Get existing configs for this pod
+  const { data: configs } = await db
+    .from('pod_whatsapp_configs')
     .select('*')
     .eq('pod_name', pod.name)
-    .order('created_at', { ascending: false })
+    .order('feature_type', { ascending: true })
 
   return (
     <main className="p-7">
@@ -70,8 +55,10 @@ export default async function WhatsAppSettingsPage({
 
       <WhatsAppSettingsClient
         podName={pod.name}
+        podServers={pod?.servers ?? []}
+        podWhatsappNumber={pod?.whatsapp_number ?? null}
         initialWhatsAppNumber={pod.whatsapp_number}
-        initialSchedules={schedules || []}
+        initialConfigs={configs || []}
       />
     </main>
   )

@@ -5,6 +5,12 @@ import { NextRequest, NextResponse } from 'next/server'
 // ============================================================================
 // GET /api/whatsapp/late-response
 // ============================================================================
+// ⚠️ DEPRECATED: Use /api/whatsapp/cron-handler instead
+// This route is kept for backward compatibility during migration
+//
+// New endpoint: POST /api/whatsapp/cron-handler
+// Body: { "feature": "late_alert" }
+//
 // Cron endpoint that monitors communication_reports and sends WhatsApp alerts
 // for clients that haven't received responses within the configured timeframe
 //

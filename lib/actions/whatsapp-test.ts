@@ -1,15 +1,20 @@
 'use server'
 
 import { createAdminClient } from '@/lib/db/admin'
+import {
+  getActiveConfig,
+  getMessageHeader,
+  markConfigAsSent,
+  shouldRunNow,
+} from '@/lib/utils/whatsapp-config'
 import { formatSummaryMessage } from '@/lib/utils/whatsapp-formatters'
 import { sendWhatsAppMessage } from './whatsapp'
-import { createSchedule } from './whatsapp-schedules'
 
 // ============================================================================
 // Test WhatsApp Job - Sends all notifications to hardcoded test number
 // ============================================================================
 
-// const TEST_NUMBER = '+2349048188177'
+const TEST_NUMBER = '+2349048188177'
 
 interface TestJobResult {
   success: boolean
@@ -24,223 +29,338 @@ interface TestJobResult {
 
 export async function runTestWhatsAppJob(
   podName: string,
+  podServers: string[],
+  podWhatsappNumber: string | null,
 ): Promise<TestJobResult> {
   const db = createAdminClient()
   const results: TestJobResult['results'] = []
   let messagesSent = 0
 
   try {
-    // Get pod info
-    const { data: pod } = await db
-      .from('pod')
-      .select('name, servers, whatsapp_number')
-      .eq('name', podName)
-      .single()
-
-    if (!pod) {
-      return {
-        success: false,
-        messagesSent: 0,
-        results: [
-          {
-            type: 'error',
-            sent: false,
-            preview: 'Pod not found',
-          },
-        ],
-      }
-    }
-
     // ========================================================================
     // 1. SCHEDULED SUMMARY - Clients needing response
     // ========================================================================
+    console.log('\n[SCHEDULED SUMMARY] Starting for pod:', podName)
 
-    const today = new Date().toISOString().split('T')[0]
-    const serverIds = pod.servers || []
+    const summaryConfig = await getActiveConfig(podName, 'daily_summary')
 
-    const { data: reports } = await db
-      .from('communication_reports')
-      .select(
-        'channel_name, days_since_ixm_message, guild_name, guild_id, category_name',
+    if (!summaryConfig) {
+      console.log('[SCHEDULED SUMMARY] Feature disabled - no active config')
+      results.push({
+        type: 'Scheduled Summary',
+        sent: false,
+        preview: 'Feature disabled - no active configuration',
+      })
+    } else if (!shouldRunNow(summaryConfig)) {
+      console.log('[SCHEDULED SUMMARY] Skipping - not scheduled to run now')
+      results.push({
+        type: 'Scheduled Summary',
+        sent: false,
+        preview: 'Skipped - not scheduled for this time/day',
+      })
+    } else {
+      const { data: reports } = await db
+        .from('communication_reports')
+        .select(
+          'channel_name, days_since_ixm_message, guild_name, guild_id, category_name',
+        )
+        .in('guild_id', podServers ?? [])
+        .in('status', ['Client responded - awaiting team reply'])
+        .order('days_since_ixm_message', { ascending: false })
+        .limit(20)
+
+      console.log(
+        `[SCHEDULED SUMMARY] Found ${reports?.length || 0} reports needing response`,
       )
-      //   .eq('report_date', today)
-      .in('guild_id', serverIds)
-      //   .gt('days_since_ixm_message', 1) // More than 1 day since team response
-      .in('status', [
-        'Client responded - awaiting team reply',
-        // `IXM didn't reach out for 48 hours`,
-      ])
-      .limit(20)
-      .order('days_since_ixm_message', { ascending: false })
 
-    // const uniquePods = Array.from(
-    //   new Map(reports?.map((p) => [p.guild_id, p]) || []).values(),
-    // )
+      const clientsNeedingResponse = (reports || []).map(
+        (r) =>
+          `${r?.category_name ?? 'category name'} - ${r?.guild_name ?? ''}`,
+      )
 
-    const clientsNeedingResponse = (reports || []).map(
-      (r) => `${r?.category_name ?? 'category name'} - ${r?.guild_name ?? ''}`,
-    )
+      // Batch messages to avoid concatenation length issues (WhatsApp limit ~4096 chars)
+      const BATCH_SIZE = 15
+      const batches: string[][] = []
+      for (let i = 0; i < clientsNeedingResponse.length; i += BATCH_SIZE) {
+        batches.push(clientsNeedingResponse.slice(i, i + BATCH_SIZE))
+      }
 
-    const summaryMessage = formatSummaryMessage(
-      'DAILY SUMMARY - Clients needing response:',
-      clientsNeedingResponse,
-    )
+      if (batches.length === 0) {
+        batches.push([]) // Ensure at least one batch for "no clients" message
+      }
 
-    const summaryResult = await sendWhatsAppMessage(
-      pod?.whatsapp_number,
-      summaryMessage,
-    )
-    results.push({
-      type: 'Scheduled Summary',
-      sent: summaryResult.success,
-      preview:
-        summaryMessage.substring(0, 100) +
-        (summaryMessage.length > 100 ? '...' : ''),
-      error: summaryResult.error,
-    })
-    if (summaryResult.success) messagesSent++
+      console.log(`[SCHEDULED SUMMARY] Sending ${batches.length} batch(es)`)
+
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i]
+        const defaultHeader =
+          batches.length > 1
+            ? `DAILY SUMMARY - Clients needing response (${i + 1}/${batches.length}):`
+            : 'DAILY SUMMARY - Clients needing response:'
+
+        const customHeader = await getMessageHeader(
+          summaryConfig,
+          defaultHeader,
+        )
+        const batchHeader =
+          batches.length > 1 && !summaryConfig.custom_message_header
+            ? `${customHeader} (${i + 1}/${batches.length})`
+            : customHeader
+
+        const summaryMessage = formatSummaryMessage(batchHeader, batch)
+
+        const summaryResult = await sendWhatsAppMessage(
+          podWhatsappNumber ?? TEST_NUMBER,
+          summaryMessage,
+        )
+
+        if (!summaryResult.success) {
+          console.error(
+            `[SCHEDULED SUMMARY] Failed to send batch ${i + 1}:`,
+            summaryResult.error,
+          )
+        }
+
+        results.push({
+          type: `Scheduled Summary${batches.length > 1 ? ` (${i + 1}/${batches.length})` : ''}`,
+          sent: summaryResult.success,
+          preview:
+            summaryMessage.substring(0, 100) +
+            (summaryMessage.length > 100 ? '...' : ''),
+          error: summaryResult.error,
+        })
+
+        if (summaryResult.success) messagesSent++
+
+        // Add small delay between batches to avoid rate limiting
+        if (i < batches.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+        }
+      }
+
+      // Mark config as sent
+      await markConfigAsSent(summaryConfig.id)
+    }
 
     // ========================================================================
     // 2. LATE RESPONSE ALERTS - Channels needing urgent response
     // ========================================================================
+    console.log('\n[LATE RESPONSE ALERTS] Checking...')
 
-    const now = new Date()
-    const ALERT_THRESHOLD_HOURS = 1 // 1 hour threshold
+    const lateAlertConfig = await getActiveConfig(podName, 'late_alert')
 
-    const { data: lateReports } = await db
-      .from('communication_reports')
-      .select('*')
-      .eq('report_date', today)
-      .in('guild_id', serverIds)
-      .eq('status', 'Client responded - awaiting team reply')
-      .order('days_since_ixm_message', { ascending: false })
-      .limit(10)
+    if (!lateAlertConfig) {
+      console.log('[LATE RESPONSE ALERTS] Feature disabled - no active config')
+      results.push({
+        type: 'Late Response Alerts',
+        sent: false,
+        preview: 'Feature disabled - no active configuration',
+      })
+    } else if (!shouldRunNow(lateAlertConfig)) {
+      console.log('[LATE RESPONSE ALERTS] Skipping - not scheduled to run now')
+      results.push({
+        type: 'Late Response Alerts',
+        sent: false,
+        preview: 'Skipped - not scheduled for this time/day',
+      })
+    } else {
+      const now = new Date()
+      const ALERT_THRESHOLD_HOURS = 1 // 1 hour threshold
 
-    const lateResponseAlerts: string[] = []
+      const { data: lateReports } = await db
+        .from('communication_reports')
+        .select('*')
+        .in('guild_id', podServers ?? [])
+        .eq('status', 'Client responded - awaiting team reply')
+        .order('days_since_ixm_message', { ascending: false })
 
-    for (const report of lateReports || []) {
-      let hoursSinceResponse = 0
+      const lateResponseAlerts: string[] = []
 
-      if (report.last_ixm_message_at) {
-        hoursSinceResponse =
-          (now.getTime() - new Date(report.last_ixm_message_at).getTime()) /
-          (1000 * 60 * 60)
-      } else if (report.days_since_ixm_message !== null) {
-        hoursSinceResponse = report.days_since_ixm_message * 24
+      for (const report of lateReports || []) {
+        let hoursSinceResponse = 0
+
+        if (report.last_ixm_message_at) {
+          hoursSinceResponse =
+            (now.getTime() - new Date(report.last_ixm_message_at).getTime()) /
+            (1000 * 60 * 60)
+        } else if (report.days_since_ixm_message !== null) {
+          hoursSinceResponse = report.days_since_ixm_message * 24
+        }
+
+        if (hoursSinceResponse >= ALERT_THRESHOLD_HOURS) {
+          lateResponseAlerts.push(
+            `${report.channel_name || 'Unknown'} - ${hoursSinceResponse.toFixed(1)}h (${report.guild_name || 'Unknown'})`,
+          )
+        }
       }
 
-      if (hoursSinceResponse >= ALERT_THRESHOLD_HOURS) {
-        lateResponseAlerts.push(
-          `${report.channel_name || 'Unknown'} - ${hoursSinceResponse.toFixed(1)}h (${report.guild_name || 'Unknown'})`,
-        )
-      }
-    }
-
-    if (lateResponseAlerts.length > 0) {
-      const lateResponseMessage = [
-        '🚨 *LATE RESPONSE ALERTS*',
-        '',
-        `*Pod:* ${pod.name}`,
-        `*Threshold:* ${ALERT_THRESHOLD_HOURS} hour(s)`,
-        '',
-        '*Channels needing urgent response:*',
-        ...lateResponseAlerts.map((alert) => `• ${alert}`),
-        '',
-        '_Please respond immediately._',
-      ].join('\n')
-
-      const lateResponseResult = await sendWhatsAppMessage(
-        pod?.whatsapp_number,
-        lateResponseMessage,
+      console.log(
+        `[LATE RESPONSE ALERTS] ${lateResponseAlerts.length} alerts triggered`,
       )
 
-      results.push({
-        type: 'Late Response Alerts',
-        sent: lateResponseResult.success,
-        preview:
-          lateResponseMessage.substring(0, 100) +
-          (lateResponseMessage.length > 100 ? '...' : ''),
-        error: lateResponseResult.error,
-      })
-      if (lateResponseResult.success) messagesSent++
-    } else {
-      results.push({
-        type: 'Late Response Alerts',
-        sent: true,
-        preview: 'No late responses detected',
-      })
+      if (lateResponseAlerts.length > 0) {
+        // Batch alerts to avoid message length issues
+        const ALERT_BATCH_SIZE = 10
+        const alertBatches: string[][] = []
+        for (let i = 0; i < lateResponseAlerts.length; i += ALERT_BATCH_SIZE) {
+          alertBatches.push(lateResponseAlerts.slice(i, i + ALERT_BATCH_SIZE))
+        }
+
+        for (let i = 0; i < alertBatches.length; i++) {
+          const batch = alertBatches[i]
+          const defaultHeader = '🚨 *LATE RESPONSE ALERTS*'
+          const customHeader = getMessageHeader(lateAlertConfig, defaultHeader)
+
+          const lateResponseMessage = [
+            customHeader,
+            '',
+            `*Pod:* ${podName}`,
+            `*Threshold:* ${ALERT_THRESHOLD_HOURS} hour(s)`,
+            alertBatches.length > 1
+              ? `*Batch:* ${i + 1}/${alertBatches.length}`
+              : '',
+            '',
+            '*Channels needing urgent response:*',
+            ...batch.map((alert) => `• ${alert}`),
+            '',
+            '_Please respond immediately._',
+          ]
+            .filter(Boolean)
+            .join('\n')
+
+          const lateResponseResult = await sendWhatsAppMessage(
+            podWhatsappNumber ?? TEST_NUMBER,
+            lateResponseMessage,
+          )
+
+          if (!lateResponseResult.success) {
+            console.error(
+              `[LATE RESPONSE ALERTS] Failed to send batch ${i + 1}:`,
+              lateResponseResult.error,
+            )
+          }
+
+          results.push({
+            type: `Late Response Alerts${alertBatches.length > 1 ? ` (${i + 1}/${alertBatches.length})` : ''}`,
+            sent: lateResponseResult.success,
+            preview:
+              lateResponseMessage.substring(0, 100) +
+              (lateResponseMessage.length > 100 ? '...' : ''),
+            error: lateResponseResult.error,
+          })
+
+          if (lateResponseResult.success) messagesSent++
+
+          // Add small delay between batches
+          if (i < alertBatches.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+          }
+        }
+
+        // Mark config as sent
+        await markConfigAsSent(lateAlertConfig.id)
+      } else {
+        results.push({
+          type: 'Late Response Alerts',
+          sent: true,
+          preview: 'No late responses detected',
+        })
+      }
     }
 
     // ========================================================================
     // 3. AD ACCOUNT ERRORS - Alert about unresolved errors
     // ========================================================================
+    console.log('\n[AD ERRORS] Checking for pod:', podName)
 
-    // fetch refreshed sheet from db
-    const { data: sheetData } = await db
-      .from('refresh_snapshot_metrics')
-      .select(
-        'id, snapshot_id, is_error, error_detail, pod (name, whatsapp_number), sheet_refresh_snapshots(sheet_id, data_preset, refresh_type, snapshot_date)',
-      )
-      .eq('is_error', true)
-      .eq('pod.name', podName)
-      .order('created_at', { ascending: false })
+    const adErrorConfig = await getActiveConfig(podName, 'ad_error')
 
-    // Fetch clients associated with this pod
-    const { data: clients } = await db
-      .from('client')
-      .select('id, brand, phone_number')
-      .eq('pod', podName)
-
-    const clientIds = (clients || []).map((c) => c.id)
-
-    if (sheetData && sheetData.length > 0) {
-      for (const sheet of sheetData) {
-        const pod = Array.isArray(sheet.pod) ? sheet.pod[0] : sheet.pod
-        const sheetSnapshot = Array.isArray(sheet.sheet_refresh_snapshots)
-          ? sheet.sheet_refresh_snapshots[0]
-          : sheet.sheet_refresh_snapshots
-
-        if (sheet.is_error) {
-          const { success } = await createSchedule({
-            pod_name: pod.name,
-            frequency: 'daily',
-            time: '09:00',
-            timezone: 'UTC',
-            custom_message: 'Check the following add account error',
-            is_active: true,
-          })
-          const errorMessage = `Ad Account Error for ${sheetSnapshot.refresh_type === 'autometric' ? 'Facebook' : 'Finance'}-${sheetSnapshot.data_preset} Sheet; With Details As Follows. \n\n\nPod: ${pod.name}.\nGoogle Sheet ID: ${sheetSnapshot.sheet_id}.Date Refreshed: ${sheetSnapshot.snapshot_date} `
-
-          const errorResult = await sendWhatsAppMessage(
-            pod?.whatsapp_number,
-            errorMessage,
-          )
-          results.push({
-            type: `Ad Error - ${sheetSnapshot.refresh_type}`,
-            sent: errorResult.success,
-            preview:
-              errorMessage.substring(0, 100) +
-              (errorMessage.length > 100 ? '...' : ''),
-            error: errorResult.error,
-          })
-          if (errorResult.success) messagesSent++
-        } else {
-          const { success } = await createSchedule({
-            pod_name: pod.name,
-            frequency: 'daily',
-            time: '09:00',
-            timezone: 'UTC',
-            custom_message: 'Check the following add account error',
-            is_active: false,
-          })
-        }
-      }
-    } else {
+    if (!adErrorConfig) {
+      console.log('[AD ERRORS] Feature disabled - no active config')
       results.push({
         type: 'Ad Errors',
-        sent: true,
-        preview: 'No unresolved ad account errors',
+        sent: false,
+        preview: 'Feature disabled - no active configuration',
       })
+    } else if (!shouldRunNow(adErrorConfig)) {
+      console.log('[AD ERRORS] Skipping - not scheduled to run now')
+      results.push({
+        type: 'Ad Errors',
+        sent: false,
+        preview: 'Skipped - not scheduled for this time/day',
+      })
+    } else {
+      // fetch refreshed sheet from db
+      const { data: sheetData } = await db
+        .from('refresh_snapshot_metrics')
+        .select(
+          'id, snapshot_id, is_error, error_detail, pod (name, whatsapp_number), sheet_refresh_snapshots(sheet_id, data_preset, refresh_type, snapshot_date)',
+        )
+        .eq('is_error', true)
+        .eq('pod.name', podName)
+        .order('created_at', { ascending: false })
+
+      console.log(`[AD ERRORS] Found ${sheetData?.length || 0} error sheets`)
+
+      if (sheetData && sheetData.length > 0) {
+        for (const sheet of sheetData) {
+          const pod = Array.isArray(sheet.pod) ? sheet.pod[0] : sheet.pod
+          const sheetSnapshot = Array.isArray(sheet.sheet_refresh_snapshots)
+            ? sheet.sheet_refresh_snapshots[0]
+            : sheet.sheet_refresh_snapshots
+
+          if (sheet.is_error) {
+            const defaultHeader = `⚠️ *Ad Account Error for ${sheetSnapshot.refresh_type === 'autometric' ? 'Facebook' : 'Finance'}-${sheetSnapshot.data_preset} Sheet*`
+            const customHeader = getMessageHeader(adErrorConfig, defaultHeader)
+
+            const errorMessage = [
+              customHeader,
+              '',
+              `*Pod:* ${pod.name}`,
+              `*Google Sheet ID:* ${sheetSnapshot.sheet_id}`,
+              `*Date Refreshed:* ${sheetSnapshot.snapshot_date}`,
+              sheet.error_detail ? `*Error:* ${sheet.error_detail}` : '',
+              '',
+              '_Please check and resolve this issue._',
+            ]
+              .filter(Boolean)
+              .join('\n')
+
+            const errorResult = await sendWhatsAppMessage(
+              pod?.whatsapp_number ?? TEST_NUMBER,
+              errorMessage,
+            )
+
+            if (!errorResult.success) {
+              console.error(
+                `[AD ERRORS] Failed to send notification for ${sheetSnapshot?.refresh_type}:`,
+                errorResult.error,
+              )
+            }
+
+            results.push({
+              type: `Ad Error - ${sheetSnapshot.refresh_type}`,
+              sent: errorResult.success,
+              preview:
+                errorMessage.substring(0, 100) +
+                (errorMessage.length > 100 ? '...' : ''),
+              error: errorResult.error,
+            })
+            if (errorResult.success) messagesSent++
+          }
+        }
+
+        // Mark config as sent after processing all errors
+        if (sheetData.some((s) => s.is_error)) {
+          await markConfigAsSent(adErrorConfig.id)
+        }
+      } else {
+        results.push({
+          type: 'Ad Errors',
+          sent: true,
+          preview: 'No unresolved ad account errors',
+        })
+      }
     }
 
     return {

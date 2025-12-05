@@ -2,11 +2,29 @@
 // WhatsApp Notification Types
 // ============================================================================
 
+// Feature types matching the database enum
+export type WaFeatureType = 'daily_summary' | 'late_alert' | 'ad_error'
+
 // Schedule frequency options for WhatsApp summaries
 export type ScheduleFrequency = 'daily' | 'weekly' | 'custom'
 
 // Days of the week (0 = Sunday, 6 = Saturday)
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6
+
+// Configuration for pod WhatsApp notifications
+export interface PodWhatsAppConfig {
+  id: number
+  pod_name: string
+  feature_type: WaFeatureType
+  is_active: boolean
+  custom_message_header: string | null
+  frequency: string // 'daily', 'weekly', etc.
+  scheduled_time: string // TIME format: '09:00:00'
+  active_days: string | null // e.g., 'Mon,Tue,Wed' or null for all days
+  last_sent_at: string | null
+  created_at: string
+  updated_at: string
+}
 
 // A scheduled WhatsApp summary configuration stored in `whatsapp_schedules` table
 export interface WhatsAppSchedule {
@@ -32,25 +50,6 @@ export interface WhatsAppScheduleInput {
   days_of_week?: DayOfWeek[]
   custom_message: string
   is_active?: boolean
-}
-
-// Ad account error record Stored in `ad_account_errors` table
-export interface AdAccountError {
-  id: string
-  client_id: number
-  error_type: string // 'invalid_token', 'account_disabled', 'rate_limited', etc.
-  error_message: string
-  first_detected_at: string
-  last_alerted_at: string | null
-  resolved_at: string | null
-  is_resolved: boolean
-}
-
-// Input for creating an ad account error
-export interface AdAccountErrorInput {
-  client_id: number
-  error_type: string
-  error_message: string
 }
 
 // Result of sending a WhatsApp message

@@ -6,6 +6,12 @@ import { NextRequest, NextResponse } from 'next/server'
 // ============================================================================
 // GET /api/whatsapp/scheduled-summary
 // ============================================================================
+// ⚠️ DEPRECATED: Use /api/whatsapp/cron-handler instead
+// This route is kept for backward compatibility during migration
+//
+// New endpoint: POST /api/whatsapp/cron-handler
+// Body: { "feature": "daily_summary" }
+//
 // Cron endpoint that sends scheduled WhatsApp summaries to media buyers
 // Lists clients that need to be responded to based on communication_reports
 //
