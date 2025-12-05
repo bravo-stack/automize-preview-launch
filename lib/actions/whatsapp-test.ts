@@ -98,10 +98,7 @@ export async function runTestWhatsAppJob(
             ? `DAILY SUMMARY - Clients needing response (${i + 1}/${batches.length}):`
             : 'DAILY SUMMARY - Clients needing response:'
 
-        const customHeader = await getMessageHeader(
-          summaryConfig,
-          defaultHeader,
-        )
+        const customHeader = getMessageHeader(summaryConfig, defaultHeader)
         const batchHeader =
           batches.length > 1 && !summaryConfig.custom_message_header
             ? `${customHeader} (${i + 1}/${batches.length})`
@@ -173,6 +170,7 @@ export async function runTestWhatsAppJob(
         .in('guild_id', podServers ?? [])
         .eq('status', 'Client responded - awaiting team reply')
         .order('days_since_ixm_message', { ascending: false })
+        .limit(20)
 
       const lateResponseAlerts: string[] = []
 
@@ -291,32 +289,64 @@ export async function runTestWhatsAppJob(
       })
     } else {
       // fetch refreshed sheet from db
-      const { data: sheetData } = await db
+      const { data: sheetData, error: sheetError } = await db
         .from('refresh_snapshot_metrics')
         .select(
-          'id, snapshot_id, is_error, error_detail, pod (name, whatsapp_number), sheet_refresh_snapshots(sheet_id, data_preset, refresh_type, snapshot_date)',
+          `
+        id, 
+        snapshot_id, 
+        is_error, 
+        error_detail, 
+        pod,
+        pod_detail (
+            name, 
+            whatsapp_number
+        ), 
+        sheet_refresh_snapshots (
+            sheet_id, 
+            date_preset, 
+            refresh_type, 
+            snapshot_date
+        )
+    `,
         )
         .eq('is_error', true)
-        .eq('pod.name', podName)
+        // OPTIMIZATION: Filter by the local column 'pod' instead of the joined relationship
+        // This is much faster because 'pod' is indexed on 'refresh_snapshot_metrics'
+        .eq('pod', podName)
         .order('created_at', { ascending: false })
+        .limit(4)
+
+      console.log(sheetData, sheetError)
 
       console.log(`[AD ERRORS] Found ${sheetData?.length || 0} error sheets`)
 
       if (sheetData && sheetData.length > 0) {
         for (const sheet of sheetData) {
-          const pod = Array.isArray(sheet.pod) ? sheet.pod[0] : sheet.pod
+          // --- UPDATED SECTION START ---
+          const podRelation = Array.isArray(sheet.pod_detail)
+            ? sheet.pod_detail[0]
+            : sheet.pod_detail
+
+          // Construct pod object with fallback to raw text name
+          const pod = {
+            name: podRelation?.name || sheet.pod,
+            whatsapp_number: podRelation?.whatsapp_number,
+          }
+
           const sheetSnapshot = Array.isArray(sheet.sheet_refresh_snapshots)
             ? sheet.sheet_refresh_snapshots[0]
             : sheet.sheet_refresh_snapshots
+          // --- UPDATED SECTION END ---
 
           if (sheet.is_error) {
-            const defaultHeader = `⚠️ *Ad Account Error for ${sheetSnapshot.refresh_type === 'autometric' ? 'Facebook' : 'Finance'}-${sheetSnapshot.data_preset} Sheet*`
+            const defaultHeader = `⚠️ *Ad Account Error for ${sheetSnapshot.refresh_type === 'autometric' ? 'Facebook' : 'Finance'}-${sheetSnapshot?.date_preset} Sheet*`
             const customHeader = getMessageHeader(adErrorConfig, defaultHeader)
 
             const errorMessage = [
               customHeader,
               '',
-              `*Pod:* ${pod.name}`,
+              `*Pod:* ${pod.name}`, // Works even if pod is not in DB
               `*Google Sheet ID:* ${sheetSnapshot.sheet_id}`,
               `*Date Refreshed:* ${sheetSnapshot.snapshot_date}`,
               sheet.error_detail ? `*Error:* ${sheet.error_detail}` : '',
@@ -327,7 +357,7 @@ export async function runTestWhatsAppJob(
               .join('\n')
 
             const errorResult = await sendWhatsAppMessage(
-              pod?.whatsapp_number ?? TEST_NUMBER,
+              pod?.whatsapp_number ?? TEST_NUMBER, // Falls back to Test Number if pod not in DB
               errorMessage,
             )
 

@@ -106,10 +106,13 @@ export async function markConfigAsSent(
 
 /**
  * Gets the message header to use - custom or default fallback.
+ * Note: This is a pure utility function, not a server action.
  */
-export function getMessageHeader(
+function getMessageHeader(
   config: PodWhatsAppConfig | null,
   defaultHeader: string,
 ): string {
   return config?.custom_message_header || defaultHeader
 }
+
+export { getMessageHeader }
