@@ -6,10 +6,17 @@ export type SnapshotStatus = 'pending' | 'processing' | 'completed' | 'failed'
 export type SnapshotType = 'scheduled' | 'manual' | 'triggered'
 export type RuleCondition =
   | 'equals'
+  | 'not_equals'
   | 'greater_than'
   | 'less_than'
+  | 'greater_than_or_equal'
+  | 'less_than_or_equal'
   | 'changed'
+  | 'changed_by_percent'
   | 'contains'
+  | 'not_contains'
+  | 'is_null'
+  | 'is_not_null'
 export type Severity = 'info' | 'warning' | 'critical'
 export type MetricUnit = 'percent' | 'currency' | 'count'
 
@@ -102,7 +109,11 @@ export interface MetricDefinition {
 export type LogicOperator = 'AND' | 'OR'
 export type DependencyCondition = 'triggered' | 'not_triggered' | 'acknowledged'
 export type NotifySchedule = 'daily' | 'weekly'
-export type TargetTable = 'api_records' | 'communication_reports' | 'clients'
+export type TargetTable =
+  | 'api_records'
+  | 'communication_reports'
+  | 'clients'
+  | 'refresh_snapshot_metrics'
 
 export interface WatchtowerRule {
   id: string
