@@ -1,8 +1,15 @@
 import type {
+  ApiDataCategoryStats,
   ApiRecord,
   ApiSnapshot,
   ApiSource,
   DataHubOverview,
+  DayDropRequest,
+  FacebookCategoryStats,
+  FacebookMetricsAggregates,
+  FinanceCategoryStats,
+  FinanceMetricsAggregates,
+  FormsCategoryStats,
   FormSubmission,
   PaginatedResponse,
   PaginationParams,
@@ -10,11 +17,12 @@ import type {
   SheetRefreshSnapshot,
   WatchtowerAlert,
   WatchtowerRule,
+  WebsiteRevampRequest,
 } from '@/types/data-hub'
 import { createAdminClient } from '../db/admin'
 
 // ============================================================================
-// Overview Stats
+// Overview Stats - Enhanced with category breakdown
 // ============================================================================
 
 export async function getDataHubOverview(): Promise<DataHubOverview> {
@@ -22,12 +30,17 @@ export async function getDataHubOverview(): Promise<DataHubOverview> {
 
   const [
     sourcesRes,
-    snapshotsRes,
-    recordsRes,
+    apiSnapshotsRes,
+    apiRecordsRes,
     alertsRes,
     formsRes,
     sheetSnapshotsRes,
-    sheetMetricsRes,
+    facebookSnapshotsRes,
+    financeSnapshotsRes,
+    facebookMetricsRes,
+    financeMetricsRes,
+    dayDropRes,
+    websiteRevampRes,
   ] = await Promise.all([
     db.from('api_sources').select('id, is_active', { count: 'exact' }),
     db.from('api_snapshots').select('id, status', { count: 'exact' }),
@@ -35,36 +48,511 @@ export async function getDataHubOverview(): Promise<DataHubOverview> {
     db
       .from('watchtower_alerts')
       .select('id, severity, is_acknowledged', { count: 'exact' }),
-    db.from('form_submissions').select('id, status', { count: 'exact' }),
+    db
+      .from('form_submissions')
+      .select('id, status, form_type', { count: 'exact' }),
     db
       .from('sheet_refresh_snapshots')
-      .select('id', { count: 'exact', head: true }),
+      .select('id, refresh_status', { count: 'exact' }),
+    db
+      .from('sheet_refresh_snapshots')
+      .select('id', { count: 'exact', head: true })
+      .eq('refresh_type', 'autometric'),
+    db
+      .from('sheet_refresh_snapshots')
+      .select('id', { count: 'exact', head: true })
+      .eq('refresh_type', 'financialx'),
     db
       .from('refresh_snapshot_metrics')
-      .select('id', { count: 'exact', head: true }),
+      .select('id, snapshot:sheet_refresh_snapshots!inner(refresh_type)', {
+        count: 'exact',
+        head: true,
+      })
+      .eq('snapshot.refresh_type', 'autometric'),
+    db
+      .from('refresh_snapshot_metrics')
+      .select('id, snapshot:sheet_refresh_snapshots!inner(refresh_type)', {
+        count: 'exact',
+        head: true,
+      })
+      .eq('snapshot.refresh_type', 'financialx'),
+    db
+      .from('form_submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('form_type', 'day_drop_request'),
+    db
+      .from('form_submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('form_type', 'website_revamp'),
   ])
 
   const sources = sourcesRes.data || []
-  const snapshots = snapshotsRes.data || []
+  const apiSnapshots = apiSnapshotsRes.data || []
+  const sheetSnapshots = sheetSnapshotsRes.data || []
   const alerts = alertsRes.data || []
   const forms = formsRes.data || []
 
   return {
+    // API Data Stats
     totalSources: sourcesRes.count || 0,
     activeSources: sources.filter((s) => s.is_active).length,
-    totalSnapshots: snapshotsRes.count || 0,
-    completedSnapshots: snapshots.filter((s) => s.status === 'completed')
+    totalApiSnapshots: apiSnapshotsRes.count || 0,
+    completedApiSnapshots: apiSnapshots.filter((s) => s.status === 'completed')
       .length,
-    failedSnapshots: snapshots.filter((s) => s.status === 'failed').length,
-    totalRecords: recordsRes.count || 0,
+    failedApiSnapshots: apiSnapshots.filter((s) => s.status === 'failed')
+      .length,
+    totalApiRecords: apiRecordsRes.count || 0,
+    // Sheet Data Stats
+    totalSheetSnapshots: sheetSnapshotsRes.count || 0,
+    completedSheetSnapshots: sheetSnapshots.filter(
+      (s) => s.refresh_status === 'completed',
+    ).length,
+    totalSheetMetrics:
+      (facebookMetricsRes.count || 0) + (financeMetricsRes.count || 0),
+    // Facebook (Autometric) Stats
+    facebookSnapshots: facebookSnapshotsRes.count || 0,
+    facebookMetrics: facebookMetricsRes.count || 0,
+    // Finance (FinancialX) Stats
+    financeSnapshots: financeSnapshotsRes.count || 0,
+    financeMetrics: financeMetricsRes.count || 0,
+    // Watchtower Stats
     totalAlerts: alertsRes.count || 0,
     unacknowledgedAlerts: alerts.filter((a) => !a.is_acknowledged).length,
     criticalAlerts: alerts.filter((a) => a.severity === 'critical').length,
+    // Form Stats
     totalFormSubmissions: formsRes.count || 0,
     pendingSubmissions: forms.filter((f) => f.status === 'pending').length,
-    totalSheetSnapshots: sheetSnapshotsRes.count || 0,
-    totalSheetMetrics: sheetMetricsRes.count || 0,
+    dayDropRequests: dayDropRes.count || 0,
+    websiteRevampRequests: websiteRevampRes.count || 0,
   }
+}
+
+// ============================================================================
+// Facebook (Autometric) Category Functions
+// ============================================================================
+
+export async function getFacebookCategoryStats(): Promise<FacebookCategoryStats> {
+  const db = createAdminClient()
+
+  const [snapshotsRes, metricsRes, latestRes, podsRes, errorsRes] =
+    await Promise.all([
+      db
+        .from('sheet_refresh_snapshots')
+        .select('id, refresh_status', { count: 'exact' })
+        .eq('refresh_type', 'autometric'),
+      db
+        .from('refresh_snapshot_metrics')
+        .select('id, snapshot:sheet_refresh_snapshots!inner(refresh_type)', {
+          count: 'exact',
+          head: true,
+        })
+        .eq('snapshot.refresh_type', 'autometric'),
+      db
+        .from('sheet_refresh_snapshots')
+        .select('snapshot_date')
+        .eq('refresh_type', 'autometric')
+        .order('snapshot_date', { ascending: false })
+        .limit(1)
+        .single(),
+      db
+        .from('refresh_snapshot_metrics')
+        .select('pod, snapshot:sheet_refresh_snapshots!inner(refresh_type)')
+        .eq('snapshot.refresh_type', 'autometric')
+        .not('pod', 'is', null),
+      db
+        .from('refresh_snapshot_metrics')
+        .select('id, snapshot:sheet_refresh_snapshots!inner(refresh_type)', {
+          count: 'exact',
+          head: true,
+        })
+        .eq('snapshot.refresh_type', 'autometric')
+        .eq('is_error', true),
+    ])
+
+  const snapshots = snapshotsRes.data || []
+  const pods = podsRes.data || []
+  const uniquePods = Array.from(
+    new Set(pods.map((p) => p.pod).filter(Boolean)),
+  ) as string[]
+
+  return {
+    totalSnapshots: snapshotsRes.count || 0,
+    completedSnapshots: snapshots.filter(
+      (s) => s.refresh_status === 'completed',
+    ).length,
+    totalMetrics: metricsRes.count || 0,
+    latestSnapshotDate: latestRes.data?.snapshot_date || null,
+    uniquePods,
+    accountsWithErrors: errorsRes.count || 0,
+  }
+}
+
+export async function getFacebookMetrics(
+  params: PaginationParams & {
+    snapshotId?: string
+    pod?: string
+    datePreset?: string
+  },
+): Promise<PaginatedResponse<RefreshSnapshotMetric>> {
+  const db = createAdminClient()
+  const { page, pageSize, snapshotId, pod, datePreset } = params
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = db
+    .from('refresh_snapshot_metrics')
+    .select(
+      `
+      *,
+      snapshot:sheet_refresh_snapshots!inner (
+        id,
+        refresh_type,
+        refresh_status,
+        date_preset,
+        snapshot_date,
+        sheet:sheets (
+          id,
+          title,
+          pod,
+          is_finance
+        )
+      )
+    `,
+      { count: 'exact' },
+    )
+    .eq('snapshot.refresh_type', 'autometric')
+    .order('created_at', { ascending: false })
+
+  if (snapshotId) query = query.eq('snapshot_id', snapshotId)
+  if (pod) query = query.eq('pod', pod)
+  if (datePreset) query = query.eq('snapshot.date_preset', datePreset)
+
+  const { data, error, count } = await query.range(from, to)
+
+  if (error) {
+    console.error('Error fetching Facebook metrics:', error)
+    return createEmptyPaginatedResponse(page, pageSize)
+  }
+
+  return createPaginatedResponse(data || [], count || 0, page, pageSize)
+}
+
+export async function getFacebookAggregates(
+  snapshotId?: string,
+): Promise<FacebookMetricsAggregates> {
+  const db = createAdminClient()
+
+  let query = db
+    .from('refresh_snapshot_metrics')
+    .select('*, snapshot:sheet_refresh_snapshots!inner(refresh_type)')
+    .eq('snapshot.refresh_type', 'autometric')
+
+  if (snapshotId) {
+    query = query.eq('snapshot_id', snapshotId)
+  }
+
+  const { data, error } = await query
+
+  if (error || !data) {
+    return {
+      totalAccounts: 0,
+      totalAdSpend: 0,
+      avgRoas: 0,
+      totalOrders: 0,
+      totalFbRevenue: 0,
+      totalShopifyRevenue: 0,
+      accountsWithErrors: 0,
+    }
+  }
+
+  const metrics = data as RefreshSnapshotMetric[]
+  const totalAdSpend = metrics.reduce(
+    (sum, m) => sum + (m.ad_spend_timeframe || 0),
+    0,
+  )
+  const totalRoas = metrics.reduce((sum, m) => sum + (m.roas_timeframe || 0), 0)
+  const roasCount = metrics.filter((m) => m.roas_timeframe !== null).length
+
+  return {
+    totalAccounts: metrics.length,
+    totalAdSpend,
+    avgRoas: roasCount > 0 ? totalRoas / roasCount : 0,
+    totalOrders: metrics.reduce((sum, m) => sum + (m.orders_timeframe || 0), 0),
+    totalFbRevenue: metrics.reduce(
+      (sum, m) => sum + (m.fb_revenue_timeframe || 0),
+      0,
+    ),
+    totalShopifyRevenue: metrics.reduce(
+      (sum, m) => sum + (m.shopify_revenue_timeframe || 0),
+      0,
+    ),
+    accountsWithErrors: metrics.filter((m) => m.is_error).length,
+  }
+}
+
+// ============================================================================
+// Finance (FinancialX) Category Functions
+// ============================================================================
+
+export async function getFinanceCategoryStats(): Promise<FinanceCategoryStats> {
+  const db = createAdminClient()
+
+  const [snapshotsRes, metricsRes, latestRes, rebillRes] = await Promise.all([
+    db
+      .from('sheet_refresh_snapshots')
+      .select('id, refresh_status', { count: 'exact' })
+      .eq('refresh_type', 'financialx'),
+    db
+      .from('refresh_snapshot_metrics')
+      .select('id, snapshot:sheet_refresh_snapshots!inner(refresh_type)', {
+        count: 'exact',
+        head: true,
+      })
+      .eq('snapshot.refresh_type', 'financialx'),
+    db
+      .from('sheet_refresh_snapshots')
+      .select('snapshot_date')
+      .eq('refresh_type', 'financialx')
+      .order('snapshot_date', { ascending: false })
+      .limit(1)
+      .single(),
+    db
+      .from('refresh_snapshot_metrics')
+      .select(
+        'id, rebill_status, snapshot:sheet_refresh_snapshots!inner(refresh_type)',
+        { count: 'exact' },
+      )
+      .eq('snapshot.refresh_type', 'financialx')
+      .not('rebill_status', 'is', null),
+  ])
+
+  const snapshots = snapshotsRes.data || []
+
+  return {
+    totalSnapshots: snapshotsRes.count || 0,
+    completedSnapshots: snapshots.filter(
+      (s) => s.refresh_status === 'completed',
+    ).length,
+    totalMetrics: metricsRes.count || 0,
+    latestSnapshotDate: latestRes.data?.snapshot_date || null,
+    accountsInRebill: rebillRes.count || 0,
+  }
+}
+
+export async function getFinanceMetrics(
+  params: PaginationParams & { snapshotId?: string; rebillStatus?: string },
+): Promise<PaginatedResponse<RefreshSnapshotMetric>> {
+  const db = createAdminClient()
+  const { page, pageSize, snapshotId, rebillStatus } = params
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = db
+    .from('refresh_snapshot_metrics')
+    .select(
+      `
+      *,
+      snapshot:sheet_refresh_snapshots!inner (
+        id,
+        refresh_type,
+        refresh_status,
+        date_preset,
+        snapshot_date,
+        sheet:sheets (
+          id,
+          title,
+          pod,
+          is_finance
+        )
+      )
+    `,
+      { count: 'exact' },
+    )
+    .eq('snapshot.refresh_type', 'financialx')
+    .order('created_at', { ascending: false })
+
+  if (snapshotId) query = query.eq('snapshot_id', snapshotId)
+  if (rebillStatus) query = query.eq('rebill_status', rebillStatus)
+
+  const { data, error, count } = await query.range(from, to)
+
+  if (error) {
+    console.error('Error fetching Finance metrics:', error)
+    return createEmptyPaginatedResponse(page, pageSize)
+  }
+
+  return createPaginatedResponse(data || [], count || 0, page, pageSize)
+}
+
+export async function getFinanceAggregates(
+  snapshotId?: string,
+): Promise<FinanceMetricsAggregates> {
+  const db = createAdminClient()
+
+  let query = db
+    .from('refresh_snapshot_metrics')
+    .select('*, snapshot:sheet_refresh_snapshots!inner(refresh_type)')
+    .eq('snapshot.refresh_type', 'financialx')
+
+  if (snapshotId) {
+    query = query.eq('snapshot_id', snapshotId)
+  }
+
+  const { data, error } = await query
+
+  if (error || !data) {
+    return {
+      totalAccounts: 0,
+      totalRebillSpend: 0,
+      avgRebillRoas: 0,
+      totalRebillOrders: 0,
+      accountsInRebill: 0,
+    }
+  }
+
+  const metrics = data as RefreshSnapshotMetric[]
+  const totalRebillSpend = metrics.reduce(
+    (sum, m) => sum + (m.ad_spend_rebill || 0),
+    0,
+  )
+  const totalRebillRoas = metrics.reduce(
+    (sum, m) => sum + (m.roas_rebill || 0),
+    0,
+  )
+  const roasCount = metrics.filter((m) => m.roas_rebill !== null).length
+
+  return {
+    totalAccounts: metrics.length,
+    totalRebillSpend,
+    avgRebillRoas: roasCount > 0 ? totalRebillRoas / roasCount : 0,
+    totalRebillOrders: metrics.reduce(
+      (sum, m) => sum + (m.orders_rebill || 0),
+      0,
+    ),
+    accountsInRebill: metrics.filter((m) => m.rebill_status !== null).length,
+  }
+}
+
+// ============================================================================
+// API Data Category Functions
+// ============================================================================
+
+export async function getApiDataCategoryStats(): Promise<ApiDataCategoryStats> {
+  const db = createAdminClient()
+
+  const [sourcesRes, snapshotsRes, recordsRes, latestRes] = await Promise.all([
+    db
+      .from('api_sources')
+      .select('id, provider, is_active', { count: 'exact' }),
+    db.from('api_snapshots').select('id', { count: 'exact', head: true }),
+    db.from('api_records').select('id', { count: 'exact', head: true }),
+    db
+      .from('api_snapshots')
+      .select('created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single(),
+  ])
+
+  const sources = sourcesRes.data || []
+  const sourcesByProvider: Record<string, number> = {}
+  sources.forEach((s) => {
+    sourcesByProvider[s.provider] = (sourcesByProvider[s.provider] || 0) + 1
+  })
+
+  return {
+    totalSources: sourcesRes.count || 0,
+    activeSources: sources.filter((s) => s.is_active).length,
+    sourcesByProvider,
+    totalSnapshots: snapshotsRes.count || 0,
+    totalRecords: recordsRes.count || 0,
+    latestSnapshotDate: latestRes.data?.created_at || null,
+  }
+}
+
+// ============================================================================
+// Forms Category Functions
+// ============================================================================
+
+export async function getFormsCategoryStats(): Promise<FormsCategoryStats> {
+  const db = createAdminClient()
+
+  const { data, error, count } = await db
+    .from('form_submissions')
+    .select('id, status, form_type', { count: 'exact' })
+
+  if (error || !data) {
+    return {
+      total: 0,
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      cancelled: 0,
+      dayDropCount: 0,
+      websiteRevampCount: 0,
+    }
+  }
+
+  return {
+    total: count || 0,
+    pending: data.filter((f) => f.status === 'pending').length,
+    processing: data.filter((f) => f.status === 'processing').length,
+    completed: data.filter((f) => f.status === 'completed').length,
+    cancelled: data.filter((f) => f.status === 'cancelled').length,
+    dayDropCount: data.filter((f) => f.form_type === 'day_drop_request').length,
+    websiteRevampCount: data.filter((f) => f.form_type === 'website_revamp')
+      .length,
+  }
+}
+
+export async function getDayDropRequests(
+  params: PaginationParams & { status?: string },
+): Promise<PaginatedResponse<DayDropRequest>> {
+  const db = createAdminClient()
+  const { page, pageSize, status } = params
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = db
+    .from('day_drop_requests')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+
+  if (status) query = query.eq('status', status)
+
+  const { data, error, count } = await query.range(from, to)
+
+  if (error) {
+    console.error('Error fetching Day Drop requests:', error)
+    return createEmptyPaginatedResponse(page, pageSize)
+  }
+
+  return createPaginatedResponse(data || [], count || 0, page, pageSize)
+}
+
+export async function getWebsiteRevampRequests(
+  params: PaginationParams & { status?: string },
+): Promise<PaginatedResponse<WebsiteRevampRequest>> {
+  const db = createAdminClient()
+  const { page, pageSize, status } = params
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = db
+    .from('website_revamp_requests')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+
+  if (status) query = query.eq('status', status)
+
+  const { data, error, count } = await query.range(from, to)
+
+  if (error) {
+    console.error('Error fetching Website Revamp requests:', error)
+    return createEmptyPaginatedResponse(page, pageSize)
+  }
+
+  return createPaginatedResponse(data || [], count || 0, page, pageSize)
 }
 
 // ============================================================================
