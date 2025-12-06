@@ -7,6 +7,7 @@ import type {
   CVRMetricsComparison,
   DateRange,
 } from '@/types/cvr-hub'
+import { Info, Save } from 'lucide-react'
 import { useState } from 'react'
 
 interface SaveCVRButtonProps {
@@ -16,6 +17,9 @@ interface SaveCVRButtonProps {
   clientId?: number
   disabled?: boolean
 }
+
+// Feature is currently disabled - will be enabled in future release
+const FEATURE_ENABLED = false
 
 export default function SaveCVRButton({
   metrics,
@@ -29,6 +33,38 @@ export default function SaveCVRButton({
     success: boolean
     message: string
   } | null>(null)
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  // Feature is disabled - return disabled button with info
+  if (!FEATURE_ENABLED) {
+    return (
+      <div className="relative">
+        <Button
+          disabled
+          className="cursor-not-allowed opacity-50"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <Save className="mr-2 h-4 w-4" />
+          Save CVR Data
+        </Button>
+        {showTooltip && (
+          <div className="absolute bottom-full left-0 mb-2 w-64 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm shadow-lg">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
+              <div>
+                <p className="font-medium text-blue-400">Coming Soon</p>
+                <p className="mt-1 text-blue-400/80">
+                  Save metrics to database and Google Sheets for historical
+                  tracking.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const handleSave = async () => {
     setIsSaving(true)
