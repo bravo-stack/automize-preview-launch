@@ -755,34 +755,28 @@ export async function getWatchtowerStats(): Promise<WatchtowerStats> {
 
   const [rulesRes, alertsRes, todayAlertsRes, weekAlertsRes] =
     await Promise.all([
-      db.from('watchtower_rules').select('id, is_active', { count: 'exact' }),
-      db
-        .from('watchtower_alerts')
-        .select('id, severity, is_acknowledged', { count: 'exact' }),
-      db
-        .from('watchtower_alerts')
-        .select('id', { count: 'exact', head: true })
-        .gte('created_at', startOfDay),
-      db
-        .from('watchtower_alerts')
-        .select('id', { count: 'exact', head: true })
-        .gte('created_at', startOfWeek),
+      db.from('watchtower_rules').select('id, is_active'),
+      db.from('watchtower_alerts').select('id, severity, is_acknowledged'),
+      db.from('watchtower_alerts').select('id').gte('created_at', startOfDay),
+      db.from('watchtower_alerts').select('id').gte('created_at', startOfWeek),
     ])
 
   const rules = rulesRes.data || []
   const alerts = alertsRes.data || []
+  const todayAlerts = todayAlertsRes.data || []
+  const weekAlerts = weekAlertsRes.data || []
 
   return {
-    totalRules: rulesRes.count || 0,
+    totalRules: rules.length,
     activeRules: rules.filter((r) => r.is_active).length,
     inactiveRules: rules.filter((r) => !r.is_active).length,
-    totalAlerts: alertsRes.count || 0,
+    totalAlerts: alerts.length,
     unacknowledgedAlerts: alerts.filter((a) => !a.is_acknowledged).length,
     criticalAlerts: alerts.filter((a) => a.severity === 'critical').length,
     warningAlerts: alerts.filter((a) => a.severity === 'warning').length,
     infoAlerts: alerts.filter((a) => a.severity === 'info').length,
-    alertsToday: todayAlertsRes.count || 0,
-    alertsThisWeek: weekAlertsRes.count || 0,
+    alertsToday: todayAlerts.length,
+    alertsThisWeek: weekAlerts.length,
   }
 }
 

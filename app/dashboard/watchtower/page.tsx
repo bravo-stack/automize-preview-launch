@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Bell,
   Info,
+  Loader2,
   Plus,
   RefreshCw,
   Shield,
@@ -39,6 +40,9 @@ export default function WatchtowerPage() {
   const [activeTab, setActiveTab] = useState<WatchtowerTab>('overview')
   const [stats, setStats] = useState<WatchtowerStats | null>(null)
   const [rules, setRules] = useState<WatchtowerRuleWithRelations[]>([])
+  const [recentRules, setRecentRules] = useState<WatchtowerRuleWithRelations[]>(
+    [],
+  )
   const [alerts, setAlerts] = useState<WatchtowerAlertWithRelations[]>([])
   const [rulesPagination, setRulesPagination] = useState<PaginationInfo | null>(
     null,
@@ -133,20 +137,44 @@ export default function WatchtowerPage() {
     [severityFilter, acknowledgedFilter],
   )
 
+  // Fetch recent rules for overview
+  const fetchRecentRules = useCallback(async () => {
+    try {
+      const res = await fetch('/api/watchtower/rules?page=1&pageSize=5')
+      const json = await res.json()
+      if (json.success) {
+        setRecentRules(json.data)
+      }
+    } catch (err) {
+      console.error('Error fetching recent rules:', err)
+    }
+  }, [])
+
   // Initial fetch
   useEffect(() => {
     fetchStats()
-  }, [fetchStats])
+    fetchRecentRules()
+  }, [fetchStats, fetchRecentRules])
 
   useEffect(() => {
     if (activeTab === 'rules') {
       fetchRules(rulesPage)
     } else if (activeTab === 'alerts') {
       fetchAlerts(alertsPage)
+    } else if (activeTab === 'overview') {
+      fetchRecentRules()
+      setIsLoading(false)
     } else {
       setIsLoading(false)
     }
-  }, [activeTab, rulesPage, alertsPage, fetchRules, fetchAlerts])
+  }, [
+    activeTab,
+    rulesPage,
+    alertsPage,
+    fetchRules,
+    fetchAlerts,
+    fetchRecentRules,
+  ])
 
   // Handlers
   const handleCreateRule = async (
@@ -165,6 +193,7 @@ export default function WatchtowerPage() {
         setShowRuleBuilder(false)
         setEditingRule(null)
         fetchRules(rulesPage)
+        fetchRecentRules()
         fetchStats()
       } else {
         setError(json.error)
@@ -194,6 +223,8 @@ export default function WatchtowerPage() {
         setShowRuleBuilder(false)
         setEditingRule(null)
         fetchRules(rulesPage)
+        fetchRecentRules()
+        fetchStats()
       } else {
         setError(json.error)
       }
@@ -217,6 +248,7 @@ export default function WatchtowerPage() {
 
       if (json.success) {
         fetchRules(rulesPage)
+        fetchRecentRules()
         fetchStats()
       } else {
         setError(json.error)
@@ -244,6 +276,7 @@ export default function WatchtowerPage() {
 
       if (json.success) {
         fetchRules(rulesPage)
+        fetchRecentRules()
         fetchStats()
       } else {
         setError(json.error)
@@ -403,8 +436,56 @@ export default function WatchtowerPage() {
           ))}
         </div>
 
+        {/* Loading State */}
+        {isLoading && !stats && (
+          <div className="space-y-8">
+            {/* Loading Header */}
+            <div className="flex items-center justify-center gap-3 py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-white/60" />
+              <span className="text-lg text-white/60">
+                Loading Watchtower...
+              </span>
+            </div>
+
+            {/* Skeleton Stats Grid */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className="animate-pulse rounded-lg border border-white/10 bg-white/5 p-6"
+                >
+                  <div className="mb-2 h-4 w-24 rounded bg-white/10" />
+                  <div className="h-8 w-16 rounded bg-white/10" />
+                  <div className="mt-2 h-3 w-20 rounded bg-white/5" />
+                </div>
+              ))}
+            </div>
+
+            {/* Skeleton Cards */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {[...Array(2)].map((_, i) => (
+                <div
+                  key={i}
+                  className="animate-pulse rounded-lg border border-white/10 bg-white/5 p-6"
+                >
+                  <div className="mb-4 h-5 w-32 rounded bg-white/10" />
+                  <div className="space-y-3">
+                    {[...Array(4)].map((_, j) => (
+                      <div key={j} className="flex justify-between">
+                        <div className="h-4 w-24 rounded bg-white/5" />
+                        <div className="h-4 w-12 rounded bg-white/10" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 h-10 w-full rounded bg-white/10" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Overview Tab */}
-        {activeTab === 'overview' && (
+        {activeTab === 'overview' && !isLoading && (
           <div className="space-y-8">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -527,6 +608,66 @@ export default function WatchtowerPage() {
               </div>
             </div>
 
+            {/* Recent Rules */}
+            <div className="rounded-lg border border-white/10 bg-white/5 p-6">
+              <div className="flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-lg font-medium text-white">
+                  <Shield className="h-5 w-5" />
+                  Recent Rules
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveTab('rules')}
+                  className="text-white/60 hover:text-white"
+                >
+                  View All
+                </Button>
+              </div>
+              <div className="mt-4 space-y-3">
+                {recentRules.length === 0 ? (
+                  <p className="text-sm text-white/50">
+                    No rules created yet. Create your first rule to start
+                    monitoring.
+                  </p>
+                ) : (
+                  recentRules.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`h-2 w-2 rounded-full ${
+                            rule.is_active ? 'bg-green-500' : 'bg-white/30'
+                          }`}
+                        />
+                        <div>
+                          <p className="font-medium text-white">{rule.name}</p>
+                          <p className="text-xs text-white/50">
+                            {rule.target_table?.replace(/_/g, ' ') ||
+                              'All domains'}{' '}
+                            • {rule.severity}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                          rule.severity === 'critical'
+                            ? 'bg-red-500/20 text-red-400'
+                            : rule.severity === 'warning'
+                              ? 'bg-yellow-500/20 text-yellow-400'
+                              : 'bg-blue-500/20 text-blue-400'
+                        }`}
+                      >
+                        {rule.severity}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
             {/* Hub Data Domains Info */}
             <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-6">
               <div className="flex items-start gap-3">
@@ -634,6 +775,16 @@ export default function WatchtowerPage() {
                   </Button>
                 </div>
 
+                {/* Loading Indicator */}
+                {isLoading && rules.length > 0 && (
+                  <div className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-white/60" />
+                    <span className="text-sm text-white/60">
+                      Refreshing rules...
+                    </span>
+                  </div>
+                )}
+
                 {/* Rules List */}
                 <RuleList
                   rules={rules}
@@ -723,6 +874,16 @@ export default function WatchtowerPage() {
                 Refresh
               </Button>
             </div>
+
+            {/* Loading Indicator */}
+            {isLoading && alerts.length > 0 && (
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-3">
+                <Loader2 className="h-4 w-4 animate-spin text-white/60" />
+                <span className="text-sm text-white/60">
+                  Refreshing alerts...
+                </span>
+              </div>
+            )}
 
             {/* Alerts List */}
             <AlertList
