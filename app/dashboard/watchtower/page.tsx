@@ -381,7 +381,7 @@ export default function WatchtowerPage() {
         )}
 
         {/* Tab Navigation */}
-        <div className="flex flex-wrap gap-2 rounded-lg border border-white/10 bg-white/5 p-1.5">
+        <div className="flex w-fit flex-wrap gap-2 rounded-lg border border-white/10 bg-white/5 p-1.5">
           {tabs.map((tab) => (
             <button
               key={tab.id}
