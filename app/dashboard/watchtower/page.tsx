@@ -205,8 +205,6 @@ export default function WatchtowerPage() {
   }
 
   const handleDeleteRule = async (ruleId: string, deleteGroup = false) => {
-    if (!confirm('Are you sure you want to delete this rule?')) return
-
     setIsLoading(true)
     try {
       const params = new URLSearchParams({ id: ruleId })
@@ -526,6 +524,52 @@ export default function WatchtowerPage() {
                 >
                   Manage Rules
                 </Button>
+              </div>
+            </div>
+
+            {/* Hub Data Domains Info */}
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-6">
+              <div className="flex items-start gap-3">
+                <Info className="mt-0.5 h-5 w-5 text-blue-400" />
+                <div>
+                  <h3 className="font-medium text-blue-400">
+                    Available Data Domains for Monitoring
+                  </h3>
+                  <p className="mt-1 text-sm text-blue-400/80">
+                    Rules can be configured to monitor data from any of these
+                    Hub domains:
+                  </p>
+                  <ul className="mt-3 space-y-2 text-sm text-blue-400/80">
+                    <li>
+                      <strong>Facebook (Autometric):</strong> Facebook Ads
+                      performance metrics from Autometric sheets - ad spend,
+                      ROAS, CPA, CTR, hook rate, and more
+                    </li>
+                    <li>
+                      <strong>Finance (FinancialX):</strong> Rebill and
+                      accounting metrics from FinancialX sheets - rebill spend,
+                      rebill ROAS, revenue tracking
+                    </li>
+                    <li>
+                      <strong>API Data Records:</strong> Individual records from
+                      external APIs like Omnisend, Shopify, and other
+                      integrations
+                    </li>
+                    <li>
+                      <strong>Form Submissions:</strong> Day Drop requests and
+                      Website Revamp submissions - status tracking and SLA
+                      monitoring
+                    </li>
+                    <li>
+                      <strong>API Snapshots:</strong> API data sync health -
+                      alert on failures or high error rates
+                    </li>
+                    <li>
+                      <strong>Sheet Snapshots:</strong> Google Sheet refresh
+                      status - alert on sync failures or stale data
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 

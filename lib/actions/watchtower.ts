@@ -57,9 +57,8 @@ export interface CreateRuleInput {
   notify_time?: string
   notify_day_of_week?: number
   notify_discord?: boolean
-  notify_email?: boolean
   discord_channel_id?: string
-  email_recipients?: string[]
+  pod_id?: string
 }
 
 // ============================================================================
@@ -96,9 +95,8 @@ export async function createRule(
       notify_time: input.notify_time || null,
       notify_day_of_week: input.notify_day_of_week ?? null,
       notify_discord: input.notify_discord || false,
-      notify_email: input.notify_email || false,
       discord_channel_id: input.discord_channel_id || null,
-      email_recipients: input.email_recipients || null,
+      pod_id: input.pod_id || null,
     })
     .select()
     .single()
@@ -402,7 +400,7 @@ export async function evaluateCompoundRule(
     const value = valuesByField[rule.field_name]
     if (value === undefined) continue
 
-    const conditionMet = evaluateRule(rule, value)
+    const conditionMet = await evaluateRule(rule, value)
 
     if (rule.logic_operator === 'AND') {
       result = result && conditionMet
@@ -448,9 +446,8 @@ export async function createCompoundRule(
     notify_time: input.notify_time || null,
     notify_day_of_week: input.notify_day_of_week ?? null,
     notify_discord: input.notify_discord ?? false,
-    notify_email: input.notify_email ?? false,
     discord_channel_id: input.discord_channel_id || null,
-    email_recipients: input.email_recipients || null,
+    pod_id: input.pod_id || null,
   }))
 
   const { data, error } = await db

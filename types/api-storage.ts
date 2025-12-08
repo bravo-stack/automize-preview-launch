@@ -109,11 +109,23 @@ export interface MetricDefinition {
 export type LogicOperator = 'AND' | 'OR'
 export type DependencyCondition = 'triggered' | 'not_triggered' | 'acknowledged'
 export type NotifySchedule = 'daily' | 'weekly'
+
+/**
+ * Target tables mapped to Hub data domains:
+ * - facebook_metrics: Autometric sheet data (maps to refresh_snapshot_metrics where refresh_type='autometric')
+ * - finance_metrics: FinancialX sheet data (maps to refresh_snapshot_metrics where refresh_type='financialx')
+ * - api_records: API-fetched data (Omnisend, Shopify, etc.)
+ * - form_submissions: Day Drop & Website Revamp submissions
+ * - api_snapshots: API snapshot status and health
+ * - sheet_snapshots: Sheet refresh snapshot status (maps to sheet_refresh_snapshots)
+ */
 export type TargetTable =
+  | 'facebook_metrics'
+  | 'finance_metrics'
   | 'api_records'
-  | 'communication_reports'
-  | 'clients'
-  | 'refresh_snapshot_metrics'
+  | 'form_submissions'
+  | 'api_snapshots'
+  | 'sheet_snapshots'
 
 export interface WatchtowerRule {
   id: string
@@ -139,9 +151,8 @@ export interface WatchtowerRule {
   notify_time: string | null
   notify_day_of_week: number | null
   notify_discord: boolean
-  notify_email: boolean
   discord_channel_id: string | null
-  email_recipients: string[] | null
+  pod_id: string | null
   last_notified_at: string | null
   // Timestamps
   created_at: string

@@ -23,11 +23,22 @@ export const RULE_CONDITIONS = [
 
 export const SEVERITY_LEVELS = ['info', 'warning', 'critical'] as const
 
+/**
+ * Target tables mapped to Hub data domains:
+ * - facebook_metrics: Autometric sheet data (refresh_snapshot_metrics where refresh_type='autometric')
+ * - finance_metrics: FinancialX sheet data (refresh_snapshot_metrics where refresh_type='financialx')
+ * - api_records: API-fetched data (Omnisend, Shopify, etc.)
+ * - form_submissions: Day Drop & Website Revamp submissions
+ * - api_snapshots: API snapshot status and health
+ * - sheet_snapshots: Sheet refresh snapshot status
+ */
 export const TARGET_TABLES = [
+  'facebook_metrics',
+  'finance_metrics',
   'api_records',
-  'communication_reports',
-  'clients',
-  'refresh_snapshot_metrics',
+  'form_submissions',
+  'api_snapshots',
+  'sheet_snapshots',
 ] as const
 
 export const LOGIC_OPERATORS = ['AND', 'OR'] as const
@@ -75,9 +86,8 @@ export interface WatchtowerRule {
   notify_time: string | null
   notify_day_of_week: number | null
   notify_discord: boolean
-  notify_email: boolean
   discord_channel_id: string | null
-  email_recipients: string[] | null
+  pod_id: string | null
   last_notified_at: string | null
   // Timestamps
   created_at: string
@@ -183,9 +193,8 @@ export interface CreateRuleInput {
   notify_time?: string | null
   notify_day_of_week?: number | null
   notify_discord?: boolean
-  notify_email?: boolean
   discord_channel_id?: string | null
-  email_recipients?: string[] | null
+  pod_id?: string | null
 }
 
 export interface UpdateRuleInput extends Partial<CreateRuleInput> {
@@ -234,9 +243,8 @@ export interface CompoundRuleInput {
   notify_time?: string | null
   notify_day_of_week?: number | null
   notify_discord?: boolean
-  notify_email?: boolean
   discord_channel_id?: string | null
-  email_recipients?: string[] | null
+  pod_id?: string | null
   // Dependencies
   parent_rule_id?: string | null
   dependency_condition?: DependencyCondition | null
@@ -307,51 +315,267 @@ export interface TableFieldConfig {
   fields: FieldDefinition[]
 }
 
-// Pre-defined fields for each target table
+/**
+ * Pre-defined fields for each target table, organized by Hub data domain
+ * These map directly to the actual database columns used in each domain
+ */
 export const TABLE_FIELDS: TableFieldConfig[] = [
+  {
+    table: 'facebook_metrics',
+    fields: [
+      {
+        name: 'ad_spend_timeframe',
+        label: 'Ad Spend (Timeframe)',
+        type: 'number',
+        description: 'Current period ad spend',
+      },
+      {
+        name: 'roas_timeframe',
+        label: 'ROAS (Timeframe)',
+        type: 'number',
+        description: 'Return on ad spend for current period',
+      },
+      {
+        name: 'fb_revenue_timeframe',
+        label: 'FB Revenue (Timeframe)',
+        type: 'number',
+        description: 'Facebook-attributed revenue',
+      },
+      {
+        name: 'shopify_revenue_timeframe',
+        label: 'Shopify Revenue (Timeframe)',
+        type: 'number',
+        description: 'Shopify revenue for period',
+      },
+      {
+        name: 'orders_timeframe',
+        label: 'Orders (Timeframe)',
+        type: 'number',
+        description: 'Order count for period',
+      },
+      {
+        name: 'cpa_purchase',
+        label: 'CPA Purchase',
+        type: 'number',
+        description: 'Cost per acquisition',
+      },
+      {
+        name: 'cpc',
+        label: 'CPC',
+        type: 'number',
+        description: 'Cost per click',
+      },
+      {
+        name: 'cpm',
+        label: 'CPM',
+        type: 'number',
+        description: 'Cost per mille (1000 impressions)',
+      },
+      {
+        name: 'ctr',
+        label: 'CTR',
+        type: 'number',
+        description: 'Click-through rate',
+      },
+      {
+        name: 'hook_rate',
+        label: 'Hook Rate',
+        type: 'number',
+        description: 'Video hook rate',
+      },
+      {
+        name: 'bounce_rate',
+        label: 'Bounce Rate',
+        type: 'number',
+        description: 'Site bounce rate',
+      },
+      {
+        name: 'is_error',
+        label: 'Has Error',
+        type: 'boolean',
+        description: 'Account has sync error',
+      },
+      {
+        name: 'is_monitored',
+        label: 'Is Monitored',
+        type: 'boolean',
+        description: 'Account is being monitored',
+      },
+    ],
+  },
+  {
+    table: 'finance_metrics',
+    fields: [
+      {
+        name: 'ad_spend_rebill',
+        label: 'Ad Spend (Rebill)',
+        type: 'number',
+        description: 'Rebill period ad spend',
+      },
+      {
+        name: 'roas_rebill',
+        label: 'ROAS (Rebill)',
+        type: 'number',
+        description: 'Return on ad spend for rebill period',
+      },
+      {
+        name: 'fb_revenue_rebill',
+        label: 'FB Revenue (Rebill)',
+        type: 'number',
+        description: 'Facebook revenue for rebill',
+      },
+      {
+        name: 'shopify_revenue_rebill',
+        label: 'Shopify Revenue (Rebill)',
+        type: 'number',
+        description: 'Shopify revenue for rebill',
+      },
+      {
+        name: 'orders_rebill',
+        label: 'Orders (Rebill)',
+        type: 'number',
+        description: 'Order count for rebill period',
+      },
+      {
+        name: 'rebill_status',
+        label: 'Rebill Status',
+        type: 'string',
+        description: 'Current rebill status',
+      },
+      {
+        name: 'last_rebill_date',
+        label: 'Last Rebill Date',
+        type: 'date',
+        description: 'Date of last rebill',
+      },
+      {
+        name: 'is_error',
+        label: 'Has Error',
+        type: 'boolean',
+        description: 'Account has sync error',
+      },
+    ],
+  },
   {
     table: 'api_records',
     fields: [
-      { name: 'status', label: 'Status', type: 'string' },
-      { name: 'category', label: 'Category', type: 'string' },
-      { name: 'amount', label: 'Amount', type: 'number' },
-      { name: 'quantity', label: 'Quantity', type: 'number' },
-    ],
-  },
-  {
-    table: 'refresh_snapshot_metrics',
-    fields: [
-      { name: 'ad_spend_timeframe', label: 'Ad Spend', type: 'number' },
-      { name: 'roas_timeframe', label: 'ROAS', type: 'number' },
-      { name: 'fb_revenue_timeframe', label: 'FB Revenue', type: 'number' },
       {
-        name: 'shopify_revenue_timeframe',
-        label: 'Shopify Revenue',
-        type: 'number',
+        name: 'status',
+        label: 'Status',
+        type: 'string',
+        description: 'Record status',
       },
-      { name: 'orders_timeframe', label: 'Orders', type: 'number' },
-      { name: 'cpa_purchase', label: 'CPA Purchase', type: 'number' },
-      { name: 'cpc', label: 'CPC', type: 'number' },
-      { name: 'cpm', label: 'CPM', type: 'number' },
-      { name: 'ctr', label: 'CTR', type: 'number' },
-      { name: 'hook_rate', label: 'Hook Rate', type: 'number' },
-      { name: 'bounce_rate', label: 'Bounce Rate', type: 'number' },
+      {
+        name: 'category',
+        label: 'Category',
+        type: 'string',
+        description: 'Record category',
+      },
+      {
+        name: 'amount',
+        label: 'Amount',
+        type: 'number',
+        description: 'Monetary amount',
+      },
+      {
+        name: 'quantity',
+        label: 'Quantity',
+        type: 'number',
+        description: 'Item quantity',
+      },
+      {
+        name: 'record_date',
+        label: 'Record Date',
+        type: 'date',
+        description: 'Date of the record',
+      },
     ],
   },
   {
-    table: 'communication_reports',
+    table: 'form_submissions',
     fields: [
-      { name: 'open_rate', label: 'Open Rate', type: 'number' },
-      { name: 'click_rate', label: 'Click Rate', type: 'number' },
-      { name: 'bounce_rate', label: 'Bounce Rate', type: 'number' },
-      { name: 'unsubscribe_rate', label: 'Unsubscribe Rate', type: 'number' },
+      {
+        name: 'status',
+        label: 'Submission Status',
+        type: 'string',
+        description: 'pending, processing, completed, cancelled',
+      },
+      {
+        name: 'form_type',
+        label: 'Form Type',
+        type: 'string',
+        description: 'day_drop_request or website_revamp',
+      },
+      {
+        name: 'created_at',
+        label: 'Submitted At',
+        type: 'date',
+        description: 'Submission timestamp',
+      },
+      {
+        name: 'processed_at',
+        label: 'Processed At',
+        type: 'date',
+        description: 'Processing timestamp',
+      },
     ],
   },
   {
-    table: 'clients',
+    table: 'api_snapshots',
     fields: [
-      { name: 'status', label: 'Status', type: 'string' },
-      { name: 'pod', label: 'Pod', type: 'string' },
+      {
+        name: 'status',
+        label: 'Snapshot Status',
+        type: 'string',
+        description: 'pending, processing, completed, failed',
+      },
+      {
+        name: 'total_records',
+        label: 'Total Records',
+        type: 'number',
+        description: 'Records fetched in snapshot',
+      },
+      {
+        name: 'snapshot_type',
+        label: 'Snapshot Type',
+        type: 'string',
+        description: 'scheduled, manual, triggered',
+      },
+      {
+        name: 'error_message',
+        label: 'Error Message',
+        type: 'string',
+        description: 'Error details if failed',
+      },
+    ],
+  },
+  {
+    table: 'sheet_snapshots',
+    fields: [
+      {
+        name: 'refresh_status',
+        label: 'Refresh Status',
+        type: 'string',
+        description: 'pending, in_progress, completed, failed',
+      },
+      {
+        name: 'refresh_type',
+        label: 'Refresh Type',
+        type: 'string',
+        description: 'autometric or financialx',
+      },
+      {
+        name: 'date_preset',
+        label: 'Date Preset',
+        type: 'string',
+        description: 'Timeframe preset used',
+      },
+      {
+        name: 'snapshot_date',
+        label: 'Snapshot Date',
+        type: 'date',
+        description: 'Date of the snapshot',
+      },
     ],
   },
 ]

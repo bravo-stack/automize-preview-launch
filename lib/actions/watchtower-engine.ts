@@ -1,6 +1,6 @@
 'use server'
 
-import type { TargetTable } from '@/types/api-storage'
+import type { TargetTable, WatchtowerAlert } from '@/types/api-storage'
 import type {
   RuleCondition,
   RuleEvaluationContext,
@@ -15,6 +15,10 @@ import {
   getRules,
   updateRuleLastNotified,
 } from './watchtower'
+import {
+  sendAlertNotifications,
+  sendDigestNotifications,
+} from './watchtower-notifications'
 
 // ============================================================================
 // Rule Evaluation Engine
@@ -296,8 +300,9 @@ export async function evaluateRecordAgainstRules(
 
         if (alert) {
           triggered.push(alert.id)
-          // Update last notified
+          // Send immediate notifications if enabled
           if (rule.notify_immediately) {
+            await sendAlertNotifications(alert as WatchtowerAlert, rule)
             await updateRuleLastNotified(result.rule_id)
           }
         }
@@ -333,7 +338,9 @@ export async function evaluateRecordAgainstRules(
 
       if (alert) {
         triggered.push(alert.id)
+        // Send immediate notifications if enabled
         if (rule.notify_immediately) {
+          await sendAlertNotifications(alert as WatchtowerAlert, rule)
           await updateRuleLastNotified(rule.id)
         }
       }
@@ -434,24 +441,17 @@ export async function processScheduledNotifications(
     const { data: alerts } = await query
 
     if (alerts && alerts.length > 0) {
-      // Send notifications (placeholder - implement actual notification sending)
-      if (rule.notify_discord && rule.discord_channel_id) {
-        // TODO: Send Discord notification
-        console.log(
-          `Would send Discord notification to ${rule.discord_channel_id} for ${alerts.length} alerts`,
-        )
-      }
+      // Send digest notifications
+      const results = await sendDigestNotifications(
+        alerts as WatchtowerAlert[],
+        rule as WatchtowerRule,
+      )
 
-      if (rule.notify_email && rule.email_recipients?.length) {
-        // TODO: Send email notification
-        console.log(
-          `Would send email to ${rule.email_recipients.join(', ')} for ${alerts.length} alerts`,
-        )
+      if (results.discord) {
+        // Update last notified only if notification was sent
+        await updateRuleLastNotified(rule.id)
+        sent++
       }
-
-      // Update last notified
-      await updateRuleLastNotified(rule.id)
-      sent++
     }
   }
 

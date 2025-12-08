@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import DeleteRuleDialog from '@/components/watchtower/delete-rule-dialog'
 import type { WatchtowerRuleWithRelations } from '@/types/watchtower'
 import {
   AlertTriangle,
@@ -17,6 +18,24 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useState } from 'react'
+
+// ============================================================================
+// Target Table Labels - Maps to Hub Data Domains
+// ============================================================================
+
+const TARGET_TABLE_LABELS: Record<string, string> = {
+  facebook_metrics: 'Facebook (Autometric)',
+  finance_metrics: 'Finance (FinancialX)',
+  api_records: 'API Data Records',
+  form_submissions: 'Form Submissions',
+  api_snapshots: 'API Snapshots',
+  sheet_snapshots: 'Sheet Snapshots',
+}
+
+function getTargetTableLabel(table: string | null): string {
+  if (!table) return 'Any'
+  return TARGET_TABLE_LABELS[table] || table.replace(/_/g, ' ')
+}
 
 interface RuleListProps {
   rules: WatchtowerRuleWithRelations[]
@@ -34,6 +53,43 @@ export default function RuleList({
   isLoading = false,
 }: RuleListProps) {
   const [expandedRules, setExpandedRules] = useState<Set<string>>(new Set())
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean
+    ruleId: string
+    ruleName: string
+    isCompound: boolean
+    deleteGroup: boolean
+  }>({
+    isOpen: false,
+    ruleId: '',
+    ruleName: '',
+    isCompound: false,
+    deleteGroup: false,
+  })
+
+  const openDeleteDialog = (
+    ruleId: string,
+    ruleName: string,
+    isCompound: boolean = false,
+    deleteGroup: boolean = false,
+  ) => {
+    setDeleteDialog({
+      isOpen: true,
+      ruleId,
+      ruleName,
+      isCompound,
+      deleteGroup,
+    })
+  }
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog((prev) => ({ ...prev, isOpen: false }))
+  }
+
+  const confirmDelete = () => {
+    onDelete(deleteDialog.ruleId, deleteDialog.deleteGroup)
+    closeDeleteDialog()
+  }
 
   const toggleExpand = (ruleId: string) => {
     setExpandedRules((prev) => {
@@ -218,7 +274,7 @@ export default function RuleList({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onDelete(rule.id)}
+                onClick={() => openDeleteDialog(rule.id, rule.name)}
                 disabled={isLoading}
                 className="text-red-400 hover:text-red-300"
               >
@@ -232,9 +288,9 @@ export default function RuleList({
             <div className="border-t border-white/10 px-4 py-3">
               <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <div>
-                  <span className="text-white/50">Target Table</span>
+                  <span className="text-white/50">Data Domain</span>
                   <p className="text-white/80">
-                    {rule.target_table?.replace(/_/g, ' ') || 'Any'}
+                    {getTargetTableLabel(rule.target_table)}
                   </p>
                 </div>
                 <div>
@@ -265,12 +321,8 @@ export default function RuleList({
               <div className="mt-3 flex flex-wrap gap-2">
                 {rule.notify_discord && (
                   <Badge variant="outline" className="text-white/60">
-                    Discord: {rule.discord_channel_id || 'configured'}
-                  </Badge>
-                )}
-                {rule.notify_email && (
-                  <Badge variant="outline" className="text-white/60">
-                    Email: {rule.email_recipients?.length || 0} recipients
+                    Discord:{' '}
+                    {rule.discord_channel_id?.slice(0, 8) || 'configured'}...
                   </Badge>
                 )}
                 {rule.notify_schedule && (
@@ -370,7 +422,9 @@ export default function RuleList({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onDelete(mainRule.id, true)}
+                onClick={() =>
+                  openDeleteDialog(mainRule.id, mainRule.name, true, true)
+                }
                 disabled={isLoading}
                 className="text-red-400 hover:text-red-300"
                 title="Delete entire rule group"
@@ -417,6 +471,16 @@ export default function RuleList({
           )}
         </div>
       ))}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteRuleDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={closeDeleteDialog}
+        onConfirm={confirmDelete}
+        ruleName={deleteDialog.ruleName}
+        isCompound={deleteDialog.isCompound}
+        isLoading={isLoading}
+      />
     </div>
   )
 }

@@ -21,10 +21,52 @@ import {
 import { AlertTriangle, Info, Plus, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
-interface ApiSource {
-  id: string
-  provider: string
-  display_name: string
+// ============================================================================
+// Target Table Labels & Descriptions - Maps to Hub Data Domains
+// ============================================================================
+
+const TARGET_TABLE_LABELS: Record<string, string> = {
+  facebook_metrics: 'Facebook (Autometric)',
+  finance_metrics: 'Finance (FinancialX)',
+  api_records: 'API Data Records',
+  form_submissions: 'Form Submissions',
+  api_snapshots: 'API Snapshots',
+  sheet_snapshots: 'Sheet Snapshots',
+}
+
+const TARGET_TABLE_DESCRIPTIONS: Record<string, string> = {
+  facebook_metrics:
+    'Monitors Facebook Ads performance metrics from Autometric sheets. Fields include ad spend, ROAS, CPA, CTR, and other Facebook advertising KPIs.',
+  finance_metrics:
+    'Monitors financial rebill metrics from FinancialX sheets. Fields include rebill spend, rebill ROAS, and revenue tracking.',
+  api_records:
+    'Monitors individual records fetched from external APIs like Omnisend, Shopify, and other integrations.',
+  form_submissions:
+    'Monitors form submission status for Day Drop requests and Website Revamp requests.',
+  api_snapshots:
+    'Monitors API data sync health and status. Alert on failed syncs or high error rates.',
+  sheet_snapshots:
+    'Monitors Google Sheet refresh status. Alert on sync failures or stale data.',
+}
+
+function getTargetTableLabel(table: string): string {
+  return (
+    TARGET_TABLE_LABELS[table] ||
+    table.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+  )
+}
+
+function getTargetTableDescription(table: string): string {
+  return (
+    TARGET_TABLE_DESCRIPTIONS[table] ||
+    'No description available for this data domain.'
+  )
+}
+
+interface Pod {
+  id: number
+  name: string
+  discord_id: string | null
 }
 
 interface RuleBuilderProps {
@@ -44,7 +86,6 @@ export default function RuleBuilder({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [targetTable, setTargetTable] = useState<string>('')
-  const [sourceId, setSourceId] = useState<string>('')
   const [severity, setSeverity] = useState<string>('warning')
   const [logicOperator, setLogicOperator] = useState<string>('AND')
 
@@ -62,37 +103,35 @@ export default function RuleBuilder({
   const [notifyTime, setNotifyTime] = useState('')
   const [notifyDayOfWeek, setNotifyDayOfWeek] = useState<string>('')
   const [notifyDiscord, setNotifyDiscord] = useState(false)
-  const [notifyEmail, setNotifyEmail] = useState(false)
-  const [discordChannelId, setDiscordChannelId] = useState('')
-  const [emailRecipients, setEmailRecipients] = useState('')
+  const [selectedPodId, setSelectedPodId] = useState<string>('')
 
   // Dependency settings
   const [parentRuleId, setParentRuleId] = useState<string>('')
   const [dependencyCondition, setDependencyCondition] = useState<string>('')
 
   // Available data
-  const [availableSources, setAvailableSources] = useState<ApiSource[]>([])
   const [availableParentRules, setAvailableParentRules] = useState<
     WatchtowerRule[]
   >([])
   const [availableFields, setAvailableFields] = useState<FieldDefinition[]>([])
+  const [availablePods, setAvailablePods] = useState<Pod[]>([])
 
-  // Fetch available sources and parent rules
+  // Fetch available parent rules and pods
   useEffect(() => {
     async function fetchData() {
       try {
-        const [sourcesRes, parentsRes] = await Promise.all([
-          fetch('/api/watchtower/rules?action=sources'),
+        const [parentsRes, podsRes] = await Promise.all([
           fetch(
             `/api/watchtower/rules?action=parent-rules${editRule ? `&exclude=${editRule.id}` : ''}`,
           ),
+          fetch('/api/watchtower/pods'),
         ])
 
-        const sourcesJson = await sourcesRes.json()
         const parentsJson = await parentsRes.json()
+        const podsJson = await podsRes.json()
 
-        if (sourcesJson.success) setAvailableSources(sourcesJson.data)
         if (parentsJson.success) setAvailableParentRules(parentsJson.data)
+        if (podsJson.success) setAvailablePods(podsJson.data)
       } catch (error) {
         console.error('Error fetching rule builder data:', error)
       }
@@ -117,7 +156,6 @@ export default function RuleBuilder({
       setName(editRule.name)
       setDescription(editRule.description || '')
       setTargetTable(editRule.target_table || '')
-      setSourceId(editRule.source_id || '')
       setSeverity(editRule.severity)
       setLogicOperator(editRule.logic_operator)
       setFieldName(editRule.field_name)
@@ -128,9 +166,7 @@ export default function RuleBuilder({
       setNotifyTime(editRule.notify_time || '')
       setNotifyDayOfWeek(editRule.notify_day_of_week?.toString() || '')
       setNotifyDiscord(editRule.notify_discord)
-      setNotifyEmail(editRule.notify_email)
-      setDiscordChannelId(editRule.discord_channel_id || '')
-      setEmailRecipients(editRule.email_recipients?.join(', ') || '')
+      setSelectedPodId(editRule.pod_id || '')
       setParentRuleId(editRule.parent_rule_id || '')
       setDependencyCondition(editRule.dependency_condition || '')
 
@@ -167,10 +203,14 @@ export default function RuleBuilder({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
+    // Get the selected pod's discord_id for notifications
+    const selectedPod = availablePods.find(
+      (p) => p.id.toString() === selectedPodId,
+    )
+
     const baseData = {
       name,
       description: description || undefined,
-      source_id: sourceId || undefined,
       severity: severity as 'info' | 'warning' | 'critical',
       notify_immediately: notifyImmediately,
       notify_schedule: (notifySchedule || undefined) as
@@ -182,11 +222,11 @@ export default function RuleBuilder({
         ? parseInt(notifyDayOfWeek, 10)
         : undefined,
       notify_discord: notifyDiscord,
-      notify_email: notifyEmail,
-      discord_channel_id: discordChannelId || undefined,
-      email_recipients: emailRecipients
-        ? emailRecipients.split(',').map((e) => e.trim())
-        : undefined,
+      discord_channel_id:
+        notifyDiscord && selectedPod?.discord_id
+          ? selectedPod.discord_id
+          : undefined,
+      pod_id: selectedPodId || undefined,
       parent_rule_id: parentRuleId || undefined,
       dependency_condition: (dependencyCondition || undefined) as
         | 'triggered'
@@ -200,10 +240,12 @@ export default function RuleBuilder({
       const compoundRule: CompoundRuleInput = {
         ...baseData,
         target_table: (targetTable || undefined) as
+          | 'facebook_metrics'
+          | 'finance_metrics'
           | 'api_records'
-          | 'communication_reports'
-          | 'clients'
-          | 'refresh_snapshot_metrics'
+          | 'form_submissions'
+          | 'api_snapshots'
+          | 'sheet_snapshots'
           | undefined,
         clauses: clauses.map((c) => ({
           id: c.id,
@@ -219,10 +261,12 @@ export default function RuleBuilder({
       const singleRule: CreateRuleInput = {
         ...baseData,
         target_table: (targetTable || undefined) as
+          | 'facebook_metrics'
+          | 'finance_metrics'
           | 'api_records'
-          | 'communication_reports'
-          | 'clients'
-          | 'refresh_snapshot_metrics'
+          | 'form_submissions'
+          | 'api_snapshots'
+          | 'sheet_snapshots'
           | undefined,
         field_name: fieldName,
         condition: condition as RuleCondition,
@@ -338,36 +382,29 @@ export default function RuleBuilder({
         <h3 className="text-sm font-medium text-white/80">
           Target Configuration
         </h3>
+        <p className="text-xs text-white/50">
+          Select the Hub data domain this rule should monitor
+        </p>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Select
-            label="Target Table"
-            value={targetTable}
-            onChange={(e) => setTargetTable(e.target.value)}
-          >
-            <option value="">Select target table...</option>
-            {TARGET_TABLES.map((table) => (
-              <option key={table} value={table}>
-                {table
-                  .replace(/_/g, ' ')
-                  .replace(/\b\w/g, (l) => l.toUpperCase())}
-              </option>
-            ))}
-          </Select>
+        <Select
+          label="Data Domain"
+          value={targetTable}
+          onChange={(e) => setTargetTable(e.target.value)}
+        >
+          <option value="">Select data domain...</option>
+          {TARGET_TABLES.map((table) => (
+            <option key={table} value={table}>
+              {getTargetTableLabel(table)}
+            </option>
+          ))}
+        </Select>
 
-          <Select
-            label="Data Source (Optional)"
-            value={sourceId}
-            onChange={(e) => setSourceId(e.target.value)}
-          >
-            <option value="">Any source</option>
-            {availableSources.map((source) => (
-              <option key={source.id} value={source.id}>
-                {source.display_name} ({source.provider})
-              </option>
-            ))}
-          </Select>
-        </div>
+        {/* Domain Description */}
+        {targetTable && (
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3 text-xs text-blue-400/80">
+            {getTargetTableDescription(targetTable)}
+          </div>
+        )}
       </div>
 
       {/* Rule Conditions */}
@@ -579,16 +616,6 @@ export default function RuleBuilder({
             />
             Discord
           </label>
-
-          <label className="flex items-center gap-2 text-sm text-white/70">
-            <input
-              type="checkbox"
-              checked={notifyEmail}
-              onChange={(e) => setNotifyEmail(e.target.checked)}
-              className="rounded border-white/20 bg-zinc-900"
-            />
-            Email
-          </label>
         </div>
 
         {!notifyImmediately && (
@@ -635,31 +662,55 @@ export default function RuleBuilder({
           </div>
         )}
 
+        {/* Pod Selection for Discord */}
         {notifyDiscord && (
-          <div>
-            <label className="mb-1 block text-sm text-white/70">
-              Discord Channel ID
-            </label>
-            <Input
-              value={discordChannelId}
-              onChange={(e) => setDiscordChannelId(e.target.value)}
-              placeholder="Channel ID"
-              className="border-white/10 bg-zinc-900"
-            />
-          </div>
-        )}
+          <div className="space-y-3">
+            <Select
+              label="Select Pod"
+              value={selectedPodId}
+              onChange={(e) => setSelectedPodId(e.target.value)}
+            >
+              <option value="">Select a pod...</option>
+              {availablePods.map((pod) => (
+                <option key={pod.id} value={pod.id.toString()}>
+                  {pod.name}
+                  {pod.discord_id
+                    ? ` (Discord: ${pod.discord_id.slice(0, 8)}...)`
+                    : ''}
+                </option>
+              ))}
+            </Select>
 
-        {notifyEmail && (
-          <div>
-            <label className="mb-1 block text-sm text-white/70">
-              Email Recipients (comma-separated)
-            </label>
-            <Input
-              value={emailRecipients}
-              onChange={(e) => setEmailRecipients(e.target.value)}
-              placeholder="email1@example.com, email2@example.com"
-              className="border-white/10 bg-zinc-900"
-            />
+            {selectedPodId && (
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs">
+                {(() => {
+                  const pod = availablePods.find(
+                    (p) => p.id.toString() === selectedPodId,
+                  )
+                  if (!pod) return null
+                  return (
+                    <div className="space-y-1">
+                      <p className="font-medium text-white/80">{pod.name}</p>
+                      <p className="text-white/50">
+                        Discord ID:{' '}
+                        <span className="font-mono text-blue-400">
+                          {pod.discord_id || 'Not configured'}
+                        </span>
+                      </p>
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+
+            {/* Warning if selected pod is missing Discord ID */}
+            {selectedPodId &&
+              !availablePods.find((p) => p.id.toString() === selectedPodId)
+                ?.discord_id && (
+                <p className="text-xs text-yellow-400">
+                  ⚠️ Selected pod does not have a Discord ID configured
+                </p>
+              )}
           </div>
         )}
       </div>
