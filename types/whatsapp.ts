@@ -3,7 +3,8 @@
 // ============================================================================
 
 // Feature types matching the database enum
-export type WaFeatureType = 'daily_summary' | 'late_alert' | 'ad_error'
+// Note: 'late_alert' is handled by the Discord NodeJS service
+export type WaFeatureType = 'daily_summary' | 'ad_error'
 
 // Schedule frequency options for WhatsApp summaries
 export type ScheduleFrequency = 'daily' | 'weekly' | 'custom'
@@ -64,4 +65,40 @@ export interface ClientNeedingResponse {
   channel_name: string
   days_since_ixm_message: number
   guild_name: string
+}
+
+// Global WhatsApp configuration that applies to all pods as default
+// Uses the whatsapp_schedules table with a special "__GLOBAL__" pod_name
+export interface GlobalWhatsAppConfig {
+  id: string
+  pod_name: '__GLOBAL__'
+  frequency: ScheduleFrequency
+  time: string // TIME format: '09:00' (stored as TIME in PostgreSQL)
+  timezone: string // IANA timezone string, defaults to 'UTC'
+  days_of_week: DayOfWeek[] // 0 = Sunday, 6 = Saturday; defaults to [1,2,3,4,5]
+  custom_message: string // Message shown before the client list
+  is_active: boolean
+  last_sent_at: string | null
+  created_at: string
+  updated_at: string
+  // Feature-specific fields (extending the table purpose)
+  feature_type?: WaFeatureType
+}
+
+// Input for creating/updating global config
+export interface GlobalWhatsAppConfigInput {
+  frequency: ScheduleFrequency
+  time: string
+  timezone: string
+  days_of_week?: DayOfWeek[]
+  custom_message: string
+  is_active?: boolean
+}
+
+// Pod with WhatsApp information for the main page
+export interface PodWithWhatsApp {
+  id: string
+  name: string
+  user_id: string | null
+  whatsapp_number: string | null
 }

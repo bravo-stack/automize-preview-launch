@@ -11,7 +11,9 @@ import { NextRequest, NextResponse } from 'next/server'
 // Features:
 // - Uses pod_whatsapp_configs for configuration
 // - Config-driven execution with shouldRunNow() validation
-// - Supports all three feature types: daily_summary, late_alert, ad_error
+// - Supports feature types: daily_summary, ad_error
+//
+// Note: late_alert is handled by the Discord NodeJS service
 //
 // Called by: Private server cron job or Vercel Cron
 // Auth: Cron secret key in header
@@ -32,11 +34,7 @@ export async function POST(request: NextRequest) {
     const { feature } = body
 
     // Validate feature type
-    const validFeatures: WaFeatureType[] = [
-      'daily_summary',
-      'late_alert',
-      'ad_error',
-    ]
+    const validFeatures: WaFeatureType[] = ['daily_summary', 'ad_error']
 
     if (!feature || !validFeatures.includes(feature)) {
       return NextResponse.json(
@@ -111,9 +109,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         message: 'WhatsApp Cron Handler',
-        usage:
-          'POST with body: { "feature": "daily_summary" | "late_alert" | "ad_error" }',
+        usage: 'POST with body: { "feature": "daily_summary" | "ad_error" }',
         devUsage: 'GET ?feature=daily_summary&secret=YOUR_SECRET (dev only)',
+        note: 'late_alert is now handled by the Discord NodeJS service',
       },
       { status: 200 },
     )

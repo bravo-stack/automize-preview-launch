@@ -1,6 +1,8 @@
 import Section from '@/components/common/section'
+import { getAllGlobalConfigs } from '@/lib/actions/global-whatsapp-configs'
 import { createAdminClient } from '@/lib/db/admin'
 import { createClient } from '@/lib/db/server'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import WhatsAppSettingsClient from './whatsapp-settings-client'
 
@@ -44,9 +46,34 @@ export default async function WhatsAppSettingsPage({ params }) {
     .eq('pod_name', pod.name)
     .order('feature_type', { ascending: true })
 
+  // Get global configs for fallback display
+  const globalConfigs = await getAllGlobalConfigs()
+
   return (
     <main className="p-7">
       <header className="mb-6">
+        <div className="mb-2">
+          <Link
+            href="/dashboard/media-buyer"
+            className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="h-4 w-4"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+              />
+            </svg>
+            Back to WhatsApp Hub
+          </Link>
+        </div>
         <h1 className="text-2xl font-bold tracking-tight">WhatsApp Settings</h1>
         <p className="text-zinc-400">
           Configure WhatsApp notifications for {pod.name}
@@ -59,6 +86,7 @@ export default async function WhatsAppSettingsPage({ params }) {
         podWhatsappNumber={pod?.whatsapp_number ?? null}
         initialWhatsAppNumber={pod.whatsapp_number}
         initialConfigs={configs || []}
+        globalConfigs={globalConfigs}
       />
     </main>
   )

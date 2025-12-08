@@ -214,8 +214,10 @@ export default function FormsView() {
             icon={ClipboardList}
           />
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-yellow-400" />
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-11 items-center justify-center rounded-lg bg-yellow-400/10">
+                <Clock className="size-5 text-yellow-400" />
+              </span>
               <div>
                 <p className="text-sm text-white/60">Pending</p>
                 <p className="text-lg font-medium text-yellow-400">
@@ -223,8 +225,10 @@ export default function FormsView() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-blue-400" />
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-11 items-center justify-center rounded-lg bg-blue-400/10">
+                <FileText className="size-5 text-blue-400" />
+              </span>
               <div>
                 <p className="text-sm text-white/60">Processing</p>
                 <p className="text-lg font-medium text-blue-400">
@@ -232,8 +236,10 @@ export default function FormsView() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-400" />
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-11 items-center justify-center rounded-lg bg-green-400/10">
+                <CheckCircle className="size-5 text-green-400" />
+              </span>
               <div>
                 <p className="text-sm text-white/60">Completed</p>
                 <p className="text-lg font-medium text-green-400">
@@ -241,8 +247,10 @@ export default function FormsView() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-red-400" />
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-11 items-center justify-center rounded-lg bg-red-400/10">
+                <XCircle className="size-5 text-red-400" />
+              </span>
               <div>
                 <p className="text-sm text-white/60">Cancelled</p>
                 <p className="text-lg font-medium text-red-400">

@@ -269,7 +269,7 @@ export default function ApiDataView() {
       )}
 
       {/* Sub-tabs */}
-      <div className="flex flex-wrap gap-2 rounded-lg border border-white/10 bg-white/5 p-1">
+      <div className="flex w-fit flex-wrap gap-2 rounded-lg border border-white/10 bg-white/5 p-1">
         {subTabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeSubTab === tab.id

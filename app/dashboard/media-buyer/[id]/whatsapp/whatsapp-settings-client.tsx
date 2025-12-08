@@ -6,8 +6,34 @@ import {
   upsertConfig,
 } from '@/lib/actions/pod-whatsapp-configs'
 import { runTestWhatsAppJob } from '@/lib/actions/whatsapp-test'
-import type { PodWhatsAppConfig, WaFeatureType } from '@/types/whatsapp'
+import type {
+  GlobalWhatsAppConfig,
+  PodWhatsAppConfig,
+  WaFeatureType,
+} from '@/types/whatsapp'
 import { useState } from 'react'
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Helper to convert GlobalWhatsAppConfig days_of_week (number[]) to string format
+function daysOfWeekToString(days: number[] | null | undefined): string {
+  if (!days || days.length === 0) return ''
+  return days.map((d) => DAYS[d]).join(',')
+}
+
+// Helper to get scheduled time from GlobalWhatsAppConfig (uses 'time' field)
+function getGlobalScheduledTime(
+  config: GlobalWhatsAppConfig | undefined,
+): string {
+  return config?.time || '09:00:00'
+}
+
+// Helper to get custom message from GlobalWhatsAppConfig (uses 'custom_message' field)
+function getGlobalCustomMessage(
+  config: GlobalWhatsAppConfig | undefined,
+): string {
+  return config?.custom_message || ''
+}
 
 interface WhatsAppSettingsClientProps {
   podName: string
@@ -15,16 +41,16 @@ interface WhatsAppSettingsClientProps {
   initialConfigs: PodWhatsAppConfig[]
   podServers: string[]
   podWhatsappNumber: string | null
+  globalConfigs: GlobalWhatsAppConfig[]
 }
 
 interface FeatureConfigCardProps {
   podName: string
   featureType: WaFeatureType
   config: PodWhatsAppConfig | undefined
+  globalConfig: GlobalWhatsAppConfig | undefined
   onUpdate: (config: PodWhatsAppConfig) => void
 }
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const FEATURE_INFO: Record<
   WaFeatureType,
@@ -34,11 +60,6 @@ const FEATURE_INFO: Record<
     title: 'Daily Summary',
     description: 'Get a list of clients that need responses from your team',
     defaultMessage: 'DAILY SUMMARY - Clients needing response:',
-  },
-  late_alert: {
-    title: 'Late Response Alerts',
-    description: 'Urgent alerts when clients are waiting too long for replies',
-    defaultMessage: '🚨 LATE RESPONSE ALERTS',
   },
   ad_error: {
     title: 'Ad Account Errors',
@@ -53,6 +74,7 @@ export default function WhatsAppSettingsClient({
   initialConfigs,
   podServers,
   podWhatsappNumber,
+  globalConfigs,
 }: WhatsAppSettingsClientProps) {
   // STATES
   const [whatsappNumber, setWhatsappNumber] = useState(
@@ -118,8 +140,45 @@ export default function WhatsAppSettingsClient({
     return configs.find((c) => c.feature_type === featureType)
   }
 
+  const getGlobalConfigForFeature = (
+    featureType: WaFeatureType,
+  ): GlobalWhatsAppConfig | undefined => {
+    return globalConfigs.find((c) => c.feature_type === featureType)
+  }
+
   return (
     <div className="space-y-8">
+      {/* Global Config Notice */}
+      {globalConfigs.some((c) => c.is_active) && (
+        <div className="rounded-lg border border-blue-800/50 bg-blue-950/20 p-4">
+          <div className="flex items-start gap-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="mt-0.5 h-5 w-5 text-blue-400"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+              />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-blue-300">
+                Global defaults are active
+              </p>
+              <p className="text-xs text-blue-200/70">
+                Features marked &quot;Using Global&quot; will use global default
+                settings unless you configure them specifically for this pod.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Test Job Section */}
       <section className="rounded-lg border border-amber-800 bg-amber-950/20 p-6">
         <h2 className="mb-2 text-lg font-semibold text-amber-400">
@@ -202,7 +261,8 @@ export default function WhatsAppSettingsClient({
         <div>
           <h2 className="mb-1 text-lg font-semibold">Notification Features</h2>
           <p className="text-sm text-zinc-400">
-            Configure when and how each notification type is sent
+            Configure when and how each notification type is sent. Features
+            without pod-specific config will use global defaults if available.
           </p>
         </div>
 
@@ -210,18 +270,14 @@ export default function WhatsAppSettingsClient({
           podName={podName}
           featureType="daily_summary"
           config={getConfigForFeature('daily_summary')}
-          onUpdate={handleConfigUpdate}
-        />
-        <FeatureConfigCard
-          podName={podName}
-          featureType="late_alert"
-          config={getConfigForFeature('late_alert')}
+          globalConfig={getGlobalConfigForFeature('daily_summary')}
           onUpdate={handleConfigUpdate}
         />
         <FeatureConfigCard
           podName={podName}
           featureType="ad_error"
           config={getConfigForFeature('ad_error')}
+          globalConfig={getGlobalConfigForFeature('ad_error')}
           onUpdate={handleConfigUpdate}
         />
       </section>
@@ -233,17 +289,25 @@ function FeatureConfigCard({
   podName,
   featureType,
   config,
+  globalConfig,
   onUpdate,
 }: FeatureConfigCardProps) {
   const info = FEATURE_INFO[featureType]
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Determine if using global config as fallback
+  const isUsingGlobal = !config && globalConfig?.is_active
+  const effectiveConfig = config || (isUsingGlobal ? globalConfig : null)
+
   const [formData, setFormData] = useState({
     isActive: config?.is_active ?? false,
     customMessage: config?.custom_message_header || '',
-    frequency: config?.frequency || 'daily',
-    scheduledTime: config?.scheduled_time || '09:00:00',
-    activeDays: config?.active_days || '',
+    frequency: config?.frequency || globalConfig?.frequency || 'daily',
+    scheduledTime:
+      config?.scheduled_time || getGlobalScheduledTime(globalConfig),
+    activeDays:
+      config?.active_days || daysOfWeekToString(globalConfig?.days_of_week),
   })
 
   const handleToggle = async () => {
@@ -320,7 +384,7 @@ function FeatureConfigCard({
   return (
     <div
       className={`rounded-lg border p-6 transition-all ${
-        formData.isActive
+        formData.isActive || isUsingGlobal
           ? 'border-zinc-700 bg-night-starlit'
           : 'border-zinc-800 bg-night-dusk opacity-70'
       }`}
@@ -332,9 +396,18 @@ function FeatureConfigCard({
             <h3 className="text-lg font-semibold">{info.title}</h3>
             <span
               className={`inline-block h-2 w-2 rounded-full ${
-                formData.isActive ? 'bg-green-500' : 'bg-zinc-500'
+                formData.isActive
+                  ? 'bg-green-500'
+                  : isUsingGlobal
+                    ? 'bg-blue-500'
+                    : 'bg-zinc-500'
               }`}
             />
+            {isUsingGlobal && (
+              <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400">
+                Using Global
+              </span>
+            )}
           </div>
           <p className="text-sm text-zinc-400">{info.description}</p>
         </div>
@@ -360,7 +433,7 @@ function FeatureConfigCard({
         </div>
       </div>
 
-      {/* Current Configuration Display */}
+      {/* Current Configuration Display - Pod specific */}
       {!isEditing && config && (
         <div className="space-y-2 rounded-md border border-zinc-800 bg-night-midnight p-4 text-sm">
           <div>
@@ -391,6 +464,65 @@ function FeatureConfigCard({
               </span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Global Config Display - When using global fallback */}
+      {!isEditing && !config && isUsingGlobal && globalConfig && (
+        <div className="space-y-2 rounded-md border border-blue-800/50 bg-blue-950/20 p-4 text-sm">
+          <div className="mb-2 flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="h-4 w-4 text-blue-400"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"
+              />
+            </svg>
+            <span className="text-xs font-medium text-blue-300">
+              Using Global Config
+            </span>
+          </div>
+          <div>
+            <span className="text-zinc-500">Schedule:</span>{' '}
+            <span className="text-white">
+              {globalConfig.frequency} at {globalConfig.time}
+            </span>
+          </div>
+          {globalConfig.days_of_week &&
+            globalConfig.days_of_week.length > 0 && (
+              <div>
+                <span className="text-zinc-500">Active Days:</span>{' '}
+                <span className="text-white">
+                  {daysOfWeekToString(globalConfig.days_of_week)}
+                </span>
+              </div>
+            )}
+          <div>
+            <span className="text-zinc-500">Message:</span>{' '}
+            <span className="text-white">
+              {globalConfig.custom_message || (
+                <em className="text-zinc-500">Using default message</em>
+              )}
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-blue-200/60">
+            Click &quot;Configure&quot; to override with pod-specific settings
+          </p>
+        </div>
+      )}
+
+      {/* No Config Message */}
+      {!isEditing && !config && !isUsingGlobal && (
+        <div className="rounded-md border border-zinc-800 bg-night-midnight p-4 text-center text-sm text-zinc-500">
+          No configuration set. Click &quot;Enable&quot; or
+          &quot;Configure&quot; to set up this feature.
         </div>
       )}
 
