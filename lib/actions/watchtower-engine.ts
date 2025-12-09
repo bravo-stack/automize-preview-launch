@@ -7,7 +7,6 @@ import type {
   RuleEvaluationResult,
   WatchtowerRule,
 } from '@/types/watchtower'
-import { createAdminClient } from '../db/admin'
 import {
   checkRuleDependency,
   createAlert,
@@ -16,10 +15,7 @@ import {
   updateRuleLastNotified,
   updateRuleTriggerTracking,
 } from './watchtower'
-import {
-  sendAlertNotifications,
-  sendDigestNotifications,
-} from './watchtower-notifications'
+import { sendAlertNotifications } from './watchtower-notifications'
 
 // ============================================================================
 // Rule Evaluation Engine
@@ -407,58 +403,4 @@ export async function evaluateTableRecords(
     triggered: allAlerts.length,
     alerts: allAlerts,
   }
-}
-
-/**
- * Process scheduled notifications for rules that haven't triggered immediately
- */
-export async function processScheduledNotifications(
-  schedule: 'daily' | 'weekly',
-): Promise<{ processed: number; sent: number }> {
-  const db = createAdminClient()
-
-  // Get rules with matching schedule that have unnotified alerts
-  const { data: rules } = await db
-    .from('watchtower_rules')
-    .select('*')
-    .eq('is_active', true)
-    .eq('notify_immediately', false)
-    .eq('notify_schedule', schedule)
-
-  if (!rules || rules.length === 0) {
-    return { processed: 0, sent: 0 }
-  }
-
-  let sent = 0
-
-  for (const rule of rules) {
-    // Get unacknowledged alerts since last notification
-    const query = db
-      .from('watchtower_alerts')
-      .select('*')
-      .eq('rule_id', rule.id)
-      .eq('is_acknowledged', false)
-
-    if (rule.last_notified_at) {
-      query.gt('created_at', rule.last_notified_at)
-    }
-
-    const { data: alerts } = await query
-
-    if (alerts && alerts.length > 0) {
-      // Send digest notifications
-      const results = await sendDigestNotifications(
-        alerts as WatchtowerAlert[],
-        rule as WatchtowerRule,
-      )
-
-      if (results.discord) {
-        // Update last notified only if notification was sent
-        await updateRuleLastNotified(rule.id)
-        sent++
-      }
-    }
-  }
-
-  return { processed: rules.length, sent }
 }

@@ -8,7 +8,6 @@ import {
   CONDITIONS_BY_FIELD_TYPE,
   DEPENDENCY_CONDITIONS,
   LOGIC_OPERATORS,
-  NOTIFY_SCHEDULES,
   RULE_CONDITIONS,
   SEVERITY_LEVELS,
   TABLE_FIELDS,
@@ -121,10 +120,6 @@ export default function RuleBuilder({
   const [clauses, setClauses] = useState<RuleClause[]>([])
 
   // Notification settings
-  const [notifyImmediately, setNotifyImmediately] = useState(true)
-  const [notifySchedule, setNotifySchedule] = useState<string>('')
-  const [notifyTime, setNotifyTime] = useState('')
-  const [notifyDayOfWeek, setNotifyDayOfWeek] = useState<string>('')
   const [notifyDiscord, setNotifyDiscord] = useState(false)
   const [selectedPodId, setSelectedPodId] = useState<string>('')
 
@@ -184,10 +179,6 @@ export default function RuleBuilder({
       setFieldName(editRule.field_name)
       setCondition(editRule.condition)
       setThresholdValue(editRule.threshold_value || '')
-      setNotifyImmediately(editRule.notify_immediately)
-      setNotifySchedule(editRule.notify_schedule || '')
-      setNotifyTime(editRule.notify_time || '')
-      setNotifyDayOfWeek(editRule.notify_day_of_week?.toString() || '')
       setNotifyDiscord(editRule.notify_discord)
       setSelectedPodId(editRule.pod_id || '')
       setParentRuleId(editRule.parent_rule_id || '')
@@ -310,15 +301,6 @@ export default function RuleBuilder({
       name,
       description: description || undefined,
       severity: severity as 'info' | 'warning' | 'critical',
-      notify_immediately: notifyImmediately,
-      notify_schedule: (notifySchedule || undefined) as
-        | 'daily'
-        | 'weekly'
-        | undefined,
-      notify_time: notifyTime || undefined,
-      notify_day_of_week: notifyDayOfWeek
-        ? parseInt(notifyDayOfWeek, 10)
-        : undefined,
       notify_discord: notifyDiscord,
       discord_channel_id:
         notifyDiscord && selectedPod?.discord_id
@@ -746,73 +728,22 @@ export default function RuleBuilder({
 
       {/* Notification Settings */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/80">Notifications</h3>
+        <h3 className="text-sm font-medium text-white/80">
+          Discord Notifications
+        </h3>
+        <p className="text-xs text-white/50">
+          Send immediate Discord notifications when this rule triggers
+        </p>
 
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm text-white/70">
-            <input
-              type="checkbox"
-              checked={notifyImmediately}
-              onChange={(e) => setNotifyImmediately(e.target.checked)}
-              className="rounded border-white/20 bg-zinc-900"
-            />
-            Notify Immediately
-          </label>
-
-          <label className="flex items-center gap-2 text-sm text-white/70">
-            <input
-              type="checkbox"
-              checked={notifyDiscord}
-              onChange={(e) => setNotifyDiscord(e.target.checked)}
-              className="rounded border-white/20 bg-zinc-900"
-            />
-            Discord
-          </label>
-        </div>
-
-        {!notifyImmediately && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Select
-              label="Schedule"
-              value={notifySchedule}
-              onChange={(e) => setNotifySchedule(e.target.value)}
-            >
-              <option value="">Select schedule...</option>
-              {NOTIFY_SCHEDULES.map((schedule) => (
-                <option key={schedule} value={schedule}>
-                  {schedule.charAt(0).toUpperCase() + schedule.slice(1)}
-                </option>
-              ))}
-            </Select>
-
-            <div>
-              <label className="mb-1 block text-sm text-white/70">Time</label>
-              <Input
-                type="time"
-                value={notifyTime}
-                onChange={(e) => setNotifyTime(e.target.value)}
-                className="border-white/10 bg-zinc-900"
-              />
-            </div>
-
-            {notifySchedule === 'weekly' && (
-              <Select
-                label="Day of Week"
-                value={notifyDayOfWeek}
-                onChange={(e) => setNotifyDayOfWeek(e.target.value)}
-              >
-                <option value="">Select day...</option>
-                <option value="0">Sunday</option>
-                <option value="1">Monday</option>
-                <option value="2">Tuesday</option>
-                <option value="3">Wednesday</option>
-                <option value="4">Thursday</option>
-                <option value="5">Friday</option>
-                <option value="6">Saturday</option>
-              </Select>
-            )}
-          </div>
-        )}
+        <label className="flex items-center gap-2 text-sm text-white/70">
+          <input
+            type="checkbox"
+            checked={notifyDiscord}
+            onChange={(e) => setNotifyDiscord(e.target.checked)}
+            className="rounded border-white/20 bg-zinc-900"
+          />
+          Enable Discord Notifications
+        </label>
 
         {/* Pod Selection for Discord */}
         {notifyDiscord && (

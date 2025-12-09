@@ -2,7 +2,7 @@
 
 /**
  * Watchtower Notification System
- * Handles Discord notifications for monitoring alerts
+ * Handles immediate Discord notifications for monitoring alerts
  */
 
 import type {
@@ -13,12 +13,12 @@ import type {
 import { sendDiscordMessage } from './discord'
 
 // ============================================================================
-// Watchtower Notification System (Discord Only)
+// Discord Notification System
 // ============================================================================
 
 /**
  * Discord channel mapping for different severity levels
- * You can customize these channel names based on your Discord server setup
+ * Used as fallback when no custom channel is specified
  */
 const DISCORD_CHANNELS: Record<Severity, string> = {
   critical: 'watchtower-critical',
@@ -53,47 +53,7 @@ function formatDiscordAlert(
 • Condition: ${rule.condition} ${rule.threshold_value || ''}
 
 **Timestamp:** ${timestamp}
-**Alert ID:** ${alert.id}`
-}
-
-/**
- * Format multiple alerts for a digest notification
- */
-function formatDiscordDigest(
-  alerts: WatchtowerAlert[],
-  rule: WatchtowerRule,
-): string {
-  const severityEmoji: Record<Severity, string> = {
-    critical: '🚨',
-    warning: '⚠️',
-    info: 'ℹ️',
-  }
-
-  const criticalCount = alerts.filter((a) => a.severity === 'critical').length
-  const warningCount = alerts.filter((a) => a.severity === 'warning').length
-  const infoCount = alerts.filter((a) => a.severity === 'info').length
-
-  let summary = `📊 **Watchtower Alert Digest** for rule: **${rule.name}**\n\n`
-  summary += `**Total Alerts:** ${alerts.length}\n`
-
-  if (criticalCount > 0) summary += `• 🚨 Critical: ${criticalCount}\n`
-  if (warningCount > 0) summary += `• ⚠️ Warning: ${warningCount}\n`
-  if (infoCount > 0) summary += `• ℹ️ Info: ${infoCount}\n`
-
-  summary += `\n**Recent Alerts:**\n`
-
-  // Show up to 5 most recent alerts
-  const recentAlerts = alerts.slice(0, 5)
-  recentAlerts.forEach((alert, index) => {
-    const emoji = severityEmoji[alert.severity] || '📢'
-    summary += `${index + 1}. ${emoji} ${alert.message}\n`
-  })
-
-  if (alerts.length > 5) {
-    summary += `\n... and ${alerts.length - 5} more alerts`
-  }
-
-  return summary
+**Alert ID:** \`${alert.id.slice(0, 8)}...\``
 }
 
 /**
@@ -120,34 +80,8 @@ export async function sendDiscordNotification(
 }
 
 /**
- * Send Discord digest notification for multiple alerts
- */
-export async function sendDiscordDigest(
-  alerts: WatchtowerAlert[],
-  rule: WatchtowerRule,
-): Promise<boolean> {
-  try {
-    const channel = rule.discord_channel_id || DISCORD_CHANNELS[rule.severity]
-    const message = formatDiscordDigest(alerts, rule)
-
-    await sendDiscordMessage(channel, message)
-    console.log(
-      `Discord digest sent for ${alerts.length} alerts to channel ${channel}`,
-    )
-    return true
-  } catch (error) {
-    console.error('Failed to send Discord digest:', error)
-    return false
-  }
-}
-
-// ============================================================================
-// Combined Notification Handler
-// ============================================================================
-
-/**
- * Send all configured notifications for an alert
- * Currently supports Discord only
+ * Send all configured notifications for an alert (currently Discord only)
+ * Called immediately when a rule triggers
  */
 export async function sendAlertNotifications(
   alert: WatchtowerAlert,
@@ -158,28 +92,6 @@ export async function sendAlertNotifications(
   // Send Discord notification if enabled
   if (rule.notify_discord) {
     results.discord = await sendDiscordNotification(alert, rule)
-  }
-
-  return results
-}
-
-/**
- * Send digest notifications for scheduled rules
- * Currently supports Discord only
- */
-export async function sendDigestNotifications(
-  alerts: WatchtowerAlert[],
-  rule: WatchtowerRule,
-): Promise<{ discord: boolean }> {
-  const results = { discord: false }
-
-  if (alerts.length === 0) {
-    return results
-  }
-
-  // Send Discord digest if enabled
-  if (rule.notify_discord) {
-    results.discord = await sendDiscordDigest(alerts, rule)
   }
 
   return results
