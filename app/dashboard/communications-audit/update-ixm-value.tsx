@@ -12,6 +12,7 @@ type Props = {
   client_silent_days: number
   high_priority_days: number
   high_priority_color: string
+  role?: string
 }
 
 const UpdateIxmValue = ({
@@ -19,6 +20,7 @@ const UpdateIxmValue = ({
   client_silent_days,
   high_priority_days,
   high_priority_color,
+  role,
 }: Props) => {
   // STATES
   const [timeFrame, setTimeFrame] = useState(() => ({
@@ -186,28 +188,29 @@ const UpdateIxmValue = ({
         />
       </div>
 
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor="high-priority-color"
-          className="text-sm font-medium text-zinc-300"
-        >
-          High Priority Color:
-        </label>
-
-        <Input
-          disabled={isSubmitting}
-          type="color"
-          id="high-priority-color"
-          value={timeFrame.high_priority_color}
-          onChange={(e) =>
-            setTimeFrame({
-              ...timeFrame,
-              high_priority_color: e.target.value,
-            })
-          }
-          className="h-10 w-20 cursor-pointer bg-background/50"
-        />
-      </div>
+      {role === 'exec' && (
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="high-priority-color"
+            className="text-sm font-medium text-zinc-300"
+          >
+            High Priority Color:
+          </label>
+          <Input
+            disabled={isSubmitting}
+            type="color"
+            id="high-priority-color"
+            value={timeFrame.high_priority_color}
+            onChange={(e) =>
+              setTimeFrame({
+                ...timeFrame,
+                high_priority_color: e.target.value,
+              })
+            }
+            className="h-10 w-20 cursor-pointer bg-background/50"
+          />
+        </div>
+      )}
       <Button
         disabled={isSubmitting}
         type="submit"

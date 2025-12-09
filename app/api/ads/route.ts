@@ -1,6 +1,6 @@
 import { emptyInsights } from '@/content/accounts'
 import { appendDataToSheet } from '@/lib/api'
-import { createClient } from '@/lib/db/server'
+import { createAdminClient } from '@/lib/db/admin'
 import {
   getActions,
   getBounceRate,
@@ -14,7 +14,7 @@ export const maxDuration = 60
 
 // MAIN GET
 export async function POST(request: NextRequest) {
-  const db = createClient()
+  const db = createAdminClient()
   const { sheetID, datePreset, status, snapshotId } = await request.json()
 
   const { data: accounts } = await db

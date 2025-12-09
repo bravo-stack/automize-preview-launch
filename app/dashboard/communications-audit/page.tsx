@@ -139,6 +139,7 @@ export default async function CommunicationsAudit() {
                 client_silent_days={timeFrameClientSilentDays}
                 high_priority_days={timeFrameHighPriorityDays}
                 high_priority_color={timeFrameHighPriorityColor}
+                role={role}
               />
             </Fragment>
           ) : null}
