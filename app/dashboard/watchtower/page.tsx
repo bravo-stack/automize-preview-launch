@@ -25,6 +25,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 
 type WatchtowerTab = 'overview' | 'rules' | 'alerts'
 
@@ -69,19 +70,37 @@ export default function WatchtowerPage() {
   const [acknowledgedFilter, setAcknowledgedFilter] = useState<string>('')
   const [activeFilter, setActiveFilter] = useState<string>('')
 
+  // Track when new alerts are created
+  const [newAlertsCreated, setNewAlertsCreated] = useState(false)
+
   // ============================================================================
   // Real-time Stats Polling
   // ============================================================================
   // Uses visibility-aware polling that pauses when tab is hidden.
-  // Polls every 30 seconds to keep tab counts updated.
+  // Polls every 30 seconds to keep tab counts updated and evaluate rules.
   const {
     stats,
     refresh: refreshStats,
     isPolling: isPollingStats,
     isInitialLoading: isStatsLoading,
+    lastEvaluation,
   } = useWatchtowerPolling({
     interval: 30_000, // 30 seconds
     enabled: true,
+    onNewAlerts: (count) => {
+      // Show toast notification for new alerts
+      toast(`🚨 ${count} new alert${count > 1 ? 's' : ''} triggered!`, {
+        icon: '⚠️',
+        duration: 5000,
+        style: {
+          background: '#fef2f2',
+          border: '1px solid #fecaca',
+          color: '#991b1b',
+        },
+      })
+      // Set flag to refresh alerts list when on alerts tab
+      setNewAlertsCreated(true)
+    },
   })
 
   // Fetch Rules
@@ -181,6 +200,14 @@ export default function WatchtowerPage() {
     fetchAlerts,
     fetchRecentRules,
   ])
+
+  // Auto-refresh alerts when new ones are created and user is on alerts tab
+  useEffect(() => {
+    if (newAlertsCreated && activeTab === 'alerts') {
+      fetchAlerts(alertsPage)
+      setNewAlertsCreated(false)
+    }
+  }, [newAlertsCreated, activeTab, alertsPage, fetchAlerts])
 
   // Handlers
   const handleCreateRule = async (
