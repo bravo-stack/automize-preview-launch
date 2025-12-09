@@ -1,3 +1,15 @@
+// ============================================================================
+// Watchtower Cron Endpoint (PAUSED)
+// ============================================================================
+// This cron endpoint is currently NOT scheduled/enabled.
+// Future implementation will use a service worker for:
+// - Instant Discord messaging for immediate alerts
+// - Scheduled notifications based on rule configuration
+//
+// The rule evaluation logic here is preserved for when we implement
+// the service worker-based alert system.
+// ============================================================================
+
 import {
   checkRuleDependency,
   createAlert,
@@ -284,13 +296,13 @@ export async function GET() {
     .eq('is_active', true)
     .not('target_table', 'is', null)
 
-  const targetTables = [
-    ...new Set(
+  const targetTables = Array.from(
+    new Set(
       (rulesWithTargets || [])
         .map((r) => r.target_table)
         .filter(Boolean) as TargetTable[],
     ),
-  ]
+  )
 
   // Evaluate each target table
   for (const targetTable of targetTables) {
@@ -304,6 +316,7 @@ export async function GET() {
         recordsChecked: 0,
         rulesEvaluated: 0,
         alertsCreated: 0,
+        alertsSkipped: 0,
         alerts: [],
       })
     }

@@ -4,12 +4,12 @@ import StatCard from '@/components/data-hub/stat-card'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { AlertList, RuleBuilder, RuleList } from '@/components/watchtower'
+import { useWatchtowerPolling } from '@/hooks/use-watchtower-polling'
 import type {
   CompoundRuleInput,
   CreateRuleInput,
   WatchtowerAlertWithRelations,
   WatchtowerRuleWithRelations,
-  WatchtowerStats,
 } from '@/types/watchtower'
 import {
   AlertTriangle,
@@ -38,7 +38,6 @@ interface PaginationInfo {
 
 export default function WatchtowerPage() {
   const [activeTab, setActiveTab] = useState<WatchtowerTab>('overview')
-  const [stats, setStats] = useState<WatchtowerStats | null>(null)
   const [rules, setRules] = useState<WatchtowerRuleWithRelations[]>([])
   const [recentRules, setRecentRules] = useState<WatchtowerRuleWithRelations[]>(
     [],
@@ -64,18 +63,19 @@ export default function WatchtowerPage() {
   const [acknowledgedFilter, setAcknowledgedFilter] = useState<string>('')
   const [activeFilter, setActiveFilter] = useState<string>('')
 
-  // Fetch Stats
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await fetch('/api/watchtower/stats')
-      const json = await res.json()
-      if (json.success) {
-        setStats(json.data)
-      }
-    } catch (err) {
-      console.error('Error fetching stats:', err)
-    }
-  }, [])
+  // ============================================================================
+  // Real-time Stats Polling
+  // ============================================================================
+  // Uses visibility-aware polling that pauses when tab is hidden.
+  // Polls every 30 seconds to keep tab counts updated.
+  const {
+    stats,
+    refresh: refreshStats,
+    isPolling: isPollingStats,
+  } = useWatchtowerPolling({
+    interval: 30_000, // 30 seconds
+    enabled: true,
+  })
 
   // Fetch Rules
   const fetchRules = useCallback(
@@ -150,11 +150,10 @@ export default function WatchtowerPage() {
     }
   }, [])
 
-  // Initial fetch
+  // Initial fetch for recent rules (stats handled by polling hook)
   useEffect(() => {
-    fetchStats()
     fetchRecentRules()
-  }, [fetchStats, fetchRecentRules])
+  }, [fetchRecentRules])
 
   useEffect(() => {
     if (activeTab === 'rules') {
@@ -194,7 +193,7 @@ export default function WatchtowerPage() {
         setEditingRule(null)
         fetchRules(rulesPage)
         fetchRecentRules()
-        fetchStats()
+        refreshStats()
       } else {
         setError(json.error)
       }
@@ -224,7 +223,7 @@ export default function WatchtowerPage() {
         setEditingRule(null)
         fetchRules(rulesPage)
         fetchRecentRules()
-        fetchStats()
+        refreshStats()
       } else {
         setError(json.error)
       }
@@ -249,7 +248,7 @@ export default function WatchtowerPage() {
       if (json.success) {
         fetchRules(rulesPage)
         fetchRecentRules()
-        fetchStats()
+        refreshStats()
       } else {
         setError(json.error)
       }
@@ -277,7 +276,7 @@ export default function WatchtowerPage() {
       if (json.success) {
         fetchRules(rulesPage)
         fetchRecentRules()
-        fetchStats()
+        refreshStats()
       } else {
         setError(json.error)
       }
@@ -300,7 +299,7 @@ export default function WatchtowerPage() {
 
       if (json.success) {
         fetchAlerts(alertsPage)
-        fetchStats()
+        refreshStats()
       } else {
         setError(json.error)
       }
@@ -325,7 +324,7 @@ export default function WatchtowerPage() {
 
       if (json.success) {
         fetchAlerts(alertsPage)
-        fetchStats()
+        refreshStats()
       } else {
         setError(json.error)
       }
@@ -350,7 +349,7 @@ export default function WatchtowerPage() {
 
       if (json.success) {
         fetchAlerts(alertsPage)
-        fetchStats()
+        refreshStats()
       } else {
         setError(json.error)
       }
@@ -413,27 +412,69 @@ export default function WatchtowerPage() {
 
         {/* Tab Navigation */}
         <div className="flex w-fit flex-wrap gap-2 rounded-lg border border-white/10 bg-white/5 p-1.5">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-                activeTab === tab.id
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/60 hover:bg-white/5 hover:text-white/80'
-              }`}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-              {tab.id === 'alerts' &&
-                stats &&
-                stats.unacknowledgedAlerts > 0 && (
-                  <span className="ml-1 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
-                    {stats.unacknowledgedAlerts}
+          {tabs.map((tab) => {
+            // Determine badge count and style for each tab
+            const getBadgeConfig = () => {
+              if (!stats) return null
+
+              switch (tab.id) {
+                case 'rules':
+                  // Show active rules count
+                  if (stats.activeRules > 0) {
+                    return {
+                      count: stats.activeRules,
+                      className: 'bg-emerald-500/80 text-white',
+                    }
+                  }
+                  return null
+                case 'alerts':
+                  // Show unacknowledged alerts (red for urgency)
+                  if (stats.unacknowledgedAlerts > 0) {
+                    return {
+                      count: stats.unacknowledgedAlerts,
+                      className:
+                        stats.criticalAlerts > 0
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-red-500 text-white',
+                    }
+                  }
+                  return null
+                default:
+                  return null
+              }
+            }
+
+            const badge = getBadgeConfig()
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/60 hover:bg-white/5 hover:text-white/80'
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+                {badge && (
+                  <span
+                    className={`ml-1 min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs font-semibold ${badge.className}`}
+                  >
+                    {badge.count > 99 ? '99+' : badge.count}
                   </span>
                 )}
-            </button>
-          ))}
+              </button>
+            )
+          })}
+
+          {/* Polling indicator */}
+          {isPollingStats && (
+            <div className="flex items-center px-2" title="Updating stats...">
+              <RefreshCw className="h-3 w-3 animate-spin text-white/30" />
+            </div>
+          )}
         </div>
 
         {/* Loading State */}
