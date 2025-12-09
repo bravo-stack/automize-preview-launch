@@ -11,10 +11,10 @@ import { formatSummaryMessage } from '@/lib/utils/whatsapp-formatters'
 import { sendWhatsAppMessage } from './whatsapp'
 
 // ============================================================================
-// Test WhatsApp Job - Sends all notifications to hardcoded test number
+// Test WhatsApp Job - Sends notifications using pod's configured number
 // ============================================================================
-
-const TEST_NUMBER = '+2349048188177'
+// Note: Aborts if no WhatsApp number is configured for the pod
+// ============================================================================
 
 interface TestJobResult {
   success: boolean
@@ -35,6 +35,25 @@ export async function runTestWhatsAppJob(
   const db = createAdminClient()
   const results: TestJobResult['results'] = []
   let messagesSent = 0
+
+  // Abort early if no WhatsApp number is configured
+  if (!podWhatsappNumber || podWhatsappNumber.trim() === '') {
+    console.log(
+      `[WhatsApp Test] Aborted - No WhatsApp number configured for pod: ${podName}`,
+    )
+    return {
+      success: false,
+      messagesSent: 0,
+      results: [
+        {
+          type: 'Configuration',
+          sent: false,
+          preview:
+            'No WhatsApp number configured for this pod. Please add a WhatsApp number first.',
+        },
+      ],
+    }
+  }
 
   try {
     // ========================================================================
@@ -107,7 +126,7 @@ export async function runTestWhatsAppJob(
         const summaryMessage = formatSummaryMessage(batchHeader, batch)
 
         const summaryResult = await sendWhatsAppMessage(
-          podWhatsappNumber ?? TEST_NUMBER,
+          podWhatsappNumber,
           summaryMessage,
         )
 
@@ -230,7 +249,7 @@ export async function runTestWhatsAppJob(
               .join('\n')
 
             const errorResult = await sendWhatsAppMessage(
-              pod?.whatsapp_number ?? TEST_NUMBER, // Falls back to Test Number if pod not in DB
+              pod?.whatsapp_number || podWhatsappNumber,
               errorMessage,
             )
 
