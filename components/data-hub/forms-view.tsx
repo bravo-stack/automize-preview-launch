@@ -291,7 +291,7 @@ export default function FormsView() {
           <select
             value={statusFilter}
             onChange={handleStatusChange}
-            className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 focus:border-white/30 focus:outline-none"
+            className="rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none [&>option]:bg-zinc-900 [&>option]:text-white"
           >
             <option value="">All Statuses</option>
             <option value="pending">Pending</option>

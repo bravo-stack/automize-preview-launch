@@ -237,7 +237,7 @@ export default function FacebookView() {
           <select
             value={selectedPod}
             onChange={handlePodChange}
-            className="mt-1 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 focus:border-white/30 focus:outline-none"
+            className="mt-1 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none [&>option]:bg-zinc-900 [&>option]:text-white"
           >
             <option value="">All Pods</option>
             {stats?.uniquePods.map((pod) => (

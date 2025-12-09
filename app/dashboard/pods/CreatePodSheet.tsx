@@ -115,13 +115,13 @@ export default function CreatePodSheet({ user }: CreateJobProps) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium">
+                <label className="block text-sm font-medium text-white/90">
                   Refresh Frequency
                 </label>
                 <select
                   value={frequency}
                   onChange={(e) => setFrequency(e.target.value)}
-                  className="w-full rounded border px-3 py-2"
+                  className="w-full rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-white focus:border-white/30 focus:outline-none [&>option]:bg-zinc-900 [&>option]:text-white"
                 >
                   <option value="none">None</option>
                   <option value="today">Today</option>
@@ -135,25 +135,25 @@ export default function CreatePodSheet({ user }: CreateJobProps) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-white/90">
                   Choose a template
                 </label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="mt-2 grid grid-cols-2 gap-4">
                   {templates.map((template) => (
                     <div
                       key={template.id}
                       onClick={() => handleTemplateSelect(template.id)}
-                      className={`cursor-pointer rounded border px-3 py-2 text-center ${
+                      className={`cursor-pointer rounded-md border px-3 py-2 text-center text-sm transition-colors ${
                         templateId === template.id
-                          ? 'border-zinc-900/20 bg-zinc-800/10'
-                          : ''
+                          ? 'border-white/30 bg-white/10 text-white'
+                          : 'border-white/10 bg-zinc-900 text-white/70 hover:border-white/20 hover:bg-white/5'
                       }`}
                     >
                       {template.name}
                     </div>
                   ))}
                 </div>
-                <p className="mt-4 text-gray-700">
+                <p className="mt-4 text-sm text-white/60">
                   {
                     templates.find((template) => template.id === templateId)
                       ?.description
