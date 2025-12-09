@@ -24,6 +24,7 @@ export interface CommunicationReport {
   last_team_message_at: string | null
   days_since_team_message: number | null
   processed_at: string | null
+  pod: string | null
 }
 
 export interface Pod {

@@ -68,8 +68,13 @@ export default async function CommunicationsAudit() {
       .order('channel_name')
 
     // Filter reports by pod for non-exec users
-    if (role !== 'exec') {
-      reportsQuery = reportsQuery.in('guild_id', pod?.servers)
+    // Include reports where: (guild_id IN pod.servers) OR (pod = pod.name)
+    if (role !== 'exec' && pod?.servers && pod?.name) {
+      const guildIdsFilter = pod.servers
+        .map((id: string) => `guild_id.eq.${id}`)
+        .join(',')
+      const podNameFilter = `pod.eq.${pod.name}`
+      reportsQuery = reportsQuery.or(`${guildIdsFilter},${podNameFilter}`)
     }
 
     const { data: reports } = await reportsQuery
@@ -87,8 +92,16 @@ export default async function CommunicationsAudit() {
       .eq('report_date', previousDate)
       .order('channel_name')
 
-    if (role !== 'exec') {
-      prevReportsQuery = prevReportsQuery.in('guild_id', pod?.servers)
+    // Filter previous day reports by pod for non-exec users
+    // Include reports where: (guild_id IN pod.servers) OR (pod = pod.name)
+    if (role !== 'exec' && pod?.servers && pod?.name) {
+      const guildIdsFilter = pod.servers
+        .map((id: string) => `guild_id.eq.${id}`)
+        .join(',')
+      const podNameFilter = `pod.eq.${pod.name}`
+      prevReportsQuery = prevReportsQuery.or(
+        `${guildIdsFilter},${podNameFilter}`,
+      )
     }
 
     const { data: prevReports } = await prevReportsQuery
