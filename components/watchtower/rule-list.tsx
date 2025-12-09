@@ -170,6 +170,34 @@ export default function RuleList({
     return threshold ? `${symbol} ${threshold}` : symbol
   }
 
+  // Show loading skeleton during initial load
+  if (isLoading && rules.length === 0) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div
+            key={i}
+            className="animate-pulse rounded-lg border border-white/10 bg-white/5 p-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-5 w-5 rounded bg-white/10" />
+                <div>
+                  <div className="h-5 w-40 rounded bg-white/10" />
+                  <div className="mt-2 h-4 w-60 rounded bg-white/5" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="h-8 w-8 rounded bg-white/10" />
+                <div className="h-8 w-8 rounded bg-white/10" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   if (rules.length === 0) {
     return (
       <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-white/10 bg-white/5">
