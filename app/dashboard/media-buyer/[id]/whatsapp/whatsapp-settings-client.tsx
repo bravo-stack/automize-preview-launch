@@ -5,7 +5,6 @@ import {
   updatePodWhatsAppNumber,
   upsertConfig,
 } from '@/lib/actions/pod-whatsapp-configs'
-import { runTestWhatsAppJob } from '@/lib/actions/whatsapp-test'
 import type {
   GlobalWhatsAppConfig,
   PodWhatsAppConfig,
@@ -39,8 +38,6 @@ interface WhatsAppSettingsClientProps {
   podName: string
   initialWhatsAppNumber: string | null
   initialConfigs: PodWhatsAppConfig[]
-  podServers: string[]
-  podWhatsappNumber: string | null
   globalConfigs: GlobalWhatsAppConfig[]
 }
 
@@ -72,8 +69,6 @@ export default function WhatsAppSettingsClient({
   podName,
   initialWhatsAppNumber,
   initialConfigs,
-  podServers,
-  podWhatsappNumber,
   globalConfigs,
 }: WhatsAppSettingsClientProps) {
   // STATES
@@ -83,28 +78,8 @@ export default function WhatsAppSettingsClient({
   const [configs, setConfigs] = useState<PodWhatsAppConfig[]>(initialConfigs)
   const [isSavingNumber, setIsSavingNumber] = useState(false)
   const [numberSaved, setNumberSaved] = useState(false)
-  const [isTestRunning, setIsTestRunning] = useState(false)
-  const [testResults, setTestResults] = useState<{
-    messagesSent: number
-    results: { type: string; sent: boolean; preview: string; error?: string }[]
-  } | null>(null)
 
   // HANDLERS
-  const handleTestJob = async () => {
-    setIsTestRunning(true)
-    setTestResults(null)
-    const result = await runTestWhatsAppJob(
-      podName,
-      podServers,
-      podWhatsappNumber,
-    )
-    setIsTestRunning(false)
-    setTestResults({
-      messagesSent: result.messagesSent,
-      results: result.results,
-    })
-  }
-
   const handleSaveNumber = async () => {
     setIsSavingNumber(true)
     const result = await updatePodWhatsAppNumber(podName, whatsappNumber)
@@ -178,58 +153,6 @@ export default function WhatsAppSettingsClient({
           </div>
         </div>
       )}
-
-      {/* Test Job Section */}
-      <section className="rounded-lg border border-amber-800 bg-amber-950/20 p-6">
-        <h2 className="mb-2 text-lg font-semibold text-amber-400">
-          Test WhatsApp Job
-        </h2>
-        <p className="mb-4 text-sm text-amber-200/70">
-          Test all WhatsApp notifications. Messages will be sent to:{' '}
-          <code className="rounded bg-amber-900/30 px-2 py-0.5">
-            +2349048188177
-          </code>
-        </p>
-        <button
-          onClick={handleTestJob}
-          disabled={isTestRunning}
-          className="rounded-md bg-amber-600 px-6 py-2 font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
-        >
-          {isTestRunning ? 'Running Job...' : 'Run Test Job'}
-        </button>
-
-        {/* Test Results */}
-        {testResults && (
-          <div className="mt-4 space-y-2 rounded-md border border-amber-700 bg-amber-950/30 p-4">
-            <div className="mb-3 text-sm font-medium text-amber-300">
-              Job Complete - {testResults.messagesSent} message
-              {testResults.messagesSent !== 1 ? 's' : ''} sent
-            </div>
-            {testResults.results.map((result, index) => (
-              <div
-                key={index}
-                className={`rounded border p-3 text-sm ${
-                  result.sent
-                    ? 'border-green-800 bg-green-950/30'
-                    : 'border-red-800 bg-red-950/30'
-                }`}
-              >
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="font-medium">
-                    {result.sent ? '✓' : '✗'} {result.type}
-                  </span>
-                </div>
-                <div className="text-xs text-zinc-400">{result.preview}</div>
-                {result.error && (
-                  <div className="mt-1 text-xs text-red-400">
-                    Error: {result.error}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* WhatsApp Number Section */}
       <section className="rounded-lg border border-zinc-800 bg-night-starlit p-6">

@@ -82,8 +82,6 @@ export default async function WhatsAppSettingsPage({ params }) {
 
       <WhatsAppSettingsClient
         podName={pod.name}
-        podServers={pod?.servers ?? []}
-        podWhatsappNumber={pod?.whatsapp_number ?? null}
         initialWhatsAppNumber={pod.whatsapp_number}
         initialConfigs={configs || []}
         globalConfigs={globalConfigs}
