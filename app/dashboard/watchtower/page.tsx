@@ -4,6 +4,7 @@ import StatCard from '@/components/data-hub/stat-card'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { AlertList, RuleBuilder, RuleList } from '@/components/watchtower'
+import DeleteAlertDialog from '@/components/watchtower/delete-alert-dialog'
 import { useWatchtowerPolling } from '@/hooks/use-watchtower-polling'
 import type {
   CompoundRuleInput,
@@ -56,6 +57,11 @@ export default function WatchtowerPage() {
   const [editingRule, setEditingRule] =
     useState<WatchtowerRuleWithRelations | null>(null)
 
+  // Delete Alert Dialog State
+  const [alertToDelete, setAlertToDelete] =
+    useState<WatchtowerAlertWithRelations | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
   // Filters
   const [rulesPage, setRulesPage] = useState(1)
   const [alertsPage, setAlertsPage] = useState(1)
@@ -72,6 +78,7 @@ export default function WatchtowerPage() {
     stats,
     refresh: refreshStats,
     isPolling: isPollingStats,
+    isInitialLoading: isStatsLoading,
   } = useWatchtowerPolling({
     interval: 30_000, // 30 seconds
     enabled: true,
@@ -337,17 +344,24 @@ export default function WatchtowerPage() {
     }
   }
 
-  const handleDeleteAlert = async (alertId: string) => {
-    if (!confirm('Are you sure you want to delete this alert?')) return
+  // Opens the delete confirmation dialog
+  const handleDeleteAlertClick = (alert: WatchtowerAlertWithRelations) => {
+    setAlertToDelete(alert)
+  }
 
-    setIsLoading(true)
+  // Performs the actual delete when confirmed
+  const handleConfirmDeleteAlert = async () => {
+    if (!alertToDelete) return
+
+    setIsDeleting(true)
     try {
-      const res = await fetch(`/api/watchtower/alerts?id=${alertId}`, {
+      const res = await fetch(`/api/watchtower/alerts?id=${alertToDelete.id}`, {
         method: 'DELETE',
       })
       const json = await res.json()
 
       if (json.success) {
+        setAlertToDelete(null)
         fetchAlerts(alertsPage)
         refreshStats()
       } else {
@@ -356,7 +370,7 @@ export default function WatchtowerPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete alert')
     } finally {
-      setIsLoading(false)
+      setIsDeleting(false)
     }
   }
 
@@ -391,7 +405,6 @@ export default function WatchtowerPage() {
             </Button>
           )}
         </header>
-
         {/* Error Display */}
         {error && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
@@ -409,7 +422,6 @@ export default function WatchtowerPage() {
             </div>
           </div>
         )}
-
         {/* Tab Navigation */}
         <div className="flex w-fit flex-wrap gap-2 rounded-lg border border-white/10 bg-white/5 p-1.5">
           {tabs.map((tab) => {
@@ -476,9 +488,8 @@ export default function WatchtowerPage() {
             </div>
           )}
         </div>
-
-        {/* Loading State */}
-        {isLoading && !stats && (
+        {/* Loading State - Shows skeleton while stats are initially loading */}
+        {isStatsLoading && (
           <div className="space-y-8">
             {/* Loading Header */}
             <div className="flex items-center justify-center gap-3 py-8">
@@ -524,9 +535,8 @@ export default function WatchtowerPage() {
             </div>
           </div>
         )}
-
         {/* Overview Tab */}
-        {activeTab === 'overview' && !isLoading && (
+        {activeTab === 'overview' && !isStatsLoading && (
           <div className="space-y-8">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -759,18 +769,17 @@ export default function WatchtowerPage() {
             <div className="flex justify-center">
               <Button
                 variant="outline"
-                onClick={fetchStats}
-                disabled={isLoading}
+                onClick={refreshStats}
+                disabled={isLoading || isPollingStats}
               >
                 <RefreshCw
-                  className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                  className={`mr-2 h-4 w-4 ${isLoading || isPollingStats ? 'animate-spin' : ''}`}
                 />
                 Refresh Stats
               </Button>
             </div>
           </div>
-        )}
-
+        )}{' '}
         {/* Rules Tab */}
         {activeTab === 'rules' && (
           <div className="space-y-6">
@@ -870,7 +879,6 @@ export default function WatchtowerPage() {
             )}
           </div>
         )}
-
         {/* Alerts Tab */}
         {activeTab === 'alerts' && (
           <div className="space-y-6">
@@ -931,7 +939,7 @@ export default function WatchtowerPage() {
               alerts={alerts}
               onAcknowledge={handleAcknowledgeAlert}
               onBulkAcknowledge={handleBulkAcknowledge}
-              onDelete={handleDeleteAlert}
+              onDelete={handleDeleteAlertClick}
               isLoading={isLoading}
             />
 
@@ -965,6 +973,15 @@ export default function WatchtowerPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Alert Confirmation Dialog */}
+      <DeleteAlertDialog
+        isOpen={!!alertToDelete}
+        onClose={() => setAlertToDelete(null)}
+        onConfirm={handleConfirmDeleteAlert}
+        alertMessage={alertToDelete?.message}
+        isLoading={isDeleting}
+      />
     </main>
   )
 }

@@ -18,7 +18,7 @@ interface AlertListProps {
   alerts: WatchtowerAlertWithRelations[]
   onAcknowledge: (alertId: string) => void
   onBulkAcknowledge: (alertIds: string[]) => void
-  onDelete: (alertId: string) => void
+  onDelete: (alert: WatchtowerAlertWithRelations) => void
   isLoading?: boolean
 }
 
@@ -244,7 +244,7 @@ export default function AlertList({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => onDelete(alert.id)}
+                  onClick={() => onDelete(alert)}
                   disabled={isLoading}
                   className="text-red-400 hover:text-red-300"
                 >

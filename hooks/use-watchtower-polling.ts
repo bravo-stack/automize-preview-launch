@@ -41,6 +41,7 @@ interface UseWatchtowerPollingOptions {
 interface UseWatchtowerPollingResult {
   stats: WatchtowerStats | null
   isPolling: boolean
+  isInitialLoading: boolean
   lastUpdated: Date | null
   error: string | null
   refresh: () => Promise<void>
@@ -60,6 +61,7 @@ export function useWatchtowerPolling(
 
   const [stats, setStats] = useState<WatchtowerStats | null>(null)
   const [isPolling, setIsPolling] = useState(false)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -76,13 +78,16 @@ export function useWatchtowerPolling(
     onErrorRef.current = onError
   }, [onStatsUpdate, onError])
 
-  // Fetch stats from API
+  // Fetch stats from API with cache busting
   const fetchStats = useCallback(async () => {
     if (!isMountedRef.current) return
 
     try {
       setIsPolling(true)
-      const response = await fetch('/api/watchtower/stats')
+      // Add cache-busting timestamp to prevent stale data
+      const response = await fetch(`/api/watchtower/stats?_t=${Date.now()}`, {
+        cache: 'no-store',
+      })
       const json = await response.json()
 
       if (!isMountedRef.current) return
@@ -91,10 +96,12 @@ export function useWatchtowerPolling(
         setStats(json.data)
         setLastUpdated(new Date())
         setError(null)
+        setIsInitialLoading(false)
         onStatsUpdateRef.current?.(json.data)
       } else {
         const err = new Error(json.error || 'Failed to fetch stats')
         setError(err.message)
+        setIsInitialLoading(false)
         onErrorRef.current?.(err)
       }
     } catch (err) {
@@ -102,6 +109,7 @@ export function useWatchtowerPolling(
 
       const error = err instanceof Error ? err : new Error('Unknown error')
       setError(error.message)
+      setIsInitialLoading(false)
       onErrorRef.current?.(error)
     } finally {
       if (isMountedRef.current) {
@@ -174,6 +182,7 @@ export function useWatchtowerPolling(
   return {
     stats,
     isPolling,
+    isInitialLoading,
     lastUpdated,
     error,
     refresh,

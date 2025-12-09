@@ -809,6 +809,7 @@ export async function deleteAlert(alertId: string): Promise<boolean> {
 
 /**
  * Get Watchtower statistics
+ * Note: Compound rules (multiple clauses with same group_id) are counted as one rule
  */
 export async function getWatchtowerStats(): Promise<WatchtowerStats> {
   const db = createAdminClient()
@@ -828,7 +829,7 @@ export async function getWatchtowerStats(): Promise<WatchtowerStats> {
 
   const [rulesRes, alertsRes, todayAlertsRes, weekAlertsRes] =
     await Promise.all([
-      db.from('watchtower_rules').select('id, is_active'),
+      db.from('watchtower_rules').select('id, is_active, group_id'),
       db.from('watchtower_alerts').select('id, severity, is_acknowledged'),
       db.from('watchtower_alerts').select('id').gte('created_at', startOfDay),
       db.from('watchtower_alerts').select('id').gte('created_at', startOfWeek),
@@ -839,10 +840,31 @@ export async function getWatchtowerStats(): Promise<WatchtowerStats> {
   const todayAlerts = todayAlertsRes.data || []
   const weekAlerts = weekAlertsRes.data || []
 
+  // Count unique rules: standalone rules (no group_id) + unique group_ids
+  // For compound rules, multiple rows share the same group_id - count once per group
+  const standaloneRules = rules.filter((r) => !r.group_id)
+  const groupedRuleIds = new Set(
+    rules.filter((r) => r.group_id).map((r) => r.group_id),
+  )
+
+  // For counting active/inactive, we need to check the main rule of each group
+  // Get unique rules: standalone + first rule of each group
+  const seenGroups = new Set<string>()
+  const uniqueRules = rules.filter((r) => {
+    if (!r.group_id) return true // Standalone rule
+    if (seenGroups.has(r.group_id)) return false // Already counted this group
+    seenGroups.add(r.group_id)
+    return true
+  })
+
+  const totalUniqueRules = standaloneRules.length + groupedRuleIds.size
+  const activeUniqueRules = uniqueRules.filter((r) => r.is_active).length
+  const inactiveUniqueRules = uniqueRules.filter((r) => !r.is_active).length
+
   return {
-    totalRules: rules.length,
-    activeRules: rules.filter((r) => r.is_active).length,
-    inactiveRules: rules.filter((r) => !r.is_active).length,
+    totalRules: totalUniqueRules,
+    activeRules: activeUniqueRules,
+    inactiveRules: inactiveUniqueRules,
     totalAlerts: alerts.length,
     unacknowledgedAlerts: alerts.filter((a) => !a.is_acknowledged).length,
     criticalAlerts: alerts.filter((a) => a.severity === 'critical').length,

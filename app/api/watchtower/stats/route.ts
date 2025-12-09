@@ -9,10 +9,20 @@ export async function GET() {
   try {
     const stats = await getWatchtowerStats()
 
-    return NextResponse.json({
-      success: true,
-      data: stats,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        data: stats,
+      },
+      {
+        headers: {
+          // Prevent caching to ensure fresh data on each request
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      },
+    )
   } catch (error) {
     console.error('Error fetching Watchtower stats:', error)
     return NextResponse.json(
