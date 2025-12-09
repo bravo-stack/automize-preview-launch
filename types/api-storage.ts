@@ -154,6 +154,9 @@ export interface WatchtowerRule {
   discord_channel_id: string | null
   pod_id: string | null
   last_notified_at: string | null
+  // Trigger tracking
+  last_triggered_at: string | null
+  trigger_count: number
   // Timestamps
   created_at: string
   updated_at: string

@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import {
+  CONDITION_LABELS,
+  CONDITIONS_BY_FIELD_TYPE,
   DEPENDENCY_CONDITIONS,
   LOGIC_OPERATORS,
   NOTIFY_SCHEDULES,
@@ -61,6 +63,27 @@ function getTargetTableDescription(table: string): string {
     TARGET_TABLE_DESCRIPTIONS[table] ||
     'No description available for this data domain.'
   )
+}
+
+/**
+ * Get valid conditions for a specific field type.
+ * Prevents invalid comparisons like 'greater_than' on string fields.
+ */
+function getConditionsForFieldType(
+  fieldType: FieldDefinition['type'] | undefined,
+): RuleCondition[] {
+  if (!fieldType) {
+    // If no field type, return all conditions (fallback)
+    return [...RULE_CONDITIONS]
+  }
+  return [...CONDITIONS_BY_FIELD_TYPE[fieldType]]
+}
+
+/**
+ * Check if a condition requires a threshold value input
+ */
+function conditionRequiresThreshold(condition: string): boolean {
+  return !['changed', 'is_null', 'is_not_null'].includes(condition)
 }
 
 interface Pod {
@@ -174,6 +197,81 @@ export default function RuleBuilder({
       setIsCompound(!!editRule.group_id)
     }
   }, [editRule])
+
+  /**
+   * Get the field type for a given field name from available fields
+   */
+  const getFieldType = useCallback(
+    (name: string): FieldDefinition['type'] | undefined => {
+      return availableFields.find((f) => f.name === name)?.type
+    },
+    [availableFields],
+  )
+
+  /**
+   * Get available conditions for the currently selected single field
+   */
+  const availableConditionsForField = useCallback(() => {
+    const fieldType = getFieldType(fieldName)
+    return getConditionsForFieldType(fieldType)
+  }, [fieldName, getFieldType])
+
+  /**
+   * Get available conditions for a clause's selected field
+   */
+  const getConditionsForClause = useCallback(
+    (clauseFieldName: string) => {
+      const fieldType = getFieldType(clauseFieldName)
+      return getConditionsForFieldType(fieldType)
+    },
+    [getFieldType],
+  )
+
+  /**
+   * When field changes, reset condition if current condition is invalid for new field type
+   */
+  const handleFieldChange = useCallback(
+    (newFieldName: string) => {
+      setFieldName(newFieldName)
+      const newFieldType = availableFields.find(
+        (f) => f.name === newFieldName,
+      )?.type
+      const validConditions = getConditionsForFieldType(newFieldType)
+      if (!validConditions.includes(condition as RuleCondition)) {
+        // Reset to first valid condition for the new field type
+        setCondition(validConditions[0] || 'equals')
+      }
+    },
+    [availableFields, condition],
+  )
+
+  /**
+   * When clause field changes, update condition if invalid
+   */
+  const handleClauseFieldChange = useCallback(
+    (clauseId: string, newFieldName: string) => {
+      setClauses((prev) =>
+        prev.map((clause) => {
+          if (clause.id !== clauseId) return clause
+          const newFieldType = availableFields.find(
+            (f) => f.name === newFieldName,
+          )?.type
+          const validConditions = getConditionsForFieldType(newFieldType)
+          const currentConditionValid = validConditions.includes(
+            clause.condition as RuleCondition,
+          )
+          return {
+            ...clause,
+            field_name: newFieldName,
+            condition: currentConditionValid
+              ? clause.condition
+              : (validConditions[0] as RuleCondition),
+          }
+        }),
+      )
+    },
+    [availableFields],
+  )
 
   const addClause = useCallback(() => {
     setClauses((prev) => [
@@ -435,69 +533,95 @@ export default function RuleBuilder({
 
             {/* Clauses */}
             <div className="space-y-3">
-              {clauses.map((clause, index) => (
-                <div
-                  key={clause.id}
-                  className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-3"
-                >
-                  <span className="text-sm font-medium text-white/60">
-                    {index + 1}.
-                  </span>
+              {clauses.map((clause, index) => {
+                const clauseFieldType = getFieldType(clause.field_name)
+                const clauseConditions = getConditionsForClause(
+                  clause.field_name,
+                )
+                const showThreshold = conditionRequiresThreshold(
+                  clause.condition,
+                )
 
-                  <Select
-                    value={clause.field_name}
-                    onChange={(e) =>
-                      updateClause(clause.id, 'field_name', e.target.value)
-                    }
-                    className="flex-1"
+                return (
+                  <div
+                    key={clause.id}
+                    className="flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-3"
                   >
-                    <option value="">Select field...</option>
-                    {availableFields.map((field) => (
-                      <option key={field.name} value={field.name}>
-                        {field.label}
-                      </option>
-                    ))}
-                  </Select>
+                    <span className="text-sm font-medium text-white/60">
+                      {index + 1}.
+                    </span>
 
-                  <Select
-                    value={clause.condition}
-                    onChange={(e) =>
-                      updateClause(clause.id, 'condition', e.target.value)
-                    }
-                    className="w-40"
-                  >
-                    {RULE_CONDITIONS.map((cond) => (
-                      <option key={cond} value={cond}>
-                        {cond.replace(/_/g, ' ')}
-                      </option>
-                    ))}
-                  </Select>
+                    <Select
+                      value={clause.field_name}
+                      onChange={(e) =>
+                        handleClauseFieldChange(clause.id, e.target.value)
+                      }
+                      className="min-w-[140px] flex-1"
+                    >
+                      <option value="">Select field...</option>
+                      {availableFields.map((field) => (
+                        <option key={field.name} value={field.name}>
+                          {field.label} ({field.type})
+                        </option>
+                      ))}
+                    </Select>
 
-                  <Input
-                    value={clause.threshold_value || ''}
-                    onChange={(e) =>
-                      updateClause(
-                        clause.id,
-                        'threshold_value',
-                        e.target.value || null,
-                      )
-                    }
-                    placeholder="Value"
-                    className="w-32 border-white/10 bg-zinc-900"
-                  />
+                    <Select
+                      value={clause.condition}
+                      onChange={(e) =>
+                        updateClause(clause.id, 'condition', e.target.value)
+                      }
+                      className="w-44"
+                      disabled={!clause.field_name}
+                    >
+                      {!clause.field_name && (
+                        <option value="">Select field first</option>
+                      )}
+                      {clauseConditions.map((cond) => (
+                        <option key={cond} value={cond}>
+                          {CONDITION_LABELS[cond]}
+                        </option>
+                      ))}
+                    </Select>
 
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeClause(clause.id)}
-                    disabled={clauses.length === 1}
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                    {showThreshold ? (
+                      <Input
+                        value={clause.threshold_value || ''}
+                        onChange={(e) =>
+                          updateClause(
+                            clause.id,
+                            'threshold_value',
+                            e.target.value || null,
+                          )
+                        }
+                        placeholder={
+                          clauseFieldType === 'number'
+                            ? 'Value'
+                            : clauseFieldType === 'boolean'
+                              ? 'true/false'
+                              : 'Value'
+                        }
+                        className="w-28 border-white/10 bg-zinc-900"
+                      />
+                    ) : (
+                      <div className="w-28 rounded-md border border-white/5 bg-zinc-900/30 px-2 py-2 text-center text-xs text-white/30">
+                        N/A
+                      </div>
+                    )}
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeClause(clause.id)}
+                      disabled={clauses.length === 1}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )
+              })}
             </div>
 
             <Button
@@ -512,42 +636,70 @@ export default function RuleBuilder({
           </>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Select
-              label="Field"
-              value={fieldName}
-              onChange={(e) => setFieldName(e.target.value)}
-            >
-              <option value="">Select field...</option>
-              {availableFields.map((field) => (
-                <option key={field.name} value={field.name}>
-                  {field.label}
-                </option>
-              ))}
-            </Select>
-
-            <Select
-              label="Condition"
-              value={condition}
-              onChange={(e) => setCondition(e.target.value)}
-            >
-              {RULE_CONDITIONS.map((cond) => (
-                <option key={cond} value={cond}>
-                  {cond.replace(/_/g, ' ')}
-                </option>
-              ))}
-            </Select>
+            <div>
+              <Select
+                label="Field"
+                value={fieldName}
+                onChange={(e) => handleFieldChange(e.target.value)}
+              >
+                <option value="">Select field...</option>
+                {availableFields.map((field) => (
+                  <option key={field.name} value={field.name}>
+                    {field.label} ({field.type})
+                  </option>
+                ))}
+              </Select>
+            </div>
 
             <div>
-              <label className="mb-1 block text-sm text-white/70">
-                Threshold Value
-              </label>
-              <Input
-                value={thresholdValue}
-                onChange={(e) => setThresholdValue(e.target.value)}
-                placeholder="e.g., 1.5"
-                className="border-white/10 bg-zinc-900"
-              />
+              <Select
+                label="Condition"
+                value={condition}
+                onChange={(e) => setCondition(e.target.value)}
+                disabled={!fieldName}
+              >
+                {!fieldName && <option value="">Select a field first</option>}
+                {availableConditionsForField().map((cond) => (
+                  <option key={cond} value={cond}>
+                    {CONDITION_LABELS[cond]}
+                  </option>
+                ))}
+              </Select>
+              {!fieldName && (
+                <p className="mt-1 text-xs text-white/40">
+                  Select a field to see available conditions
+                </p>
+              )}
             </div>
+
+            {conditionRequiresThreshold(condition) ? (
+              <div>
+                <label className="mb-1 block text-sm text-white/70">
+                  Threshold Value
+                </label>
+                <Input
+                  value={thresholdValue}
+                  onChange={(e) => setThresholdValue(e.target.value)}
+                  placeholder={
+                    getFieldType(fieldName) === 'number'
+                      ? 'e.g., 1.5'
+                      : getFieldType(fieldName) === 'boolean'
+                        ? 'true or false'
+                        : 'e.g., pending'
+                  }
+                  className="border-white/10 bg-zinc-900"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="mb-1 block text-sm text-white/70">
+                  Threshold Value
+                </label>
+                <div className="flex h-10 items-center rounded-md border border-white/10 bg-zinc-900/50 px-3 text-sm text-white/40">
+                  Not required for this condition
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

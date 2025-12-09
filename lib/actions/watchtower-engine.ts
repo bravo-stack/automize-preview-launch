@@ -14,6 +14,7 @@ import {
   getCompoundRules,
   getRules,
   updateRuleLastNotified,
+  updateRuleTriggerTracking,
 } from './watchtower'
 import {
   sendAlertNotifications,
@@ -300,6 +301,8 @@ export async function evaluateRecordAgainstRules(
 
         if (alert) {
           triggered.push(alert.id)
+          // Track that this rule was triggered
+          await updateRuleTriggerTracking(result.rule_id)
           // Send immediate notifications if enabled
           if (rule.notify_immediately) {
             await sendAlertNotifications(alert as WatchtowerAlert, rule)
@@ -338,6 +341,8 @@ export async function evaluateRecordAgainstRules(
 
       if (alert) {
         triggered.push(alert.id)
+        // Track that this rule was triggered
+        await updateRuleTriggerTracking(rule.id)
         // Send immediate notifications if enabled
         if (rule.notify_immediately) {
           await sendAlertNotifications(alert as WatchtowerAlert, rule)

@@ -21,6 +21,70 @@ export const RULE_CONDITIONS = [
   'is_not_null',
 ] as const
 
+/**
+ * Conditions allowed for each field type.
+ * Prevents invalid comparisons like 'greater_than' on string fields.
+ */
+export const CONDITIONS_BY_FIELD_TYPE: Record<
+  'number' | 'string' | 'boolean' | 'date',
+  readonly (typeof RULE_CONDITIONS)[number][]
+> = {
+  number: [
+    'equals',
+    'not_equals',
+    'greater_than',
+    'less_than',
+    'greater_than_or_equal',
+    'less_than_or_equal',
+    'changed',
+    'changed_by_percent',
+    'is_null',
+    'is_not_null',
+  ],
+  string: [
+    'equals',
+    'not_equals',
+    'contains',
+    'not_contains',
+    'changed',
+    'is_null',
+    'is_not_null',
+  ],
+  boolean: ['equals', 'not_equals', 'changed', 'is_null', 'is_not_null'],
+  date: [
+    'equals',
+    'not_equals',
+    'greater_than',
+    'less_than',
+    'greater_than_or_equal',
+    'less_than_or_equal',
+    'changed',
+    'is_null',
+    'is_not_null',
+  ],
+} as const
+
+/**
+ * Human-readable labels for conditions
+ */
+export const CONDITION_LABELS: Record<
+  (typeof RULE_CONDITIONS)[number],
+  string
+> = {
+  equals: 'Equals',
+  not_equals: 'Not Equals',
+  greater_than: 'Greater Than',
+  less_than: 'Less Than',
+  greater_than_or_equal: 'At Least (≥)',
+  less_than_or_equal: 'At Most (≤)',
+  changed: 'Has Changed',
+  changed_by_percent: 'Changed By %',
+  contains: 'Contains',
+  not_contains: 'Does Not Contain',
+  is_null: 'Is Empty',
+  is_not_null: 'Is Not Empty',
+}
+
 export const SEVERITY_LEVELS = ['info', 'warning', 'critical'] as const
 
 /**
@@ -89,6 +153,9 @@ export interface WatchtowerRule {
   discord_channel_id: string | null
   pod_id: string | null
   last_notified_at: string | null
+  // Trigger tracking
+  last_triggered_at: string | null
+  trigger_count: number
   // Timestamps
   created_at: string
   updated_at: string

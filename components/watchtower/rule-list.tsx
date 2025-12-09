@@ -16,6 +16,7 @@ import {
   Pause,
   Play,
   Trash2,
+  Zap,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -35,6 +36,26 @@ const TARGET_TABLE_LABELS: Record<string, string> = {
 function getTargetTableLabel(table: string | null): string {
   if (!table) return 'Any'
   return TARGET_TABLE_LABELS[table] || table.replace(/_/g, ' ')
+}
+
+/**
+ * Format a date string as relative time (e.g., "2 hours ago")
+ */
+function formatTimeAgo(dateString: string | null): string {
+  if (!dateString) return 'Never'
+
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString()
 }
 
 interface RuleListProps {
@@ -217,12 +238,28 @@ export default function RuleList({
                       Inactive
                     </Badge>
                   )}
+                  {/* Trigger indicator */}
+                  {rule.trigger_count > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="border-green-500/30 bg-green-500/10 text-green-400"
+                      title={`Triggered ${rule.trigger_count} time${rule.trigger_count > 1 ? 's' : ''}, last: ${formatTimeAgo(rule.last_triggered_at)}`}
+                    >
+                      <Zap className="mr-1 h-3 w-3" />
+                      {rule.trigger_count}
+                    </Badge>
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-white/60">
                   <code className="rounded bg-white/10 px-1.5 py-0.5 text-xs">
                     {rule.field_name}
                   </code>{' '}
                   {getConditionDisplay(rule.condition, rule.threshold_value)}
+                  {rule.last_triggered_at && (
+                    <span className="ml-2 text-xs text-white/40">
+                      • Last triggered: {formatTimeAgo(rule.last_triggered_at)}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -286,6 +323,40 @@ export default function RuleList({
           {/* Expanded Details */}
           {expandedRules.has(rule.id) && (
             <div className="border-t border-white/10 px-4 py-3">
+              {/* Trigger Stats */}
+              <div className="mb-4 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+                <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-white/70">
+                  <Zap className="h-4 w-4" />
+                  Trigger Activity
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
+                  <div>
+                    <span className="text-white/50">Total Triggers</span>
+                    <p
+                      className={`font-mono text-lg ${rule.trigger_count > 0 ? 'text-green-400' : 'text-white/40'}`}
+                    >
+                      {rule.trigger_count || 0}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-white/50">Last Triggered</span>
+                    <p className="text-white/80">
+                      {rule.last_triggered_at
+                        ? new Date(rule.last_triggered_at).toLocaleString()
+                        : 'Never'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-white/50">Last Notified</span>
+                    <p className="text-white/80">
+                      {rule.last_notified_at
+                        ? new Date(rule.last_notified_at).toLocaleString()
+                        : 'Never'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <div>
                   <span className="text-white/50">Data Domain</span>
@@ -374,9 +445,26 @@ export default function RuleList({
                       Inactive
                     </Badge>
                   )}
+                  {/* Trigger indicator for compound rules */}
+                  {mainRule.trigger_count > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="border-green-500/30 bg-green-500/10 text-green-400"
+                      title={`Triggered ${mainRule.trigger_count} time${mainRule.trigger_count > 1 ? 's' : ''}, last: ${formatTimeAgo(mainRule.last_triggered_at)}`}
+                    >
+                      <Zap className="mr-1 h-3 w-3" />
+                      {mainRule.trigger_count}
+                    </Badge>
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-white/60">
                   Compound rule with {clauses.length} conditions
+                  {mainRule.last_triggered_at && (
+                    <span className="ml-2 text-xs text-white/40">
+                      • Last triggered:{' '}
+                      {formatTimeAgo(mainRule.last_triggered_at)}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>

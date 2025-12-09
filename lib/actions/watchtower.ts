@@ -849,3 +849,41 @@ export async function updateRuleLastNotified(ruleId: string): Promise<boolean> {
 
   return true
 }
+
+/**
+ * Update the trigger tracking for a rule (last_triggered_at and increment trigger_count)
+ */
+export async function updateRuleTriggerTracking(
+  ruleId: string,
+): Promise<boolean> {
+  const db = createAdminClient()
+
+  // First get current trigger count
+  const { data: rule, error: fetchError } = await db
+    .from('watchtower_rules')
+    .select('trigger_count')
+    .eq('id', ruleId)
+    .single()
+
+  if (fetchError) {
+    console.error('Error fetching rule for trigger tracking:', fetchError)
+    return false
+  }
+
+  const currentCount = rule?.trigger_count || 0
+
+  const { error } = await db
+    .from('watchtower_rules')
+    .update({
+      last_triggered_at: new Date().toISOString(),
+      trigger_count: currentCount + 1,
+    })
+    .eq('id', ruleId)
+
+  if (error) {
+    console.error('Error updating trigger tracking:', error)
+    return false
+  }
+
+  return true
+}
