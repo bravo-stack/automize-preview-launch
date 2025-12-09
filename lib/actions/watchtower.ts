@@ -202,31 +202,104 @@ export async function createAlert(
     previousValue?: string
     recordId?: string
     clientId?: number
+    skipSnapshotValidation?: boolean
   } = {},
 ): Promise<WatchtowerAlert | null> {
   const db = createAdminClient()
 
+  // Determine the effective snapshot_id to use
+  let effectiveSnapshotId: string | null = snapshotId
+
+  // If skipSnapshotValidation is true, we need to find a valid api_snapshot
+  // because the FK constraint requires a valid api_snapshots.id
+  if (options.skipSnapshotValidation === true) {
+    // Get the most recent api_snapshot as a fallback
+    const { data: latestSnapshot } = await db
+      .from('api_snapshots')
+      .select('id')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    effectiveSnapshotId = latestSnapshot?.id || null
+  } else {
+    // Check if this snapshot_id exists in api_snapshots
+    const { data: apiSnapshot } = await db
+      .from('api_snapshots')
+      .select('id')
+      .eq('id', snapshotId)
+      .single()
+
+    // If not found in api_snapshots, try to find a recent api_snapshot to use
+    if (!apiSnapshot) {
+      const { data: latestSnapshot } = await db
+        .from('api_snapshots')
+        .select('id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      effectiveSnapshotId = latestSnapshot?.id || null
+    }
+  }
+
+  // If we still don't have a valid snapshot_id and it's required, fail gracefully
+  if (!effectiveSnapshotId) {
+    console.error('[createAlert] No valid api_snapshot found for FK constraint')
+    ;(globalThis as any).__lastAlertError = {
+      message: 'No valid api_snapshot found for FK constraint',
+      details: `Original snapshotId: ${snapshotId}, skipValidation: ${options.skipSnapshotValidation}`,
+      code: 'NO_VALID_SNAPSHOT',
+      hint: 'Ensure at least one api_snapshot exists in the database',
+    }
+    return null
+  }
+
+  const insertData = {
+    rule_id: ruleId,
+    snapshot_id: effectiveSnapshotId,
+    record_id: options.recordId || null,
+    client_id: options.clientId || null,
+    severity,
+    message,
+    current_value: currentValue,
+    previous_value: options.previousValue || null,
+    is_acknowledged: false,
+  }
+
   const { data, error } = await db
     .from('watchtower_alerts')
-    .insert({
-      rule_id: ruleId,
-      snapshot_id: snapshotId,
-      record_id: options.recordId || null,
-      client_id: options.clientId || null,
-      severity,
-      message,
-      current_value: currentValue,
-      previous_value: options.previousValue || null,
-      is_acknowledged: false,
-    })
+    .insert(insertData)
     .select()
     .single()
 
   if (error) {
-    console.error('Error creating alert:', error)
+    console.error(
+      '[createAlert] Error creating alert:',
+      error.message,
+      error.details,
+      error.code,
+      error.hint,
+    )
+    ;(globalThis as any).__lastAlertError = {
+      message: error.message,
+      details: error.details,
+      code: error.code,
+      hint: error.hint,
+    }
     return null
   }
   return data
+}
+
+// Helper to get last alert error for debugging
+export async function getLastAlertError(): Promise<{
+  message: string
+  details: string
+  code: string
+  hint: string
+} | null> {
+  return (globalThis as any).__lastAlertError || null
 }
 
 export async function getAlerts(
