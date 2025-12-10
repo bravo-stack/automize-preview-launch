@@ -210,6 +210,27 @@ export async function createAlert(
 ): Promise<WatchtowerAlert | null> {
   const db = createAdminClient()
 
+  // ============================================================================
+  // Duplicate Alert Detection
+  // Prevent creating duplicate alerts for the same rule + value + message
+  // Only one unacknowledged alert per unique (rule_id, current_value, message)
+  // This ensures: if 10 records match a rule, exactly 10 alerts are created
+  // ============================================================================
+  const { data: existingAlert } = await db
+    .from('watchtower_alerts')
+    .select('id')
+    .eq('rule_id', ruleId)
+    .eq('current_value', currentValue)
+    .eq('message', message)
+    .eq('is_acknowledged', false)
+    .limit(1)
+    .single()
+
+  if (existingAlert) {
+    // Duplicate found - skip creating new alert
+    return null
+  }
+
   // Determine the effective snapshot_id to use
   let effectiveSnapshotId: string | null = snapshotId
 
