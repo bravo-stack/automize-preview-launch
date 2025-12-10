@@ -11,6 +11,7 @@ import { createAdminClient } from '@/lib/db/admin'
 import {
   evaluateCondition,
   generateAlertMessage,
+  getTimeRangeStartDate,
 } from '@/lib/utils/watchtower-evaluation'
 import type {
   RuleCondition,
@@ -43,102 +44,155 @@ interface EvaluationSummary {
 }
 
 /**
- * Get records from a target table for watchtower evaluation
+ * Get records from a target table for watchtower evaluation with optional time range filtering
+ * @param targetTable - The table to fetch records from
+ * @param timeRangeDays - Number of days to look back (null = all time, 0 = today)
  */
 async function getTargetTableRecords(
   targetTable: TargetTable,
+  timeRangeDays: number | null = null,
 ): Promise<{ records: Record<string, unknown>[]; snapshotId: string | null }> {
   const db = createAdminClient()
+  const startDate = getTimeRangeStartDate(timeRangeDays)
 
   switch (targetTable) {
     case 'facebook_metrics': {
-      // Get the latest autometric snapshot
-      const { data: snapshot } = await db
+      // Get autometric snapshots within time range
+      let snapshotQuery = db
         .from('sheet_refresh_snapshots')
         .select('id')
         .eq('refresh_type', 'autometric')
         .eq('refresh_status', 'completed')
         .order('snapshot_date', { ascending: false })
-        .limit(1)
-        .single()
 
-      if (!snapshot) return { records: [], snapshotId: null }
+      if (startDate) {
+        snapshotQuery = snapshotQuery.gte(
+          'snapshot_date',
+          startDate.toISOString(),
+        )
+      }
 
+      const { data: snapshots } = await snapshotQuery.limit(startDate ? 100 : 1)
+
+      if (!snapshots || snapshots.length === 0)
+        return { records: [], snapshotId: null }
+
+      // For time range queries, get records from all matching snapshots
+      const snapshotIds = snapshots.map((s) => s.id)
       const { data: records } = await db
         .from('refresh_snapshot_metrics')
         .select('*')
-        .eq('snapshot_id', snapshot.id)
+        .in('snapshot_id', snapshotIds)
 
-      return { records: records || [], snapshotId: snapshot.id }
+      return {
+        records: records || [],
+        snapshotId: snapshotIds[0],
+      }
     }
 
     case 'finance_metrics': {
-      // Get the latest financialx snapshot
-      const { data: snapshot } = await db
+      // Get financialx snapshots within time range
+      let snapshotQuery = db
         .from('sheet_refresh_snapshots')
         .select('id')
         .eq('refresh_type', 'financialx')
         .eq('refresh_status', 'completed')
         .order('snapshot_date', { ascending: false })
-        .limit(1)
-        .single()
 
-      if (!snapshot) return { records: [], snapshotId: null }
+      if (startDate) {
+        snapshotQuery = snapshotQuery.gte(
+          'snapshot_date',
+          startDate.toISOString(),
+        )
+      }
 
+      const { data: snapshots } = await snapshotQuery.limit(startDate ? 100 : 1)
+
+      if (!snapshots || snapshots.length === 0)
+        return { records: [], snapshotId: null }
+
+      const snapshotIds = snapshots.map((s) => s.id)
       const { data: records } = await db
         .from('refresh_snapshot_metrics')
         .select('*')
-        .eq('snapshot_id', snapshot.id)
+        .in('snapshot_id', snapshotIds)
 
-      return { records: records || [], snapshotId: snapshot.id }
+      return {
+        records: records || [],
+        snapshotId: snapshotIds[0],
+      }
     }
 
     case 'api_records': {
-      // Get the latest API snapshot with records
-      const { data: snapshot } = await db
+      // Get API snapshots within time range
+      let snapshotQuery = db
         .from('api_snapshots')
         .select('id')
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
 
-      if (!snapshot) return { records: [], snapshotId: null }
+      if (startDate) {
+        snapshotQuery = snapshotQuery.gte('created_at', startDate.toISOString())
+      }
 
+      const { data: snapshots } = await snapshotQuery.limit(startDate ? 100 : 1)
+
+      if (!snapshots || snapshots.length === 0)
+        return { records: [], snapshotId: null }
+
+      const snapshotIds = snapshots.map((s) => s.id)
       const { data: records } = await db
         .from('api_records')
         .select('*')
-        .eq('snapshot_id', snapshot.id)
+        .in('snapshot_id', snapshotIds)
 
-      return { records: records || [], snapshotId: snapshot.id }
+      return {
+        records: records || [],
+        snapshotId: snapshotIds[0],
+      }
     }
 
     case 'form_submissions': {
-      const { data: records } = await db
+      let query = db
         .from('form_submissions')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100)
+
+      if (startDate) {
+        query = query.gte('created_at', startDate.toISOString())
+      }
+
+      const { data: records } = await query.limit(500)
 
       return { records: records || [], snapshotId: 'form_submissions' }
     }
 
     case 'api_snapshots': {
-      const { data: records } = await db
+      let query = db
         .from('api_snapshots')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100)
+
+      if (startDate) {
+        query = query.gte('created_at', startDate.toISOString())
+      }
+
+      const { data: records } = await query.limit(500)
 
       return { records: records || [], snapshotId: 'api_snapshots' }
     }
 
     case 'sheet_snapshots': {
-      const { data: records } = await db
+      let query = db
         .from('sheet_refresh_snapshots')
         .select('*')
         .order('snapshot_date', { ascending: false })
-        .limit(100)
+
+      if (startDate) {
+        query = query.gte('snapshot_date', startDate.toISOString())
+      }
+
+      const { data: records } = await query.limit(500)
 
       return { records: records || [], snapshotId: 'sheet_snapshots' }
     }
@@ -220,10 +274,14 @@ interface TableEvaluationResult {
 }
 
 /**
- * Evaluate all rules for a specific target table
+ * Evaluate all rules for a specific target table and time range combination
+ * @param targetTable - The table to evaluate
+ * @param timeRangeDays - Number of days to look back (null = all time, 0 = today)
+ * @param rules - Rules to evaluate
  */
 async function evaluateTargetTable(
   targetTable: TargetTable,
+  timeRangeDays: number | null,
   rules: WatchtowerRule[],
 ): Promise<TableEvaluationResult> {
   const result: TableEvaluationResult = {
@@ -232,8 +290,11 @@ async function evaluateTargetTable(
     alertsSkippedDuplicate: 0,
   }
 
-  // Get records for this target table
-  const { records, snapshotId } = await getTargetTableRecords(targetTable)
+  // Get records for this target table with the specified time range
+  const { records, snapshotId } = await getTargetTableRecords(
+    targetTable,
+    timeRangeDays,
+  )
   if (records.length === 0 || !snapshotId) {
     return result
   }
@@ -296,28 +357,56 @@ export async function GET() {
       tablesChecked: [],
     }
 
-    // Group rules by target table
-    const rulesByTable = new Map<TargetTable, WatchtowerRule[]>()
+    // Group rules by target table AND time range to optimize data fetching
+    // Rules with the same table + time_range_days can share the same data fetch
+    const rulesByTableAndTimeRange = new Map<
+      string,
+      {
+        targetTable: TargetTable
+        timeRangeDays: number | null
+        rules: WatchtowerRule[]
+      }
+    >()
+
     for (const rule of allRules) {
       if (!rule.target_table) continue
-      const existing = rulesByTable.get(rule.target_table as TargetTable) || []
-      existing.push(rule)
-      rulesByTable.set(rule.target_table as TargetTable, existing)
+      const timeRangeDays = rule.time_range_days ?? null
+      const key = `${rule.target_table}:${timeRangeDays}`
+
+      const existing = rulesByTableAndTimeRange.get(key)
+      if (existing) {
+        existing.rules.push(rule)
+      } else {
+        rulesByTableAndTimeRange.set(key, {
+          targetTable: rule.target_table as TargetTable,
+          timeRangeDays,
+          rules: [rule],
+        })
+      }
     }
 
-    // Evaluate each target table
-    const tableEntries = Array.from(rulesByTable.entries())
-    for (const [targetTable, rules] of tableEntries) {
+    // Evaluate each target table + time range combination
+    const entries = Array.from(rulesByTableAndTimeRange.values())
+    for (const { targetTable, timeRangeDays, rules } of entries) {
       summary.rulesEvaluated += rules.length
-      summary.tablesChecked.push(targetTable)
+      if (!summary.tablesChecked.includes(targetTable)) {
+        summary.tablesChecked.push(targetTable)
+      }
 
       try {
-        const result = await evaluateTargetTable(targetTable, rules)
+        const result = await evaluateTargetTable(
+          targetTable,
+          timeRangeDays,
+          rules,
+        )
         summary.alertsCreated += result.alertsCreated
         summary.rulesTriggered += result.rulesTriggered
         summary.alertsSkippedDuplicate += result.alertsSkippedDuplicate
       } catch (error) {
-        console.error(`Error evaluating ${targetTable}:`, error)
+        console.error(
+          `Error evaluating ${targetTable} (${timeRangeDays ?? 'all'} days):`,
+          error,
+        )
       }
     }
 

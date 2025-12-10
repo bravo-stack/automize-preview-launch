@@ -4,10 +4,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import DeleteRuleDialog from '@/components/watchtower/delete-rule-dialog'
 import type { WatchtowerRuleWithRelations } from '@/types/watchtower'
+import { getTimeRangeDaysLabel } from '@/types/watchtower'
 import {
   AlertTriangle,
   Bell,
   BellOff,
+  Calendar,
   ChevronDown,
   ChevronUp,
   Edit,
@@ -36,6 +38,10 @@ const TARGET_TABLE_LABELS: Record<string, string> = {
 function getTargetTableLabel(table: string | null): string {
   if (!table) return 'Any'
   return TARGET_TABLE_LABELS[table] || table.replace(/_/g, ' ')
+}
+
+function getTimeRangeLabel(timeRangeDays: number | null): string {
+  return getTimeRangeDaysLabel(timeRangeDays)
 }
 
 /**
@@ -385,11 +391,18 @@ export default function RuleList({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
                 <div>
                   <span className="text-white/50">Data Domain</span>
                   <p className="text-white/80">
                     {getTargetTableLabel(rule.target_table)}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-white/50">Time Range</span>
+                  <p className="flex items-center gap-1 text-white/80">
+                    <Calendar className="h-3 w-3 text-white/40" />
+                    {getTimeRangeLabel(rule.time_range_days)}
                   </p>
                 </div>
                 <div>

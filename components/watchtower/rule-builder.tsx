@@ -7,11 +7,13 @@ import {
   CONDITION_LABELS,
   CONDITIONS_BY_FIELD_TYPE,
   DEPENDENCY_CONDITIONS,
+  getTimeRangeDaysLabel,
   LOGIC_OPERATORS,
   RULE_CONDITIONS,
   SEVERITY_LEVELS,
   TABLE_FIELDS,
   TARGET_TABLES,
+  TIME_RANGE_PRESETS,
   type CompoundRuleInput,
   type CreateRuleInput,
   type FieldDefinition,
@@ -19,7 +21,7 @@ import {
   type RuleCondition,
   type WatchtowerRule,
 } from '@/types/watchtower'
-import { AlertTriangle, Info, Plus, Trash2, X } from 'lucide-react'
+import { AlertTriangle, Calendar, Info, Plus, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 
 // ============================================================================
@@ -110,6 +112,9 @@ export default function RuleBuilder({
   const [targetTable, setTargetTable] = useState<string>('')
   const [severity, setSeverity] = useState<string>('warning')
   const [logicOperator, setLogicOperator] = useState<string>('AND')
+  // Time range in days: null = all time, 0 = today, positive number = last N days
+  const [timeRangeDays, setTimeRangeDays] = useState<number | null>(null)
+  const [useCustomTimeRange, setUseCustomTimeRange] = useState(false)
 
   // Single rule fields
   const [fieldName, setFieldName] = useState('')
@@ -176,6 +181,12 @@ export default function RuleBuilder({
       setTargetTable(editRule.target_table || '')
       setSeverity(editRule.severity)
       setLogicOperator(editRule.logic_operator)
+      // Handle numeric time_range_days
+      const days = editRule.time_range_days
+      setTimeRangeDays(days)
+      // Check if it's a custom value (not in presets)
+      const isPreset = TIME_RANGE_PRESETS.some((p) => p.value === days)
+      setUseCustomTimeRange(!isPreset && days !== null)
       setFieldName(editRule.field_name)
       setCondition(editRule.condition)
       setThresholdValue(editRule.threshold_value || '')
@@ -301,6 +312,7 @@ export default function RuleBuilder({
       name,
       description: description || undefined,
       severity: severity as 'info' | 'warning' | 'critical',
+      time_range_days: timeRangeDays,
       notify_discord: notifyDiscord,
       discord_channel_id:
         notifyDiscord && selectedPod?.discord_id
@@ -466,18 +478,89 @@ export default function RuleBuilder({
           Select the Hub data domain this rule should monitor
         </p>
 
-        <Select
-          label="Data Domain"
-          value={targetTable}
-          onChange={(e) => setTargetTable(e.target.value)}
-        >
-          <option value="">Select data domain...</option>
-          {TARGET_TABLES.map((table) => (
-            <option key={table} value={table}>
-              {getTargetTableLabel(table)}
-            </option>
-          ))}
-        </Select>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Select
+            label="Data Domain"
+            value={targetTable}
+            onChange={(e) => setTargetTable(e.target.value)}
+          >
+            <option value="">Select data domain...</option>
+            {TARGET_TABLES.map((table) => (
+              <option key={table} value={table}>
+                {getTargetTableLabel(table)}
+              </option>
+            ))}
+          </Select>
+
+          {/* Time Range - Presets or Custom */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white/80">
+              Time Range
+            </label>
+            {!useCustomTimeRange ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {TIME_RANGE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => setTimeRangeDays(preset.value)}
+                    className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                      timeRangeDays === preset.value
+                        ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+                        : 'border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseCustomTimeRange(true)
+                    setTimeRangeDays(14) // Default custom value
+                  }}
+                  className="rounded-md border border-dashed border-white/20 px-3 py-1.5 text-xs text-white/50 transition-colors hover:border-white/40 hover:text-white/70"
+                >
+                  Custom...
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  value={timeRangeDays ?? 0}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10)
+                    setTimeRangeDays(isNaN(val) ? 0 : val)
+                  }}
+                  className="w-24"
+                  placeholder="Days"
+                />
+                <span className="text-sm text-white/60">days</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseCustomTimeRange(false)
+                    setTimeRangeDays(null) // Reset to all time
+                  }}
+                  className="text-xs text-white/50 underline hover:text-white/70"
+                >
+                  Use presets
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Time Range Info */}
+        <div className="flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 p-3">
+          <Calendar className="mt-0.5 h-4 w-4 flex-shrink-0 text-white/40" />
+          <div className="text-xs text-white/60">
+            <span className="font-medium text-white/80">Time Range:</span>{' '}
+            {getTimeRangeDaysLabel(timeRangeDays)}
+          </div>
+        </div>
 
         {/* Domain Description */}
         {targetTable && (

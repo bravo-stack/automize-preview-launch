@@ -46,6 +46,8 @@ export interface CreateRuleInput {
   description?: string
   threshold_value?: string
   severity?: Severity
+  // Time range (number of days to look back, null = all time, 0 = today)
+  time_range_days?: number | null
   // Dependencies & compound rules
   parent_rule_id?: string
   dependency_condition?: DependencyCondition
@@ -81,6 +83,7 @@ export async function createRule(
       field_name: input.field_name,
       condition: input.condition,
       threshold_value: input.threshold_value || null,
+      time_range_days: input.time_range_days ?? null, // null = all time
       severity: input.severity || 'warning',
       is_active: true,
       // Dependencies
@@ -508,6 +511,7 @@ export async function createCompoundRule(
     field_name: clause.field_name,
     condition: clause.condition,
     threshold_value: clause.threshold_value || null,
+    time_range_days: input.time_range_days ?? null, // null = all time
     parent_rule_id: input.parent_rule_id || null,
     dependency_condition: input.dependency_condition || null,
     logic_operator: input.logic_operator,

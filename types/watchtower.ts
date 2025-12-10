@@ -115,6 +115,43 @@ export const DEPENDENCY_CONDITIONS = [
 
 export const NOTIFY_SCHEDULES = ['daily', 'weekly'] as const
 
+/**
+ * Common time range presets for quick selection in the UI
+ * The value represents the number of days to look back
+ * null = all time (no filter)
+ * 0 = today only
+ */
+export const TIME_RANGE_PRESETS = [
+  { label: 'Today', value: 0 },
+  { label: 'Last 3 Days', value: 3 },
+  { label: 'Last 7 Days', value: 7 },
+  { label: 'Last 14 Days', value: 14 },
+  { label: 'Last 30 Days', value: 30 },
+  { label: 'Last 60 Days', value: 60 },
+  { label: 'Last 90 Days', value: 90 },
+  { label: 'Last 6 Months', value: 180 },
+  { label: 'Last Year', value: 365 },
+  { label: 'All Time', value: null },
+] as const
+
+/**
+ * Get a human-readable label for a time range in days
+ */
+export function getTimeRangeDaysLabel(days: number | null): string {
+  if (days === null) return 'All Time'
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `Last ${days} Days`
+  if (days === 7) return 'Last Week'
+  if (days === 14) return 'Last 2 Weeks'
+  if (days === 30) return 'Last Month'
+  if (days === 60) return 'Last 2 Months'
+  if (days === 90) return 'Last 3 Months'
+  if (days === 180) return 'Last 6 Months'
+  if (days === 365) return 'Last Year'
+  return `Last ${days} Days`
+}
+
 export type RuleCondition = (typeof RULE_CONDITIONS)[number]
 export type Severity = (typeof SEVERITY_LEVELS)[number]
 export type TargetTable = (typeof TARGET_TABLES)[number]
@@ -136,6 +173,8 @@ export interface WatchtowerRule {
   field_name: string
   condition: RuleCondition
   threshold_value: string | null
+  // Time range for data filtering (number of days to look back, null = all time)
+  time_range_days: number | null
   // Rule dependencies (self-referential)
   parent_rule_id: string | null
   dependency_condition: DependencyCondition | null
@@ -249,6 +288,8 @@ export interface CreateRuleInput {
   field_name: string
   condition: RuleCondition
   threshold_value?: string | null
+  // Time range (number of days to look back, null = all time, 0 = today)
+  time_range_days?: number | null
   parent_rule_id?: string | null
   dependency_condition?: DependencyCondition | null
   logic_operator?: LogicOperator
@@ -300,6 +341,8 @@ export interface CompoundRuleInput {
   source_id?: string | null
   client_id?: number | null
   target_table?: TargetTable | null
+  // Time range (number of days to look back, null = all time, 0 = today)
+  time_range_days?: number | null
   clauses: RuleClause[]
   logic_operator: LogicOperator
   severity?: Severity

@@ -110,6 +110,16 @@ export type LogicOperator = 'AND' | 'OR'
 export type DependencyCondition = 'triggered' | 'not_triggered' | 'acknowledged'
 export type NotifySchedule = 'daily' | 'weekly'
 
+// Time range presets for UI convenience (days to look back)
+// These are just common presets - users can enter any positive integer
+export const TIME_RANGE_PRESETS = [
+  { label: 'Today', value: 0 },
+  { label: 'Last 7 days', value: 7 },
+  { label: 'Last 30 days', value: 30 },
+  { label: 'Last 90 days', value: 90 },
+  { label: 'All time', value: null },
+] as const
+
 /**
  * Target tables mapped to Hub data domains:
  * - facebook_metrics: Autometric sheet data (maps to refresh_snapshot_metrics where refresh_type='autometric')
@@ -137,6 +147,8 @@ export interface WatchtowerRule {
   field_name: string
   condition: RuleCondition
   threshold_value: string | null
+  // Time range for data filtering (number of days to look back, null = all time)
+  time_range_days: number | null
   severity: Severity
   is_active: boolean
   // Rule dependencies (self-referential)

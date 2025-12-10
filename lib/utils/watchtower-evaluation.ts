@@ -7,6 +7,26 @@ import type { WatchtowerRule } from '@/types/watchtower'
 // ============================================================================
 
 /**
+ * Calculate the start date for a given time range in days
+ * @param days - Number of days to look back (null = all time, 0 = today only)
+ * @returns Date object for the start of the range, or null for all time
+ */
+export function getTimeRangeStartDate(days: number | null): Date | null {
+  // null means all time - no filter
+  if (days === null) return null
+
+  const now = new Date()
+
+  // 0 means today only - start of current day
+  if (days === 0) {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  }
+
+  // Positive number means "last N days"
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+}
+
+/**
  * Evaluate a single condition against a value
  */
 export function evaluateCondition(
