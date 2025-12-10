@@ -840,20 +840,24 @@ export async function getWatchtowerStats(): Promise<WatchtowerStats> {
   const todayAlerts = todayAlertsRes.data || []
   const weekAlerts = weekAlertsRes.data || []
 
+  // Helper to check if a rule has a valid group_id (not null, undefined, or empty string)
+  const hasGroupId = (r: { group_id: string | null }): boolean =>
+    r.group_id !== null && r.group_id !== undefined && r.group_id !== ''
+
   // Count unique rules: standalone rules (no group_id) + unique group_ids
   // For compound rules, multiple rows share the same group_id - count once per group
-  const standaloneRules = rules.filter((r) => !r.group_id)
+  const standaloneRules = rules.filter((r) => !hasGroupId(r))
   const groupedRuleIds = new Set(
-    rules.filter((r) => r.group_id).map((r) => r.group_id),
+    rules.filter((r) => hasGroupId(r)).map((r) => r.group_id),
   )
 
   // For counting active/inactive, we need to check the main rule of each group
   // Get unique rules: standalone + first rule of each group
   const seenGroups = new Set<string>()
   const uniqueRules = rules.filter((r) => {
-    if (!r.group_id) return true // Standalone rule
-    if (seenGroups.has(r.group_id)) return false // Already counted this group
-    seenGroups.add(r.group_id)
+    if (!hasGroupId(r)) return true // Standalone rule
+    if (seenGroups.has(r.group_id!)) return false // Already counted this group
+    seenGroups.add(r.group_id!)
     return true
   })
 
