@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/db/admin'
 import { NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/watchtower/pods
