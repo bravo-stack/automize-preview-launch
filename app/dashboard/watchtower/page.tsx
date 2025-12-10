@@ -12,9 +12,11 @@ import type {
   WatchtowerAlertWithRelations,
   WatchtowerRuleWithRelations,
 } from '@/types/watchtower'
+import { getTimeRangeDaysLabel } from '@/types/watchtower'
 import {
   AlertTriangle,
   Bell,
+  Calendar,
   Info,
   Loader2,
   Plus,
@@ -722,10 +724,16 @@ export default function WatchtowerPage() {
                         />
                         <div>
                           <p className="font-medium text-white">{rule.name}</p>
-                          <p className="text-xs text-white/50">
-                            {rule.target_table?.replace(/_/g, ' ') ||
-                              'All domains'}{' '}
-                            • {rule.severity}
+                          <p className="flex items-center gap-2 text-xs text-white/50">
+                            <span>
+                              {rule.target_table?.replace(/_/g, ' ') ||
+                                'All domains'}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {getTimeRangeDaysLabel(rule.time_range_days)}
+                            </span>
                           </p>
                         </div>
                       </div>

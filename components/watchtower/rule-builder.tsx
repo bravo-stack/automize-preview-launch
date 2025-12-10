@@ -559,6 +559,13 @@ export default function RuleBuilder({
           <div className="text-xs text-white/60">
             <span className="font-medium text-white/80">Time Range:</span>{' '}
             {getTimeRangeDaysLabel(timeRangeDays)}
+            <p className="mt-1 text-white/50">
+              {timeRangeDays === null
+                ? `This rule will check all ${targetTable ? getTargetTableLabel(targetTable) : ''} data regardless of date.`
+                : timeRangeDays === 0
+                  ? `This rule will only check today's ${targetTable ? getTargetTableLabel(targetTable) : ''} data.`
+                  : `This rule will only check ${targetTable ? getTargetTableLabel(targetTable) : ''} data from the last ${timeRangeDays} days. Older records will be ignored.`}
+            </p>
           </div>
         </div>
 

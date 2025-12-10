@@ -667,6 +667,8 @@ export async function getAlertsPaginated(
         field_name,
         condition,
         threshold_value,
+        time_range_days,
+        target_table,
         source:api_sources (
           id,
           provider,

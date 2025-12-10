@@ -2,9 +2,13 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import type { WatchtowerAlertWithRelations } from '@/types/watchtower'
+import {
+  getTimeRangeDaysLabel,
+  type WatchtowerAlertWithRelations,
+} from '@/types/watchtower'
 import {
   AlertTriangle,
+  Calendar,
   Check,
   CheckCheck,
   ChevronDown,
@@ -284,7 +288,7 @@ export default function AlertList({
             {/* Expanded Details */}
             {expandedAlerts.has(alert.id) && (
               <div className="border-t border-white/10 px-4 py-3">
-                <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
                   <div>
                     <span className="text-white/50">Current Value</span>
                     <p className="font-mono text-white/80">
@@ -302,6 +306,15 @@ export default function AlertList({
                     <p className="text-white/80">
                       {alert.rule?.field_name} {alert.rule?.condition}{' '}
                       {alert.rule?.threshold_value}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-white/50">Time Range</span>
+                    <p className="flex items-center gap-1 text-white/80">
+                      <Calendar className="h-3 w-3 text-white/40" />
+                      {alert.rule?.time_range_days !== undefined
+                        ? getTimeRangeDaysLabel(alert.rule.time_range_days)
+                        : 'All Time'}
                     </p>
                   </div>
                   <div>
