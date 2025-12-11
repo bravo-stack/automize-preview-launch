@@ -324,54 +324,6 @@ export function ArchiveDetail({ archiveId, fontClass }: ArchiveDetailProps) {
           </dl>
         </header>
 
-        <section className="rounded-3xl border border-white/10 bg-black/40 p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-white">Metadata</h2>
-              <p className="text-sm text-zinc-500">
-                All identifiers stay private—copy them as needed when syncing
-                with IXM bot logs.
-              </p>
-            </div>
-          </div>
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            <MetadataList
-              title="Discord context"
-              items={[
-                ['Guild ID', archive.guild_id],
-                ['Channel ID', archive.channel_id],
-                ['Category', archive.category_name ?? '—'],
-                [
-                  'Batch ID',
-                  archive.batch_id ?? '—',
-                  archive.batch_id
-                    ? () => copyToClipboard('Batch ID', archive.batch_id)
-                    : undefined,
-                ],
-              ]}
-            />
-            <MetadataList
-              title="Storage"
-              items={[
-                [
-                  'Storage prefix',
-                  archive.storage_prefix ?? '—',
-                  archive.storage_prefix
-                    ? () =>
-                        copyToClipboard(
-                          'Storage prefix',
-                          archive.storage_prefix,
-                        )
-                    : undefined,
-                ],
-                ['Transcript key', transcriptKey ?? '—'],
-                ['Attachments prefix', archive.attachments_prefix ?? '—'],
-                ['Requested by', archive.requested_by_tag ?? '—'],
-              ]}
-            />
-          </div>
-        </section>
-
         <section className="rounded-3xl border border-white/10 bg-black/30 p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
