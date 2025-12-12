@@ -1,6 +1,10 @@
 import { createAdminClient } from '@/lib/db/admin'
 import { NextResponse } from 'next/server'
+// 1. Force dynamic rendering
 export const dynamic = 'force-dynamic'
+
+// 2. Explicitly setting revalidation to 0 (The "Nuclear Option" for caching)
+export const revalidate = 0
 
 /**
  * GET /api/watchtower/pods
