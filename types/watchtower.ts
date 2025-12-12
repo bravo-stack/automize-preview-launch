@@ -33,6 +33,7 @@ export const SEVERITY_LEVELS = ['info', 'warning', 'critical'] as const
  * - form_submissions: Day Drop & Website Revamp submissions
  * - api_snapshots: API snapshot status and health
  * - sheet_snapshots: Sheet refresh snapshot status
+ * - communication_reports: Discord communication audit reports (indexed on report_date)
  */
 export const TARGET_TABLES = [
   'facebook_metrics',
@@ -41,6 +42,7 @@ export const TARGET_TABLES = [
   'form_submissions',
   'api_snapshots',
   'sheet_snapshots',
+  'communication_reports',
 ] as const
 
 export type TargetTable = (typeof TARGET_TABLES)[number]
@@ -183,6 +185,20 @@ const DOMAIN_CONDITIONS_MAP: Record<TargetTable, readonly RuleCondition[]> = {
     'is_null',
     'is_not_null',
   ],
+
+  // Communication Reports: Days tracking, status matching, boolean checks
+  communication_reports: [
+    'equals',
+    'not_equals',
+    'greater_than',
+    'less_than',
+    'greater_than_or_equal',
+    'less_than_or_equal',
+    'contains',
+    'not_contains',
+    'is_null',
+    'is_not_null',
+  ],
 } as const
 
 // Pre-computed Sets for O(1) membership checking (created once at module load)
@@ -196,6 +212,7 @@ const DOMAIN_CONDITIONS_SETS: Record<
   form_submissions: new Set(DOMAIN_CONDITIONS_MAP.form_submissions),
   api_snapshots: new Set(DOMAIN_CONDITIONS_MAP.api_snapshots),
   sheet_snapshots: new Set(DOMAIN_CONDITIONS_MAP.sheet_snapshots),
+  communication_reports: new Set(DOMAIN_CONDITIONS_MAP.communication_reports),
 }
 
 /**
@@ -922,6 +939,112 @@ export const TABLE_FIELDS: TableFieldConfig[] = [
         label: 'Snapshot Date',
         type: 'date',
         description: 'Date of the snapshot',
+      },
+    ],
+  },
+  {
+    table: 'communication_reports',
+    fields: [
+      // Identity & Context (indexed for efficient lookups)
+      {
+        name: 'channel_name',
+        label: 'Channel Name',
+        type: 'string',
+        description: 'Discord channel name',
+      },
+      {
+        name: 'guild_name',
+        label: 'Server Name',
+        type: 'string',
+        description: 'Discord server/guild name',
+      },
+      {
+        name: 'pod',
+        label: 'Pod',
+        type: 'string',
+        description: 'Assigned pod name',
+      },
+      {
+        name: 'category_name',
+        label: 'Category',
+        type: 'string',
+        description: 'Discord channel category',
+      },
+      {
+        name: 'status',
+        label: 'Communication Status',
+        type: 'string',
+        description: 'Current communication status',
+      },
+      // Days Tracking (primary alert triggers - indexed for queries)
+      {
+        name: 'days_since_client_message',
+        label: 'Days Since Client Message',
+        type: 'number',
+        description: 'Days since last client message (alerts on > 5)',
+      },
+      {
+        name: 'days_since_team_message',
+        label: 'Days Since Team Message',
+        type: 'number',
+        description: 'Days since last team/IXM message (alerts on > 2)',
+      },
+      {
+        name: 'days_since_ixm_message',
+        label: 'Days Since IXM Message',
+        type: 'number',
+        description: 'Days since last IXM team member message',
+      },
+      // Date Fields (indexed for time-range queries)
+      {
+        name: 'report_date',
+        label: 'Report Date',
+        type: 'date',
+        description: 'Date of the communication report',
+      },
+      {
+        name: 'last_client_message_at',
+        label: 'Last Client Message',
+        type: 'date',
+        description: 'Timestamp of last client message',
+      },
+      {
+        name: 'last_team_message_at',
+        label: 'Last Team Message',
+        type: 'date',
+        description: 'Timestamp of last team message',
+      },
+      // Boolean Flags (partial indexes exist for efficient filtering)
+      {
+        name: 'last_client_is_former_member',
+        label: 'Client Is Former Member',
+        type: 'boolean',
+        description: 'Last client message was from a former member',
+      },
+      {
+        name: 'last_team_is_former_member',
+        label: 'Team Is Former Member',
+        type: 'boolean',
+        description: 'Last team message was from a former member',
+      },
+      // User Context
+      {
+        name: 'last_client_username',
+        label: 'Last Client Username',
+        type: 'string',
+        description: 'Username of last client who messaged',
+      },
+      {
+        name: 'last_team_username',
+        label: 'Last Team Username',
+        type: 'string',
+        description: 'Username of last team member who messaged',
+      },
+      {
+        name: 'status_notes',
+        label: 'Status Notes',
+        type: 'string',
+        description: 'Additional status notes',
       },
     ],
   },

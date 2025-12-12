@@ -57,6 +57,8 @@ export function getTableMapping(targetTable: TargetTable): TableMapping {
       return { actualTable: 'api_snapshots' }
     case 'sheet_snapshots':
       return { actualTable: 'sheet_refresh_snapshots' }
+    case 'communication_reports':
+      return { actualTable: 'communication_reports' }
     default:
       return { actualTable: targetTable }
   }
@@ -73,6 +75,7 @@ export function getTargetTableLabel(targetTable: TargetTable): string {
     form_submissions: 'Form Submissions',
     api_snapshots: 'API Snapshots',
     sheet_snapshots: 'Sheet Snapshots',
+    communication_reports: 'Communications Audit',
   }
   return labels[targetTable] || targetTable
 }
@@ -94,6 +97,8 @@ export function getTargetTableDescription(targetTable: TargetTable): string {
       'Monitors API data sync health and status. Alert on failed syncs or high error rates.',
     sheet_snapshots:
       'Monitors Google Sheet refresh status. Alert on sync failures or stale data.',
+    communication_reports:
+      'Monitors Discord communication audit metrics. Alert on client silence (>5 days), team response gaps (>2 days), former member activity, and communication status changes.',
   }
   return (
     descriptions[targetTable] ||

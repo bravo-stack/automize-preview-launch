@@ -128,6 +128,7 @@ export const TIME_RANGE_PRESETS = [
  * - form_submissions: Day Drop & Website Revamp submissions
  * - api_snapshots: API snapshot status and health
  * - sheet_snapshots: Sheet refresh snapshot status (maps to sheet_refresh_snapshots)
+ * - communication_reports: Discord communication audit reports
  */
 export type TargetTable =
   | 'facebook_metrics'
@@ -136,6 +137,7 @@ export type TargetTable =
   | 'form_submissions'
   | 'api_snapshots'
   | 'sheet_snapshots'
+  | 'communication_reports'
 
 export interface WatchtowerRule {
   id: string
