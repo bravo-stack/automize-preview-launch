@@ -32,57 +32,66 @@ export default function FinanceView() {
     useState<PaginatedResponse<RefreshSnapshotMetric> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [rebillFilter, setRebillFilter] = useState<string>('')
 
-  const fetchData = useCallback(async (page: number, rebillStatus?: string) => {
-    setIsLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(DEFAULT_PAGE_SIZE),
-      })
-      if (rebillStatus) params.set('rebillStatus', rebillStatus)
-
-      const [statsRes, aggregatesRes, metricsRes] = await Promise.all([
-        fetch('/api/data-hub/finance/stats'),
-        fetch('/api/data-hub/finance/aggregates'),
-        fetch(`/api/data-hub/finance/metrics?${params}`),
-      ])
-
-      const [statsJson, aggregatesJson, metricsJson] = await Promise.all([
-        statsRes.json(),
-        aggregatesRes.json(),
-        metricsRes.json(),
-      ])
-
-      if (statsJson.success) setStats(statsJson.data)
-      if (aggregatesJson.success) setAggregates(aggregatesJson.data)
-      if (metricsJson.success) {
-        setMetricsData({
-          data: metricsJson.data,
-          pagination: metricsJson.pagination,
+  const fetchData = useCallback(
+    async (page: number, size: number, rebillStatus?: string) => {
+      setIsLoading(true)
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: String(size),
         })
+        if (rebillStatus) params.set('rebillStatus', rebillStatus)
+
+        const [statsRes, aggregatesRes, metricsRes] = await Promise.all([
+          fetch('/api/data-hub/finance/stats'),
+          fetch('/api/data-hub/finance/aggregates'),
+          fetch(`/api/data-hub/finance/metrics?${params}`),
+        ])
+
+        const [statsJson, aggregatesJson, metricsJson] = await Promise.all([
+          statsRes.json(),
+          aggregatesRes.json(),
+          metricsRes.json(),
+        ])
+
+        if (statsJson.success) setStats(statsJson.data)
+        if (aggregatesJson.success) setAggregates(aggregatesJson.data)
+        if (metricsJson.success) {
+          setMetricsData({
+            data: metricsJson.data,
+            pagination: metricsJson.pagination,
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching Finance data:', err)
+      } finally {
+        setIsLoading(false)
       }
-    } catch (err) {
-      console.error('Error fetching Finance data:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+    },
+    [],
+  )
 
   useEffect(() => {
-    fetchData(currentPage, rebillFilter)
-  }, [fetchData, currentPage, rebillFilter])
+    fetchData(currentPage, pageSize, rebillFilter)
+  }, [fetchData, currentPage, pageSize, rebillFilter])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
+  }
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size)
+    setCurrentPage(1) // Reset to first page when changing page size
   }
 
   const handleRebillFilterChange = (
     e: React.ChangeEvent<HTMLSelectElement>,
   ) => {
     setRebillFilter(e.target.value)
-    setCurrentPage(1)
+    setCurrentPage(1) // Reset to first page when changing filter
   }
 
   const formatCurrency = (value: number | null) => {
@@ -251,7 +260,7 @@ export default function FinanceView() {
         pagination={
           metricsData?.pagination || {
             page: 1,
-            pageSize: DEFAULT_PAGE_SIZE,
+            pageSize: pageSize,
             totalCount: 0,
             totalPages: 0,
             hasNextPage: false,
@@ -259,6 +268,7 @@ export default function FinanceView() {
           }
         }
         onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
         isLoading={isLoading}
         emptyMessage="No Finance metrics found"
       />

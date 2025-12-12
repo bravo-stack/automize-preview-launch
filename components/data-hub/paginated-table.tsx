@@ -17,6 +17,8 @@ interface PaginationInfo {
   hasPrevPage: boolean
 }
 
+const PAGE_SIZE_OPTIONS = [10, 15, 20, 50, 100] as const
+
 interface PaginatedTableProps<T> {
   data: T[]
   columns: {
@@ -27,6 +29,7 @@ interface PaginatedTableProps<T> {
   }[]
   pagination: PaginationInfo
   onPageChange: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
   isLoading?: boolean
   emptyMessage?: string
 }
@@ -36,10 +39,12 @@ export default function PaginatedTable<T extends Record<string, unknown>>({
   columns,
   pagination,
   onPageChange,
+  onPageSizeChange,
   isLoading = false,
   emptyMessage = 'No data available',
 }: PaginatedTableProps<T>) {
-  const { page, totalPages, totalCount, hasNextPage, hasPrevPage } = pagination
+  const { page, pageSize, totalPages, totalCount, hasNextPage, hasPrevPage } =
+    pagination
 
   if (isLoading) {
     return (
@@ -97,9 +102,31 @@ export default function PaginatedTable<T extends Record<string, unknown>>({
 
       {/* Pagination Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-sm text-white/60">
-          Showing {data.length} of {totalCount} results
-        </p>
+        <div className="flex items-center gap-4">
+          <p className="text-sm text-white/60">
+            Showing {data.length} of {totalCount} results
+          </p>
+
+          {onPageSizeChange && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="pageSize" className="text-sm text-white/60">
+                Per page:
+              </label>
+              <select
+                id="pageSize"
+                value={pageSize}
+                onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                className="rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-sm text-white focus:border-white/30 focus:outline-none [&>option]:bg-zinc-900 [&>option]:text-white"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <Button

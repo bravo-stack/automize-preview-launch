@@ -67,7 +67,9 @@ export default function WatchtowerContainer() {
 
   // Filters
   const [rulesPage, setRulesPage] = useState(1)
+  const [rulesPageSize, setRulesPageSize] = useState(20)
   const [alertsPage, setAlertsPage] = useState(1)
+  const [alertsPageSize, setAlertsPageSize] = useState(20)
   const [severityFilter, setSeverityFilter] = useState<string>('')
   const [acknowledgedFilter, setAcknowledgedFilter] = useState<string>('')
   const [activeFilter, setActiveFilter] = useState<string>('')
@@ -107,12 +109,12 @@ export default function WatchtowerContainer() {
 
   // Fetch Rules
   const fetchRules = useCallback(
-    async (page: number = 1) => {
+    async (page: number = 1, pageSize: number = 20) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams({
           page: page.toString(),
-          pageSize: '20',
+          pageSize: pageSize.toString(),
         })
         if (activeFilter) params.set('is_active', activeFilter)
 
@@ -136,12 +138,12 @@ export default function WatchtowerContainer() {
 
   // Fetch Alerts
   const fetchAlerts = useCallback(
-    async (page: number = 1) => {
+    async (page: number = 1, pageSize: number = 20) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams({
           page: page.toString(),
-          pageSize: '20',
+          pageSize: pageSize.toString(),
         })
         if (severityFilter) params.set('severity', severityFilter)
         if (acknowledgedFilter)
@@ -185,9 +187,9 @@ export default function WatchtowerContainer() {
 
   useEffect(() => {
     if (activeTab === 'rules') {
-      fetchRules(rulesPage)
+      fetchRules(rulesPage, rulesPageSize)
     } else if (activeTab === 'alerts') {
-      fetchAlerts(alertsPage)
+      fetchAlerts(alertsPage, alertsPageSize)
     } else if (activeTab === 'overview') {
       fetchRecentRules()
       setIsLoading(false)
@@ -197,7 +199,9 @@ export default function WatchtowerContainer() {
   }, [
     activeTab,
     rulesPage,
+    rulesPageSize,
     alertsPage,
+    alertsPageSize,
     fetchRules,
     fetchAlerts,
     fetchRecentRules,
@@ -206,10 +210,10 @@ export default function WatchtowerContainer() {
   // Auto-refresh alerts when new ones are created and user is on alerts tab
   useEffect(() => {
     if (newAlertsCreated && activeTab === 'alerts') {
-      fetchAlerts(alertsPage)
+      fetchAlerts(alertsPage, alertsPageSize)
       setNewAlertsCreated(false)
     }
-  }, [newAlertsCreated, activeTab, alertsPage, fetchAlerts])
+  }, [newAlertsCreated, activeTab, alertsPage, alertsPageSize, fetchAlerts])
 
   // Handlers
   const handleCreateRule = async (
@@ -227,7 +231,7 @@ export default function WatchtowerContainer() {
       if (json.success) {
         setShowRuleBuilder(false)
         setEditingRule(null)
-        fetchRules(rulesPage)
+        fetchRules(rulesPage, rulesPageSize)
         fetchRecentRules()
         refreshStats()
       } else {
@@ -257,7 +261,7 @@ export default function WatchtowerContainer() {
       if (json.success) {
         setShowRuleBuilder(false)
         setEditingRule(null)
-        fetchRules(rulesPage)
+        fetchRules(rulesPage, rulesPageSize)
         fetchRecentRules()
         refreshStats()
       } else {
@@ -282,7 +286,7 @@ export default function WatchtowerContainer() {
       const json = await res.json()
 
       if (json.success) {
-        fetchRules(rulesPage)
+        fetchRules(rulesPage, rulesPageSize)
         fetchRecentRules()
         refreshStats()
       } else {
@@ -310,7 +314,7 @@ export default function WatchtowerContainer() {
       const json = await res.json()
 
       if (json.success) {
-        fetchRules(rulesPage)
+        fetchRules(rulesPage, rulesPageSize)
         fetchRecentRules()
         refreshStats()
       } else {
@@ -334,7 +338,7 @@ export default function WatchtowerContainer() {
       const json = await res.json()
 
       if (json.success) {
-        fetchAlerts(alertsPage)
+        fetchAlerts(alertsPage, alertsPageSize)
         refreshStats()
       } else {
         setError(json.error)
@@ -359,7 +363,7 @@ export default function WatchtowerContainer() {
       const json = await res.json()
 
       if (json.success) {
-        fetchAlerts(alertsPage)
+        fetchAlerts(alertsPage, alertsPageSize)
         refreshStats()
       } else {
         setError(json.error)
@@ -391,7 +395,7 @@ export default function WatchtowerContainer() {
 
       if (json.success) {
         setAlertToDelete(null)
-        fetchAlerts(alertsPage)
+        fetchAlerts(alertsPage, alertsPageSize)
         refreshStats()
       } else {
         setError(json.error)
@@ -420,7 +424,7 @@ export default function WatchtowerContainer() {
         <header className="flex items-center justify-between">
           <div>
             <h1 className="bg-gradient-to-b from-white via-zinc-300/90 to-white/70 bg-clip-text text-4xl font-bold tracking-wide text-transparent">
-              Watchtower
+              Watch Tower
             </h1>
             <p className="mt-2 text-lg text-white/60">
               Monitor data and trigger alerts based on custom rules
@@ -847,10 +851,24 @@ export default function WatchtowerContainer() {
                     <option value="false">Inactive Only</option>
                   </Select>
 
+                  <Select
+                    value={String(rulesPageSize)}
+                    onChange={(e) => {
+                      setRulesPageSize(Number(e.target.value))
+                      setRulesPage(1)
+                    }}
+                    className="w-32"
+                  >
+                    <option value="10">10 per page</option>
+                    <option value="20">20 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
+                  </Select>
+
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => fetchRules(rulesPage)}
+                    onClick={() => fetchRules(rulesPage, rulesPageSize)}
                     disabled={isLoading}
                   >
                     <RefreshCw
@@ -946,10 +964,24 @@ export default function WatchtowerContainer() {
                 <option value="true">Acknowledged</option>
               </Select>
 
+              <Select
+                value={String(alertsPageSize)}
+                onChange={(e) => {
+                  setAlertsPageSize(Number(e.target.value))
+                  setAlertsPage(1)
+                }}
+                className="w-32"
+              >
+                <option value="10">10 per page</option>
+                <option value="20">20 per page</option>
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+              </Select>
+
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchAlerts(alertsPage)}
+                onClick={() => fetchAlerts(alertsPage, alertsPageSize)}
                 disabled={isLoading}
               >
                 <RefreshCw

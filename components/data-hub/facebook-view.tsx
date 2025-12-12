@@ -31,55 +31,64 @@ export default function FacebookView() {
     useState<PaginatedResponse<RefreshSnapshotMetric> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [selectedPod, setSelectedPod] = useState<string>('')
 
-  const fetchData = useCallback(async (page: number, pod?: string) => {
-    setIsLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(DEFAULT_PAGE_SIZE),
-      })
-      if (pod) params.set('pod', pod)
-
-      const [statsRes, aggregatesRes, metricsRes] = await Promise.all([
-        fetch('/api/data-hub/facebook/stats'),
-        fetch('/api/data-hub/facebook/aggregates'),
-        fetch(`/api/data-hub/facebook/metrics?${params}`),
-      ])
-
-      const [statsJson, aggregatesJson, metricsJson] = await Promise.all([
-        statsRes.json(),
-        aggregatesRes.json(),
-        metricsRes.json(),
-      ])
-
-      if (statsJson.success) setStats(statsJson.data)
-      if (aggregatesJson.success) setAggregates(aggregatesJson.data)
-      if (metricsJson.success) {
-        setMetricsData({
-          data: metricsJson.data,
-          pagination: metricsJson.pagination,
+  const fetchData = useCallback(
+    async (page: number, size: number, pod?: string) => {
+      setIsLoading(true)
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: String(size),
         })
+        if (pod) params.set('pod', pod)
+
+        const [statsRes, aggregatesRes, metricsRes] = await Promise.all([
+          fetch('/api/data-hub/facebook/stats'),
+          fetch('/api/data-hub/facebook/aggregates'),
+          fetch(`/api/data-hub/facebook/metrics?${params}`),
+        ])
+
+        const [statsJson, aggregatesJson, metricsJson] = await Promise.all([
+          statsRes.json(),
+          aggregatesRes.json(),
+          metricsRes.json(),
+        ])
+
+        if (statsJson.success) setStats(statsJson.data)
+        if (aggregatesJson.success) setAggregates(aggregatesJson.data)
+        if (metricsJson.success) {
+          setMetricsData({
+            data: metricsJson.data,
+            pagination: metricsJson.pagination,
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching Facebook data:', err)
+      } finally {
+        setIsLoading(false)
       }
-    } catch (err) {
-      console.error('Error fetching Facebook data:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+    },
+    [],
+  )
 
   useEffect(() => {
-    fetchData(currentPage, selectedPod)
-  }, [fetchData, currentPage, selectedPod])
+    fetchData(currentPage, pageSize, selectedPod)
+  }, [fetchData, currentPage, pageSize, selectedPod])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
 
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size)
+    setCurrentPage(1) // Reset to first page when changing page size
+  }
+
   const handlePodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedPod(e.target.value)
-    setCurrentPage(1)
+    setCurrentPage(1) // Reset to first page when changing filter
   }
 
   const formatCurrency = (value: number | null) => {
@@ -256,7 +265,7 @@ export default function FacebookView() {
         pagination={
           metricsData?.pagination || {
             page: 1,
-            pageSize: DEFAULT_PAGE_SIZE,
+            pageSize: pageSize,
             totalCount: 0,
             totalPages: 0,
             hasNextPage: false,
@@ -264,6 +273,7 @@ export default function FacebookView() {
           }
         }
         onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
         isLoading={isLoading}
         emptyMessage="No Facebook metrics found"
       />

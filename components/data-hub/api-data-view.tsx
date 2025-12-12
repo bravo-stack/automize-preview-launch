@@ -36,6 +36,7 @@ export default function ApiDataView() {
   > | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
 
   const fetchStats = useCallback(async () => {
     try {
@@ -48,12 +49,12 @@ export default function ApiDataView() {
   }, [])
 
   const fetchTableData = useCallback(
-    async (tab: ApiDataSubTab, page: number) => {
+    async (tab: ApiDataSubTab, page: number, size: number) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams({
           page: String(page),
-          pageSize: String(DEFAULT_PAGE_SIZE),
+          pageSize: String(size),
         })
 
         const res = await fetch(`/api/data-hub/${tab}?${params}`)
@@ -79,13 +80,21 @@ export default function ApiDataView() {
   }, [fetchStats])
 
   useEffect(() => {
-    setCurrentPage(1)
-    fetchTableData(activeSubTab, 1)
-  }, [activeSubTab, fetchTableData])
+    fetchTableData(activeSubTab, currentPage, pageSize)
+  }, [activeSubTab, fetchTableData, currentPage, pageSize])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-    fetchTableData(activeSubTab, page)
+  }
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size)
+    setCurrentPage(1) // Reset to first page when changing page size
+  }
+
+  const handleSubTabChange = (tab: ApiDataSubTab) => {
+    setActiveSubTab(tab)
+    setCurrentPage(1) // Reset to first page when changing tab
   }
 
   const getColumnsForTab = (tab: ApiDataSubTab) => {
@@ -277,7 +286,7 @@ export default function ApiDataView() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveSubTab(tab.id)}
+              onClick={() => handleSubTabChange(tab.id)}
               className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all ${
                 isActive
                   ? 'bg-white/10 text-white'
@@ -298,7 +307,7 @@ export default function ApiDataView() {
         pagination={
           tableData?.pagination || {
             page: 1,
-            pageSize: DEFAULT_PAGE_SIZE,
+            pageSize: pageSize,
             totalCount: 0,
             totalPages: 0,
             hasNextPage: false,
@@ -306,6 +315,7 @@ export default function ApiDataView() {
           }
         }
         onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
         isLoading={isLoading}
         emptyMessage={`No ${activeSubTab} found`}
       />

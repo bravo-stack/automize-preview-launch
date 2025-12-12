@@ -34,6 +34,7 @@ export default function FormsView() {
   > | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [statusFilter, setStatusFilter] = useState<string>('')
 
   const fetchStats = useCallback(async () => {
@@ -47,12 +48,12 @@ export default function FormsView() {
   }, [])
 
   const fetchTableData = useCallback(
-    async (tab: FormsSubTab, page: number, status?: string) => {
+    async (tab: FormsSubTab, page: number, size: number, status?: string) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams({
           page: String(page),
-          pageSize: String(DEFAULT_PAGE_SIZE),
+          pageSize: String(size),
         })
         if (status) params.set('status', status)
 
@@ -80,18 +81,26 @@ export default function FormsView() {
   }, [fetchStats])
 
   useEffect(() => {
-    setCurrentPage(1)
-    fetchTableData(activeSubTab, 1, statusFilter)
-  }, [activeSubTab, fetchTableData, statusFilter])
+    fetchTableData(activeSubTab, currentPage, pageSize, statusFilter)
+  }, [activeSubTab, fetchTableData, currentPage, pageSize, statusFilter])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-    fetchTableData(activeSubTab, page, statusFilter)
+  }
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size)
+    setCurrentPage(1) // Reset to first page when changing page size
+  }
+
+  const handleSubTabChange = (tab: FormsSubTab) => {
+    setActiveSubTab(tab)
+    setCurrentPage(1) // Reset to first page when changing tab
   }
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setStatusFilter(e.target.value)
-    setCurrentPage(1)
+    setCurrentPage(1) // Reset to first page when changing filter
   }
 
   const dayDropColumns = [
@@ -272,7 +281,7 @@ export default function FormsView() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveSubTab(tab.id)}
+                onClick={() => handleSubTabChange(tab.id)}
                 className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all ${
                   isActive
                     ? 'bg-white/10 text-white'
@@ -311,7 +320,7 @@ export default function FormsView() {
         pagination={
           tableData?.pagination || {
             page: 1,
-            pageSize: DEFAULT_PAGE_SIZE,
+            pageSize: pageSize,
             totalCount: 0,
             totalPages: 0,
             hasNextPage: false,
@@ -319,6 +328,7 @@ export default function FormsView() {
           }
         }
         onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
         isLoading={isLoading}
         emptyMessage={`No ${activeSubTab === 'day-drop' ? 'Day Drop' : 'Website Revamp'} requests found`}
       />
