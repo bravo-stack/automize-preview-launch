@@ -284,12 +284,12 @@ export const exec: NavSection[] = [
       { text: 'Hub', url: 'hub', svg: icons.hub },
       { text: 'Watchtower', url: 'watchtower', svg: icons.watchtower },
       { text: 'KPI', url: 'kpi', svg: icons.kpi },
-      { text: 'FinancialX', url: 'financialx', svg: icons.financialX },
     ],
   },
   {
     label: 'Sheets & Reports',
     items: [
+      { text: 'FinancialX', url: 'financialx', svg: icons.financialX },
       { text: 'Facebook Sheets', url: 'autometric', svg: icons.facebookSheets },
       { text: 'Pod Sheets', url: 'pods', svg: icons.podSheets },
     ],

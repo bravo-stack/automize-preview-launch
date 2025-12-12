@@ -21,13 +21,37 @@ export const RULE_CONDITIONS = [
   'is_not_null',
 ] as const
 
+export type RuleCondition = (typeof RULE_CONDITIONS)[number]
+
+export const SEVERITY_LEVELS = ['info', 'warning', 'critical'] as const
+
+/**
+ * Target tables mapped to Hub data domains:
+ * - facebook_metrics: Autometric sheet data (refresh_snapshot_metrics where refresh_type='autometric')
+ * - finance_metrics: FinancialX sheet data (refresh_snapshot_metrics where refresh_type='financialx')
+ * - api_records: API-fetched data (Omnisend, Shopify, etc.)
+ * - form_submissions: Day Drop & Website Revamp submissions
+ * - api_snapshots: API snapshot status and health
+ * - sheet_snapshots: Sheet refresh snapshot status
+ */
+export const TARGET_TABLES = [
+  'facebook_metrics',
+  'finance_metrics',
+  'api_records',
+  'form_submissions',
+  'api_snapshots',
+  'sheet_snapshots',
+] as const
+
+export type TargetTable = (typeof TARGET_TABLES)[number]
+
 /**
  * Conditions allowed for each field type.
  * Prevents invalid comparisons like 'greater_than' on string fields.
  */
 export const CONDITIONS_BY_FIELD_TYPE: Record<
   'number' | 'string' | 'boolean' | 'date',
-  readonly (typeof RULE_CONDITIONS)[number][]
+  readonly RuleCondition[]
 > = {
   number: [
     'equals',
@@ -50,7 +74,8 @@ export const CONDITIONS_BY_FIELD_TYPE: Record<
     'is_null',
     'is_not_null',
   ],
-  boolean: ['equals', 'not_equals', 'changed', 'is_null', 'is_not_null'],
+  // Booleans are always true/false - no null checks needed
+  boolean: ['equals', 'not_equals', 'changed'],
   date: [
     'equals',
     'not_equals',
@@ -64,13 +89,150 @@ export const CONDITIONS_BY_FIELD_TYPE: Record<
   ],
 } as const
 
+// ============================================================================
+// Domain-Specific Conditions - Optimized O(1) Lookup
+// ============================================================================
+
+/**
+ * Conditions relevant to each data domain (target_table).
+ * Pre-computed as arrays for efficient iteration, with Set lookup for O(1) membership.
+ *
+ * Domain-specific logic:
+ * - facebook_metrics: KPI-focused conditions (thresholds, % changes for ROAS, CPA, etc.)
+ * - finance_metrics: Financial thresholds & rebill tracking (% changes for rebill metrics)
+ * - api_records: Status/category matching, quantity checks (no % change - point-in-time data)
+ * - form_submissions: Status matching & date filtering only
+ * - api_snapshots: Status & health monitoring
+ * - sheet_snapshots: Sync status monitoring
+ */
+const DOMAIN_CONDITIONS_MAP: Record<TargetTable, readonly RuleCondition[]> = {
+  // Facebook/Autometric: Heavy on numeric comparisons & percentage changes
+  facebook_metrics: [
+    'equals',
+    'not_equals',
+    'greater_than',
+    'less_than',
+    'greater_than_or_equal',
+    'less_than_or_equal',
+    'changed',
+    'changed_by_percent',
+    'is_null',
+    'is_not_null',
+  ],
+
+  // Finance/FinancialX: Numeric thresholds + status tracking + % change for rebill comparisons
+  finance_metrics: [
+    'equals',
+    'not_equals',
+    'greater_than',
+    'less_than',
+    'greater_than_or_equal',
+    'less_than_or_equal',
+    'changed',
+    'changed_by_percent',
+    'contains',
+    'is_null',
+    'is_not_null',
+  ],
+
+  // API Records: Status/category matching, no percentage change tracking (point-in-time)
+  api_records: [
+    'equals',
+    'not_equals',
+    'greater_than',
+    'less_than',
+    'greater_than_or_equal',
+    'less_than_or_equal',
+    'contains',
+    'not_contains',
+    'is_null',
+    'is_not_null',
+  ],
+
+  // Form Submissions: Status matching & date filtering only
+  form_submissions: [
+    'equals',
+    'not_equals',
+    'contains',
+    'not_contains',
+    'greater_than',
+    'less_than',
+    'is_null',
+    'is_not_null',
+  ],
+
+  // API Snapshots: Health/status monitoring
+  api_snapshots: [
+    'equals',
+    'not_equals',
+    'greater_than',
+    'less_than',
+    'greater_than_or_equal',
+    'less_than_or_equal',
+    'contains',
+    'is_null',
+    'is_not_null',
+  ],
+
+  // Sheet Snapshots: Sync status checks
+  sheet_snapshots: [
+    'equals',
+    'not_equals',
+    'contains',
+    'not_contains',
+    'is_null',
+    'is_not_null',
+  ],
+} as const
+
+// Pre-computed Sets for O(1) membership checking (created once at module load)
+const DOMAIN_CONDITIONS_SETS: Record<
+  TargetTable,
+  ReadonlySet<RuleCondition>
+> = {
+  facebook_metrics: new Set(DOMAIN_CONDITIONS_MAP.facebook_metrics),
+  finance_metrics: new Set(DOMAIN_CONDITIONS_MAP.finance_metrics),
+  api_records: new Set(DOMAIN_CONDITIONS_MAP.api_records),
+  form_submissions: new Set(DOMAIN_CONDITIONS_MAP.form_submissions),
+  api_snapshots: new Set(DOMAIN_CONDITIONS_MAP.api_snapshots),
+  sheet_snapshots: new Set(DOMAIN_CONDITIONS_MAP.sheet_snapshots),
+}
+
+/**
+ * Get valid conditions for a field, constrained by both domain AND field type.
+ * Uses Set intersection for O(n) where n = number of field type conditions (small constant).
+ *
+ * @param domain - The target table/data domain
+ * @param fieldType - The field's data type
+ * @returns Array of valid conditions for this domain + field type combination
+ */
+export function getConditionsForDomainAndFieldType(
+  domain: TargetTable | undefined,
+  fieldType: 'number' | 'string' | 'boolean' | 'date' | undefined,
+): RuleCondition[] {
+  // No domain selected: use field type conditions only
+  if (!domain) {
+    return fieldType
+      ? [...CONDITIONS_BY_FIELD_TYPE[fieldType]]
+      : [...RULE_CONDITIONS]
+  }
+
+  const domainConditionsSet = DOMAIN_CONDITIONS_SETS[domain]
+
+  // No field type: use domain conditions only
+  if (!fieldType) {
+    return [...DOMAIN_CONDITIONS_MAP[domain]]
+  }
+
+  // Intersection: conditions valid for BOTH domain AND field type
+  const fieldConditions = CONDITIONS_BY_FIELD_TYPE[fieldType]
+  return fieldConditions.filter((c) => domainConditionsSet.has(c))
+}
+
 /**
  * Human-readable labels for conditions
  */
-export const CONDITION_LABELS: Record<
-  (typeof RULE_CONDITIONS)[number],
-  string
-> = {
+export const CONDITION_LABELS: Record<RuleCondition, string> = {
   equals: 'Equals',
   not_equals: 'Not Equals',
   greater_than: 'Greater Than',
@@ -84,26 +246,6 @@ export const CONDITION_LABELS: Record<
   is_null: 'Is Empty',
   is_not_null: 'Is Not Empty',
 }
-
-export const SEVERITY_LEVELS = ['info', 'warning', 'critical'] as const
-
-/**
- * Target tables mapped to Hub data domains:
- * - facebook_metrics: Autometric sheet data (refresh_snapshot_metrics where refresh_type='autometric')
- * - finance_metrics: FinancialX sheet data (refresh_snapshot_metrics where refresh_type='financialx')
- * - api_records: API-fetched data (Omnisend, Shopify, etc.)
- * - form_submissions: Day Drop & Website Revamp submissions
- * - api_snapshots: API snapshot status and health
- * - sheet_snapshots: Sheet refresh snapshot status
- */
-export const TARGET_TABLES = [
-  'facebook_metrics',
-  'finance_metrics',
-  'api_records',
-  'form_submissions',
-  'api_snapshots',
-  'sheet_snapshots',
-] as const
 
 export const LOGIC_OPERATORS = ['AND', 'OR'] as const
 
@@ -152,9 +294,7 @@ export function getTimeRangeDaysLabel(days: number | null): string {
   return `Last ${days} Days`
 }
 
-export type RuleCondition = (typeof RULE_CONDITIONS)[number]
 export type Severity = (typeof SEVERITY_LEVELS)[number]
-export type TargetTable = (typeof TARGET_TABLES)[number]
 export type LogicOperator = (typeof LOGIC_OPERATORS)[number]
 export type DependencyCondition = (typeof DEPENDENCY_CONDITIONS)[number]
 export type NotifySchedule = (typeof NOTIFY_SCHEDULES)[number]
@@ -428,46 +568,47 @@ export interface TableFieldConfig {
 /**
  * Pre-defined fields for each target table, organized by Hub data domain
  * These map directly to the actual database columns used in each domain
+ *
+ * Facebook Sheet columns: Name, Pod, Monitored, CPA, CPC, CPM, CTR, Quality Ranking,
+ *   ERR (engagement_rate_ranking), CRR (conversion_rate_ranking), Ad Spend, ROAS,
+ *   FB REV, Hook Rate, Bounce Rate, LC/ATC%, ATC/IC%, IC/PUR%
+ *   Note: Most numeric fields come as strings from FB API and need parseFloat
+ *   Rankings are enum strings: ABOVE_AVERAGE, AVERAGE, BELOW_AVERAGE
+ *
+ * Finance Sheet columns: Monitored, Name, Pod, Ad Spend {Timeframe}, ROAS TD, FB Rev {Timeframe},
+ *   Shopify Rev {Timeframe}, Ad spend since rebill, ROAS since rebill, FB Rev Rebill,
+ *   Shopify Rev Rebill, Is Rebillable, Last Rebill Date, Orders {Timeframe}, Orders since rebill
+ *   Note: Is Rebillable values: "rebillable next date", "soon to be", "overdue", "N/A", "not rebillable"
  */
 export const TABLE_FIELDS: TableFieldConfig[] = [
   {
     table: 'facebook_metrics',
     fields: [
+      // Identity & Status
       {
-        name: 'ad_spend_timeframe',
-        label: 'Ad Spend (Timeframe)',
-        type: 'number',
-        description: 'Current period ad spend',
+        name: 'name',
+        label: 'Account Name',
+        type: 'string',
+        description: 'Account/client name',
       },
       {
-        name: 'roas_timeframe',
-        label: 'ROAS (Timeframe)',
-        type: 'number',
-        description: 'Return on ad spend for current period',
+        name: 'pod',
+        label: 'Pod',
+        type: 'string',
+        description: 'Assigned pod name',
       },
       {
-        name: 'fb_revenue_timeframe',
-        label: 'FB Revenue (Timeframe)',
-        type: 'number',
-        description: 'Facebook-attributed revenue',
+        name: 'is_monitored',
+        label: 'Monitored',
+        type: 'boolean',
+        description: 'Account is being monitored',
       },
+      // Cost Metrics (parsed from FB API string values)
       {
-        name: 'shopify_revenue_timeframe',
-        label: 'Shopify Revenue (Timeframe)',
+        name: 'cpa',
+        label: 'CPA',
         type: 'number',
-        description: 'Shopify revenue for period',
-      },
-      {
-        name: 'orders_timeframe',
-        label: 'Orders (Timeframe)',
-        type: 'number',
-        description: 'Order count for period',
-      },
-      {
-        name: 'cpa_purchase',
-        label: 'CPA Purchase',
-        type: 'number',
-        description: 'Cost per acquisition',
+        description: 'Cost per acquisition (purchase)',
       },
       {
         name: 'cpc',
@@ -487,82 +628,178 @@ export const TABLE_FIELDS: TableFieldConfig[] = [
         type: 'number',
         description: 'Click-through rate',
       },
+      // Rankings (FB API enum: ABOVE_AVERAGE, AVERAGE, BELOW_AVERAGE)
+      {
+        name: 'quality_ranking',
+        label: 'Quality Ranking',
+        type: 'string',
+        description:
+          'Ad quality ranking (ABOVE_AVERAGE, AVERAGE, BELOW_AVERAGE)',
+      },
+      {
+        name: 'engagement_rate_ranking',
+        label: 'ERR (Engagement Rate Ranking)',
+        type: 'string',
+        description:
+          'Engagement rate ranking (ABOVE_AVERAGE, AVERAGE, BELOW_AVERAGE)',
+      },
+      {
+        name: 'conversion_rate_ranking',
+        label: 'CRR (Conversion Rate Ranking)',
+        type: 'string',
+        description:
+          'Conversion rate ranking (ABOVE_AVERAGE, AVERAGE, BELOW_AVERAGE)',
+      },
+      // Revenue Metrics
+      {
+        name: 'ad_spend',
+        label: 'Ad Spend',
+        type: 'number',
+        description: 'Total ad spend',
+      },
+      {
+        name: 'roas',
+        label: 'ROAS',
+        type: 'number',
+        description: 'Return on ad spend (purchase_roas)',
+      },
+      {
+        name: 'fb_revenue',
+        label: 'FB REV',
+        type: 'number',
+        description: 'Facebook-attributed revenue',
+      },
+      // Video & Site Metrics
       {
         name: 'hook_rate',
         label: 'Hook Rate',
         type: 'number',
-        description: 'Video hook rate',
+        description: 'Video hook rate percentage',
       },
       {
         name: 'bounce_rate',
         label: 'Bounce Rate',
         type: 'number',
-        description: 'Site bounce rate',
+        description: 'Site bounce rate percentage',
+      },
+      // Funnel Metrics
+      {
+        name: 'lc_atc_percent',
+        label: 'LC/ATC%',
+        type: 'number',
+        description: 'Landing to Add-to-Cart conversion rate',
       },
       {
-        name: 'is_error',
-        label: 'Has Error',
-        type: 'boolean',
-        description: 'Account has sync error',
+        name: 'atc_ic_percent',
+        label: 'ATC/IC%',
+        type: 'number',
+        description: 'Add-to-Cart to Initiate Checkout rate',
       },
       {
-        name: 'is_monitored',
-        label: 'Is Monitored',
-        type: 'boolean',
-        description: 'Account is being monitored',
+        name: 'ic_pur_percent',
+        label: 'IC/PUR%',
+        type: 'number',
+        description: 'Initiate Checkout to Purchase rate',
       },
     ],
   },
   {
     table: 'finance_metrics',
     fields: [
+      // Identity & Status
+      {
+        name: 'name',
+        label: 'Account Name',
+        type: 'string',
+        description: 'Account/client name',
+      },
+      {
+        name: 'pod',
+        label: 'Pod',
+        type: 'string',
+        description: 'Assigned pod name',
+      },
+      {
+        name: 'is_monitored',
+        label: 'Monitored',
+        type: 'boolean',
+        description: 'Account is being monitored',
+      },
+      // Timeframe Metrics (current period)
+      {
+        name: 'ad_spend_timeframe',
+        label: 'Ad Spend (Timeframe)',
+        type: 'number',
+        description: 'Ad spend for selected timeframe',
+      },
+      {
+        name: 'roas_td',
+        label: 'ROAS TD',
+        type: 'number',
+        description: 'Return on ad spend to-date',
+      },
+      {
+        name: 'fb_revenue_timeframe',
+        label: 'FB Rev (Timeframe)',
+        type: 'number',
+        description: 'Facebook revenue for timeframe',
+      },
+      {
+        name: 'shopify_revenue_timeframe',
+        label: 'Shopify Rev (Timeframe)',
+        type: 'number',
+        description: 'Shopify revenue for timeframe',
+      },
+      {
+        name: 'orders_timeframe',
+        label: 'Orders (Timeframe)',
+        type: 'number',
+        description: 'Order count for selected timeframe',
+      },
+      // Rebill Metrics (since last rebill)
       {
         name: 'ad_spend_rebill',
-        label: 'Ad Spend (Rebill)',
+        label: 'Ad Spend Since Rebill',
         type: 'number',
-        description: 'Rebill period ad spend',
+        description: 'Ad spend since last rebill date',
       },
       {
         name: 'roas_rebill',
-        label: 'ROAS (Rebill)',
+        label: 'ROAS Since Rebill',
         type: 'number',
-        description: 'Return on ad spend for rebill period',
+        description: 'Return on ad spend since rebill',
       },
       {
         name: 'fb_revenue_rebill',
-        label: 'FB Revenue (Rebill)',
+        label: 'FB Rev Rebill',
         type: 'number',
-        description: 'Facebook revenue for rebill',
+        description: 'Facebook revenue since rebill',
       },
       {
         name: 'shopify_revenue_rebill',
-        label: 'Shopify Revenue (Rebill)',
+        label: 'Shopify Rev Rebill',
         type: 'number',
-        description: 'Shopify revenue for rebill',
+        description: 'Shopify revenue since rebill',
       },
       {
         name: 'orders_rebill',
-        label: 'Orders (Rebill)',
+        label: 'Orders Since Rebill',
         type: 'number',
-        description: 'Order count for rebill period',
+        description: 'Order count since last rebill',
       },
+      // Rebill Status
       {
-        name: 'rebill_status',
-        label: 'Rebill Status',
+        name: 'rebillable_status',
+        label: 'Is Rebillable',
         type: 'string',
-        description: 'Current rebill status',
+        description:
+          'Rebill status: "rebillable next date", "soon to be", "overdue", "N/A", "not rebillable"',
       },
       {
         name: 'last_rebill_date',
         label: 'Last Rebill Date',
         type: 'date',
         description: 'Date of last rebill',
-      },
-      {
-        name: 'is_error',
-        label: 'Has Error',
-        type: 'boolean',
-        description: 'Account has sync error',
       },
     ],
   },

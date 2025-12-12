@@ -5,11 +5,10 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import {
   CONDITION_LABELS,
-  CONDITIONS_BY_FIELD_TYPE,
   DEPENDENCY_CONDITIONS,
+  getConditionsForDomainAndFieldType,
   getTimeRangeDaysLabel,
   LOGIC_OPERATORS,
-  RULE_CONDITIONS,
   SEVERITY_LEVELS,
   TABLE_FIELDS,
   TARGET_TABLES,
@@ -19,10 +18,17 @@ import {
   type FieldDefinition,
   type RuleClause,
   type RuleCondition,
+  type TargetTable,
   type WatchtowerRule,
 } from '@/types/watchtower'
 import { AlertTriangle, Calendar, Info, Plus, Trash2, X } from 'lucide-react'
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from 'react'
 
 // ============================================================================
 // Target Table Labels & Descriptions - Maps to Hub Data Domains
@@ -64,20 +70,6 @@ function getTargetTableDescription(table: string): string {
     TARGET_TABLE_DESCRIPTIONS[table] ||
     'No description available for this data domain.'
   )
-}
-
-/**
- * Get valid conditions for a specific field type.
- * Prevents invalid comparisons like 'greater_than' on string fields.
- */
-function getConditionsForFieldType(
-  fieldType: FieldDefinition['type'] | undefined,
-): RuleCondition[] {
-  if (!fieldType) {
-    // If no field type, return all conditions (fallback)
-    return [...RULE_CONDITIONS]
-  }
-  return [...CONDITIONS_BY_FIELD_TYPE[fieldType]]
 }
 
 /**
@@ -201,7 +193,8 @@ export default function RuleBuilder({
   }, [editRule])
 
   /**
-   * Get the field type for a given field name from available fields
+   * Get the field type for a given field name from available fields.
+   * O(n) lookup where n = number of fields in table (typically < 20)
    */
   const getFieldType = useCallback(
     (name: string): FieldDefinition['type'] | undefined => {
@@ -211,26 +204,37 @@ export default function RuleBuilder({
   )
 
   /**
-   * Get available conditions for the currently selected single field
+   * Memoized domain cast to avoid recreation on each render.
+   * Uses type assertion only when value is valid.
    */
-  const availableConditionsForField = useCallback(() => {
-    const fieldType = getFieldType(fieldName)
-    return getConditionsForFieldType(fieldType)
-  }, [fieldName, getFieldType])
-
-  /**
-   * Get available conditions for a clause's selected field
-   */
-  const getConditionsForClause = useCallback(
-    (clauseFieldName: string) => {
-      const fieldType = getFieldType(clauseFieldName)
-      return getConditionsForFieldType(fieldType)
-    },
-    [getFieldType],
+  const currentDomain = useMemo(
+    () => (targetTable as TargetTable) || undefined,
+    [targetTable],
   )
 
   /**
-   * When field changes, reset condition if current condition is invalid for new field type
+   * Get available conditions for the currently selected single field.
+   * Uses domain + field type intersection for precise filtering.
+   */
+  const availableConditionsForField = useMemo(() => {
+    const fieldType = getFieldType(fieldName)
+    return getConditionsForDomainAndFieldType(currentDomain, fieldType)
+  }, [fieldName, getFieldType, currentDomain])
+
+  /**
+   * Get available conditions for a clause's selected field.
+   * Returns domain-constrained conditions based on clause field type.
+   */
+  const getConditionsForClause = useCallback(
+    (clauseFieldName: string): RuleCondition[] => {
+      const fieldType = getFieldType(clauseFieldName)
+      return getConditionsForDomainAndFieldType(currentDomain, fieldType)
+    },
+    [getFieldType, currentDomain],
+  )
+
+  /**
+   * When field changes, reset condition if invalid for new domain + field type combo.
    */
   const handleFieldChange = useCallback(
     (newFieldName: string) => {
@@ -238,17 +242,35 @@ export default function RuleBuilder({
       const newFieldType = availableFields.find(
         (f) => f.name === newFieldName,
       )?.type
-      const validConditions = getConditionsForFieldType(newFieldType)
+      const validConditions = getConditionsForDomainAndFieldType(
+        currentDomain,
+        newFieldType,
+      )
       if (!validConditions.includes(condition as RuleCondition)) {
-        // Reset to first valid condition for the new field type
+        // Reset to first valid condition for domain + field type
         setCondition(validConditions[0] || 'equals')
       }
     },
-    [availableFields, condition],
+    [availableFields, condition, currentDomain],
   )
 
   /**
-   * When clause field changes, update condition if invalid
+   * When target table (domain) changes, validate current condition is still valid.
+   */
+  useEffect(() => {
+    if (!targetTable || !fieldName) return
+    const fieldType = getFieldType(fieldName)
+    const validConditions = getConditionsForDomainAndFieldType(
+      currentDomain,
+      fieldType,
+    )
+    if (!validConditions.includes(condition as RuleCondition)) {
+      setCondition(validConditions[0] || 'equals')
+    }
+  }, [targetTable, fieldName, getFieldType, currentDomain, condition])
+
+  /**
+   * When clause field changes, update condition if invalid for domain + field type.
    */
   const handleClauseFieldChange = useCallback(
     (clauseId: string, newFieldName: string) => {
@@ -258,9 +280,12 @@ export default function RuleBuilder({
           const newFieldType = availableFields.find(
             (f) => f.name === newFieldName,
           )?.type
-          const validConditions = getConditionsForFieldType(newFieldType)
+          const validConditions = getConditionsForDomainAndFieldType(
+            currentDomain,
+            newFieldType,
+          )
           const currentConditionValid = validConditions.includes(
-            clause.condition as RuleCondition,
+            clause.condition,
           )
           return {
             ...clause,
@@ -272,20 +297,51 @@ export default function RuleBuilder({
         }),
       )
     },
-    [availableFields],
+    [availableFields, currentDomain],
   )
 
+  /**
+   * When domain changes, validate all clause conditions.
+   */
+  useEffect(() => {
+    if (!targetTable || clauses.length === 0) return
+    setClauses((prev) =>
+      prev.map((clause) => {
+        if (!clause.field_name) return clause
+        const fieldType = availableFields.find(
+          (f) => f.name === clause.field_name,
+        )?.type
+        const validConditions = getConditionsForDomainAndFieldType(
+          currentDomain,
+          fieldType,
+        )
+        if (!validConditions.includes(clause.condition)) {
+          return {
+            ...clause,
+            condition: validConditions[0] as RuleCondition,
+          }
+        }
+        return clause
+      }),
+    )
+  }, [targetTable, currentDomain, availableFields]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const addClause = useCallback(() => {
+    // Default to first valid condition for the domain (no field type yet)
+    const defaultConditions = getConditionsForDomainAndFieldType(
+      currentDomain,
+      undefined,
+    )
     setClauses((prev) => [
       ...prev,
       {
         id: `clause_${Date.now()}`,
         field_name: '',
-        condition: 'greater_than' as RuleCondition,
+        condition: (defaultConditions[0] || 'equals') as RuleCondition,
         threshold_value: null,
       },
     ])
-  }, [])
+  }, [currentDomain])
 
   const removeClause = useCallback((id: string) => {
     setClauses((prev) => prev.filter((c) => c.id !== id))
@@ -731,7 +787,7 @@ export default function RuleBuilder({
                 disabled={!fieldName}
               >
                 {!fieldName && <option value="">Select a field first</option>}
-                {availableConditionsForField().map((cond) => (
+                {availableConditionsForField.map((cond) => (
                   <option key={cond} value={cond}>
                     {CONDITION_LABELS[cond]}
                   </option>
