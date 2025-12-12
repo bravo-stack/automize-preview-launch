@@ -1,7 +1,6 @@
 import DashboardNav from '@/components/nav/dashboard-nav'
 import { exec, onboarder } from '@/content/nav'
 import { createClient } from '@/lib/db/server'
-import { podFromEmail } from '@/lib/utils'
 import { redirect } from 'next/navigation'
 
 export default async function DashboardLayout({ children }) {
@@ -16,19 +15,31 @@ export default async function DashboardLayout({ children }) {
   }
 
   const role = user.user_metadata.role ?? 'exec'
-  const pod = podFromEmail(user.email)
 
+  let podData: { id: number; name: string | null } | null = null
   let sheetId
   let sheet
-  if (role === 'pod') {
-    const { data } = await db
-      .from('sheets')
-      .select('sheet_id, refresh')
-      .eq('pod', pod)
-      .single()
 
-    sheetId = data?.sheet_id
-    sheet = data
+  if (role === 'pod') {
+    // Fetch pod data using user_id
+    const { data: fetchedPod } = await db
+      .from('pod')
+      .select('id, name')
+      .eq('user_id', user.id)
+      .single()
+    podData = fetchedPod
+
+    // Fetch sheet using pod name
+    if (podData?.name) {
+      const { data } = await db
+        .from('sheets')
+        .select('sheet_id, refresh')
+        .eq('pod', podData.name)
+        .single()
+
+      sheetId = data?.sheet_id
+      sheet = data
+    }
   }
 
   let links
@@ -38,26 +49,26 @@ export default async function DashboardLayout({ children }) {
       break
     case 'pod':
       links = [
-        // {
-        //   text: 'Home',
-        //   url: '/',
-        //   svg: (
-        //     <svg
-        //       xmlns="http://www.w3.org/2000/svg"
-        //       fill="none"
-        //       viewBox="0 0 24 24"
-        //       strokeWidth={1.5}
-        //       stroke="currentColor"
-        //       className="size-5"
-        //     >
-        //       <path
-        //         strokeLinecap="round"
-        //         strokeLinejoin="round"
-        //         d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
-        //       />
-        //     </svg>
-        //   ),
-        // },
+        {
+          text: 'Home',
+          url: '',
+          svg: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="size-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+              />
+            </svg>
+          ),
+        },
         {
           text: 'Facebook Sheets',
           url: 'autometric',
@@ -180,7 +191,7 @@ export default async function DashboardLayout({ children }) {
         },
         {
           text: 'WhatsApp',
-          url: `media-buyer/${user.id}/whatsapp`,
+          url: `media-buyer/${podData?.id}/whatsapp`,
           svg: (
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -199,7 +210,7 @@ export default async function DashboardLayout({ children }) {
           ),
         },
         (sheetId !== null || sheetId !== '') && {
-          text: `${pod.charAt(0).toUpperCase() + pod.slice(1)} Sheet`,
+          text: `${podData?.name ? podData.name.charAt(0).toUpperCase() + podData.name.slice(1) : ''} Sheet`,
           url: `https://docs.google.com/spreadsheets/d/${sheetId}`,
           target: '_blank',
           svg: (

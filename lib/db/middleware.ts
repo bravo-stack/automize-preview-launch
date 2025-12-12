@@ -1,6 +1,26 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Routes that require exec role
+const EXEC_ONLY_ROUTES = [
+  '/dashboard/hub',
+  '/dashboard/watchtower',
+  '/dashboard/services',
+  '/dashboard/media-buyer', // Main WhatsApp page (not /dashboard/media-buyer/[id]/...)
+]
+
+function isExecOnlyRoute(pathname: string): boolean {
+  // Check if it's the main media-buyer page (not a sub-route like /media-buyer/[id]/whatsapp)
+  if (pathname === '/dashboard/media-buyer') {
+    return true
+  }
+
+  // Check other exec-only routes
+  return EXEC_ONLY_ROUTES.some(
+    (route) => route !== '/dashboard/media-buyer' && pathname.startsWith(route),
+  )
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -40,6 +60,14 @@ export async function updateSession(request: NextRequest) {
 
   if (user) {
     if (request.nextUrl.pathname === '/login') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
+
+    // Check exec-only routes
+    const role = user.user_metadata?.role ?? 'exec'
+    if (isExecOnlyRoute(request.nextUrl.pathname) && role !== 'exec') {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)

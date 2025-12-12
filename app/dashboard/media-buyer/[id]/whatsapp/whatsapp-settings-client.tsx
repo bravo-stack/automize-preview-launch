@@ -39,6 +39,7 @@ interface WhatsAppSettingsClientProps {
   initialWhatsAppNumber: string | null
   initialConfigs: PodWhatsAppConfig[]
   globalConfigs: GlobalWhatsAppConfig[]
+  isNumberRequired?: boolean
 }
 
 interface FeatureConfigCardProps {
@@ -47,6 +48,7 @@ interface FeatureConfigCardProps {
   config: PodWhatsAppConfig | undefined
   globalConfig: GlobalWhatsAppConfig | undefined
   onUpdate: (config: PodWhatsAppConfig) => void
+  disabled?: boolean
 }
 
 const FEATURE_INFO: Record<
@@ -70,6 +72,7 @@ export default function WhatsAppSettingsClient({
   initialWhatsAppNumber,
   initialConfigs,
   globalConfigs,
+  isNumberRequired = false,
 }: WhatsAppSettingsClientProps) {
   // STATES
   const [whatsappNumber, setWhatsappNumber] = useState(
@@ -78,6 +81,7 @@ export default function WhatsAppSettingsClient({
   const [configs, setConfigs] = useState<PodWhatsAppConfig[]>(initialConfigs)
   const [isSavingNumber, setIsSavingNumber] = useState(false)
   const [numberSaved, setNumberSaved] = useState(false)
+  const [hasValidNumber, setHasValidNumber] = useState(!isNumberRequired)
 
   // HANDLERS
   const handleSaveNumber = async () => {
@@ -87,6 +91,7 @@ export default function WhatsAppSettingsClient({
 
     if (result.success) {
       setNumberSaved(true)
+      setHasValidNumber(true)
       setTimeout(() => setNumberSaved(false), 3000)
     } else {
       alert(result.error || 'Failed to save')
@@ -189,20 +194,73 @@ export default function WhatsAppSettingsClient({
           </p>
         </div>
 
-        <FeatureConfigCard
-          podName={podName}
-          featureType="daily_summary"
-          config={getConfigForFeature('daily_summary')}
-          globalConfig={getGlobalConfigForFeature('daily_summary')}
-          onUpdate={handleConfigUpdate}
-        />
-        <FeatureConfigCard
-          podName={podName}
-          featureType="ad_error"
-          config={getConfigForFeature('ad_error')}
-          globalConfig={getGlobalConfigForFeature('ad_error')}
-          onUpdate={handleConfigUpdate}
-        />
+        {!hasValidNumber ? (
+          <div className="relative">
+            {/* Disabled overlay */}
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-zinc-900/80 backdrop-blur-[2px]">
+              <div className="text-center">
+                <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-zinc-800">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="size-6 text-zinc-500"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-zinc-400">
+                  Add a WhatsApp number to configure features
+                </p>
+              </div>
+            </div>
+
+            {/* Blurred content behind */}
+            <div className="pointer-events-none select-none opacity-40">
+              <FeatureConfigCard
+                podName={podName}
+                featureType="daily_summary"
+                config={getConfigForFeature('daily_summary')}
+                globalConfig={getGlobalConfigForFeature('daily_summary')}
+                onUpdate={handleConfigUpdate}
+                disabled
+              />
+              <div className="mt-6">
+                <FeatureConfigCard
+                  podName={podName}
+                  featureType="ad_error"
+                  config={getConfigForFeature('ad_error')}
+                  globalConfig={getGlobalConfigForFeature('ad_error')}
+                  onUpdate={handleConfigUpdate}
+                  disabled
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <FeatureConfigCard
+              podName={podName}
+              featureType="daily_summary"
+              config={getConfigForFeature('daily_summary')}
+              globalConfig={getGlobalConfigForFeature('daily_summary')}
+              onUpdate={handleConfigUpdate}
+            />
+            <FeatureConfigCard
+              podName={podName}
+              featureType="ad_error"
+              config={getConfigForFeature('ad_error')}
+              globalConfig={getGlobalConfigForFeature('ad_error')}
+              onUpdate={handleConfigUpdate}
+            />
+          </>
+        )}
       </section>
     </div>
   )
@@ -214,6 +272,7 @@ function FeatureConfigCard({
   config,
   globalConfig,
   onUpdate,
+  disabled = false,
 }: FeatureConfigCardProps) {
   const info = FEATURE_INFO[featureType]
   const [isEditing, setIsEditing] = useState(false)

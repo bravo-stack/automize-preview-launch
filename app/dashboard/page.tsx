@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/db/server'
-import { podFromEmail } from '@/lib/utils'
 import {
   Activity,
   ArrowRight,
@@ -25,6 +24,11 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+
+interface Pod {
+  id: number
+  name: string | null
+}
 
 interface SubRoute {
   label: string
@@ -179,7 +183,7 @@ const execQuickActions: QuickAction[] = [
 ]
 
 // Pod Dashboard Configuration
-function getPodSections(userId: string): QuickLinkSection[] {
+function getPodSections(userId: string, podId: number): QuickLinkSection[] {
   return [
     {
       title: 'Facebook Sheets',
@@ -220,14 +224,14 @@ function getPodSections(userId: string): QuickLinkSection[] {
         },
         {
           label: 'WhatsApp',
-          href: `/dashboard/media-buyer/${userId}/whatsapp`,
+          href: `/dashboard/media-buyer/${podId}/whatsapp`,
         },
       ],
     },
   ]
 }
 
-function getPodQuickActions(userId: string): QuickAction[] {
+function getPodQuickActions(userId: string, podId: number): QuickAction[] {
   return [
     {
       label: 'View Accounts',
@@ -241,7 +245,7 @@ function getPodQuickActions(userId: string): QuickAction[] {
     },
     {
       label: 'Open WhatsApp',
-      href: `/dashboard/media-buyer/${userId}/whatsapp`,
+      href: `/dashboard/media-buyer/${podId}/whatsapp`,
       icon: <Phone className="size-4" />,
     },
     {
@@ -387,18 +391,30 @@ export default async function DashboardPage() {
   }
 
   const role = user.user_metadata.role ?? 'exec'
-  const pod = podFromEmail(user.email)
   const userName =
     user?.user_metadata.name ?? user?.user_metadata.company ?? 'User'
 
+  let podData: Pod | null = null
   let sheetId: string | undefined
+
   if (role === 'pod') {
-    const { data } = await db
-      .from('sheets')
-      .select('sheet_id')
-      .eq('pod', pod)
+    // Fetch pod data using user_id
+    const { data: fetchedPod } = await db
+      .from('pod')
+      .select('id, name')
+      .eq('user_id', user.id)
       .single()
-    sheetId = data?.sheet_id
+    podData = fetchedPod
+
+    // Fetch sheet using pod name
+    if (podData?.name) {
+      const { data } = await db
+        .from('sheets')
+        .select('sheet_id')
+        .eq('pod', podData.name)
+        .single()
+      sheetId = data?.sheet_id
+    }
   }
 
   // Time-based greeting
@@ -420,7 +436,8 @@ export default async function DashboardPage() {
                 {role === 'exec' &&
                   'Executive Dashboard — Full access to all tools and analytics'}
                 {role === 'pod' &&
-                  `${pod.charAt(0).toUpperCase() + pod.slice(1)} Pod — Your accounts and performance tools`}
+                  podData?.name &&
+                  `${podData.name.charAt(0).toUpperCase() + podData.name.slice(1)} Pod — Your accounts and performance tools`}
                 {role === 'onboarding' &&
                   'Onboarding Dashboard — Client setup and account management'}
               </p>
@@ -441,7 +458,8 @@ export default async function DashboardPage() {
                 <QuickActionButton key={action.href} action={action} />
               ))}
             {role === 'pod' &&
-              getPodQuickActions(user.id).map((action) => (
+              podData &&
+              getPodQuickActions(user.id, podData.id).map((action) => (
                 <QuickActionButton key={action.href} action={action} />
               ))}
             {role === 'onboarding' &&
@@ -452,9 +470,9 @@ export default async function DashboardPage() {
         </section>
 
         {/* Pod External Sheet */}
-        {role === 'pod' && sheetId && (
+        {role === 'pod' && sheetId && podData?.name && (
           <section className="mb-8">
-            <ExternalSheetLink pod={pod} sheetId={sheetId} />
+            <ExternalSheetLink pod={podData.name} sheetId={sheetId} />
           </section>
         )}
 
@@ -495,9 +513,10 @@ export default async function DashboardPage() {
               Your Tools
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              {getPodSections(user.id).map((section) => (
-                <SectionCard key={section.href} section={section} />
-              ))}
+              {podData &&
+                getPodSections(user.id, podData.id).map((section) => (
+                  <SectionCard key={section.href} section={section} />
+                ))}
             </div>
           </section>
         )}
