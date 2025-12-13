@@ -1,8 +1,8 @@
 'use client'
 
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useCallback, useState, useTransition } from 'react'
 import { Search, X } from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useState, useTransition } from 'react'
 
 interface ClientsListControlsProps {
   searchQuery: string
@@ -42,7 +42,7 @@ export default function ClientsListControls({
 
       return params.toString()
     },
-    [searchParams]
+    [searchParams],
   )
 
   const handleSearch = useCallback(
@@ -52,19 +52,20 @@ export default function ClientsListControls({
         router.push(`${pathname}${queryString ? `?${queryString}` : ''}`)
       })
     },
-    [createQueryString, pathname, router]
+    [createQueryString, pathname, router],
   )
 
   const handlePageSizeChange = useCallback(
     (newSize: number) => {
       startTransition(() => {
         // Only add pageSize to URL if different from default
-        const pageSizeValue = newSize === defaultPageSize ? null : String(newSize)
+        const pageSizeValue =
+          newSize === defaultPageSize ? null : String(newSize)
         const queryString = createQueryString({ pageSize: pageSizeValue })
         router.push(`${pathname}${queryString ? `?${queryString}` : ''}`)
       })
     },
-    [createQueryString, pathname, router, defaultPageSize]
+    [createQueryString, pathname, router, defaultPageSize],
   )
 
   const handleClearSearch = useCallback(() => {

@@ -1,20 +1,20 @@
-import { unstable_noStore } from 'next/cache'
-import Link from 'next/link'
+import ClientsListControls from '@/components/media-buyer/clients-list-controls'
 import { createAdminClient } from '@/lib/db/admin'
 import { createClient } from '@/lib/db/server'
 import {
-  Users,
-  ChevronRight,
-  Globe,
-  ExternalLink,
   Activity,
-  Eye,
-  Store,
-  Palette,
-  Mail,
+  ChevronRight,
   Database,
+  ExternalLink,
+  Eye,
+  Globe,
+  Mail,
+  Palette,
+  Store,
+  Users,
 } from 'lucide-react'
-import ClientsListControls from '@/components/media-buyer/clients-list-controls'
+import { unstable_noStore } from 'next/cache'
+import Link from 'next/link'
 
 // ============================================================================
 // Types
@@ -56,7 +56,12 @@ interface StatCardProps {
   variant?: 'default' | 'success' | 'warning' | 'info'
 }
 
-function StatCard({ title, value, icon: Icon, variant = 'default' }: StatCardProps) {
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  variant = 'default',
+}: StatCardProps) {
   const variantStyles = {
     default: 'from-white/10 to-white/5 text-white/40',
     success: 'from-green-500/20 to-green-500/10 text-green-400',
@@ -302,7 +307,7 @@ export default async function MediaBuyerClientsPage({
   // Apply search filter to count query
   if (searchQuery) {
     countQuery = countQuery.or(
-      `brand.ilike.%${searchQuery}%,website.ilike.%${searchQuery}%`
+      `brand.ilike.%${searchQuery}%,website.ilike.%${searchQuery}%`,
     )
   }
 
@@ -322,7 +327,7 @@ export default async function MediaBuyerClientsPage({
   // Apply search filter
   if (searchQuery) {
     clientsQuery = clientsQuery.or(
-      `brand.ilike.%${searchQuery}%,website.ilike.%${searchQuery}%`
+      `brand.ilike.%${searchQuery}%,website.ilike.%${searchQuery}%`,
     )
   }
 
@@ -348,42 +353,48 @@ export default async function MediaBuyerClientsPage({
   }
 
   // Fetch data availability for all displayed clients
-  const clientIds = clients?.map((c) => parseInt(c.id, 10)).filter(Boolean) || []
-  
+  const clientIds =
+    clients?.map((c) => parseInt(c.id, 10)).filter(Boolean) || []
+
   // Get snapshot data with source info to determine what data each client has
-  const { data: snapshotData } = clientIds.length > 0
-    ? await db
-        .from('api_snapshots')
-        .select('client_id, total_records, source:api_sources(provider)')
-        .in('client_id', clientIds)
-        .eq('status', 'completed')
-    : { data: null }
+  const { data: snapshotData } =
+    clientIds.length > 0
+      ? await db
+          .from('api_snapshots')
+          .select('client_id, total_records, source:api_sources(provider)')
+          .in('client_id', clientIds)
+          .eq('status', 'completed')
+      : { data: null }
 
   // Build data availability map
   const dataAvailabilityMap = new Map<string, ClientDataAvailability>()
-  
+
   if (snapshotData) {
     // Group by client_id
-    const clientDataMap = new Map<number, { providers: Set<string>; totalRecords: number }>()
-    
+    const clientDataMap = new Map<
+      number,
+      { providers: Set<string>; totalRecords: number }
+    >()
+
     snapshotData.forEach((snapshot) => {
       if (!snapshot.client_id) return
-      
+
       const existing = clientDataMap.get(snapshot.client_id) || {
         providers: new Set<string>(),
         totalRecords: 0,
       }
-      
+
       // Get provider from joined source data
-      const provider = (snapshot.source as { provider?: string } | null)?.provider
+      const provider = (snapshot.source as { provider?: string } | null)
+        ?.provider
       if (provider) {
         existing.providers.add(provider.toLowerCase())
       }
       existing.totalRecords += snapshot.total_records || 0
-      
+
       clientDataMap.set(snapshot.client_id, existing)
     })
-    
+
     // Convert to availability format
     clientDataMap.forEach((data, clientId) => {
       dataAvailabilityMap.set(String(clientId), {
@@ -552,7 +563,7 @@ export default async function MediaBuyerClientsPage({
                     >
                       {pageNum}
                     </Link>
-                  )
+                  ),
                 )}
               </div>
 
@@ -658,7 +669,7 @@ function buildUrl(page: number, pageSize: number, search: string): string {
 
 function generatePageNumbers(
   currentPage: number,
-  totalPages: number
+  totalPages: number,
 ): (number | string)[] {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, i) => i + 1)
