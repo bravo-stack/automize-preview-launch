@@ -48,6 +48,60 @@ export default async function MediaBuyerPage() {
 
   return (
     <main className="space-y-7 p-7">
+      {/* Quick Access to Client Dashboard */}
+      <Section
+        title="Client Dashboard"
+        actions={
+          <Link
+            href="/dashboard/media-buyer/clients"
+            className="flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            View Clients
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="h-4 w-4"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m8.25 4.5 7.5 7.5-7.5 7.5"
+              />
+            </svg>
+          </Link>
+        }
+      >
+        <div className="p-4">
+          <p className="text-sm text-zinc-400">
+            Access client-specific data including Shopify themes, Omnisend
+            performance metrics, orders, automations, campaigns, and more.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-zinc-800 bg-night-starlit p-3">
+              <h4 className="font-medium text-zinc-300">Theme Details</h4>
+              <p className="mt-1 text-xs text-zinc-500">
+                View Shopify theme configurations for each client
+              </p>
+            </div>
+            <div className="rounded-lg border border-zinc-800 bg-night-starlit p-3">
+              <h4 className="font-medium text-zinc-300">Omnisend Analytics</h4>
+              <p className="mt-1 text-xs text-zinc-500">
+                Revenue, orders, campaigns, and automation performance
+              </p>
+            </div>
+            <div className="rounded-lg border border-zinc-800 bg-night-starlit p-3">
+              <h4 className="font-medium text-zinc-300">Per-Client View</h4>
+              <p className="mt-1 text-xs text-zinc-500">
+                All data organized by client for easy analysis
+              </p>
+            </div>
+          </div>
+        </div>
+      </Section>
+
       {/* Global Configuration Section */}
       <GlobalConfigSection initialConfig={globalConfig} />
 

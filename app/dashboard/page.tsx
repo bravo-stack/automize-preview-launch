@@ -391,9 +391,6 @@ export default async function DashboardPage() {
   }
 
   const role = user.user_metadata.role ?? 'exec'
-  const userName =
-    user?.user_metadata.name ?? user?.user_metadata.company ?? 'User'
-
   let podData: Pod | null = null
   let sheetId: string | undefined
 
@@ -416,6 +413,7 @@ export default async function DashboardPage() {
       sheetId = data?.sheet_id
     }
   }
+  const userName = podData?.name ?? 'User'
 
   // Time-based greeting
   const hour = new Date().getHours()
@@ -429,7 +427,7 @@ export default async function DashboardPage() {
         <header className="mb-8">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-white">
+              <h1 className="text-2xl font-semibold capitalize text-white">
                 {timeGreeting}, {userName}
               </h1>
               <p className="mt-1 text-zinc-500">
