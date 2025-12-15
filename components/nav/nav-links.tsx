@@ -68,8 +68,9 @@ interface NavLinkItemProps {
 function NavLinkItem({ item, prefix, expanded, path }: NavLinkItemProps) {
   const { text, url, svg, target } = item
   const isActive =
-    path.startsWith(`/${prefix}/${url}`) ||
-    (url === '' && path === `/${prefix}`)
+    url === ''
+      ? path === `/${prefix}` || path === `/${prefix}/`
+      : path.startsWith(`/${prefix}/${url}`)
 
   const baseClasses = expanded
     ? 'flex h-8 items-center gap-2.5 rounded-md px-2'
