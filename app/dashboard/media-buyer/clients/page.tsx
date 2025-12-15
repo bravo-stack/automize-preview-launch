@@ -63,25 +63,49 @@ function StatCard({
   variant = 'default',
 }: StatCardProps) {
   const variantStyles = {
-    default: 'from-white/10 to-white/5 text-white/40',
-    success: 'from-green-500/20 to-green-500/10 text-green-400',
-    warning: 'from-amber-500/20 to-amber-500/10 text-amber-400',
-    info: 'from-blue-500/20 to-blue-500/10 text-blue-400',
+    default: {
+      gradient: 'from-white/10 to-white/5',
+      iconBg: 'from-white/10 to-white/5',
+      iconColor: 'text-white/60',
+      valueColor: 'text-white',
+    },
+    success: {
+      gradient: 'from-emerald-500/15 to-emerald-500/5',
+      iconBg: 'from-emerald-500/30 to-emerald-500/20',
+      iconColor: 'text-emerald-400',
+      valueColor: 'text-emerald-400',
+    },
+    warning: {
+      gradient: 'from-amber-500/15 to-amber-500/5',
+      iconBg: 'from-amber-500/30 to-amber-500/20',
+      iconColor: 'text-amber-400',
+      valueColor: 'text-amber-400',
+    },
+    info: {
+      gradient: 'from-blue-500/15 to-blue-500/5',
+      iconBg: 'from-blue-500/30 to-blue-500/20',
+      iconColor: 'text-blue-400',
+      valueColor: 'text-blue-400',
+    },
   }
 
+  const styles = variantStyles[variant]
+
   return (
-    <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-4">
+    <div
+      className={`rounded-xl border border-white/10 bg-gradient-to-br ${styles.gradient} p-4 transition-all hover:border-white/15`}
+    >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-white/50">
             {title}
           </p>
-          <p className="mt-1 text-2xl font-bold text-white">{value}</p>
+          <p className={`mt-1 text-2xl font-bold ${styles.valueColor}`}>
+            {value}
+          </p>
         </div>
-        <div
-          className={`rounded-lg bg-gradient-to-br ${variantStyles[variant]} p-2.5`}
-        >
-          <Icon className="h-5 w-5" />
+        <div className={`rounded-lg bg-gradient-to-br ${styles.iconBg} p-2.5`}>
+          <Icon className={`h-5 w-5 ${styles.iconColor}`} />
         </div>
       </div>
     </div>
@@ -307,7 +331,7 @@ export default async function MediaBuyerClientsPage({
   // Apply search filter to count query
   if (searchQuery) {
     countQuery = countQuery.or(
-      `brand.ilike.%${searchQuery}%,website.ilike.%${searchQuery}%`,
+      `brand.ilike.%${searchQuery}%,website.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`,
     )
   }
 
@@ -327,7 +351,7 @@ export default async function MediaBuyerClientsPage({
   // Apply search filter
   if (searchQuery) {
     clientsQuery = clientsQuery.or(
-      `brand.ilike.%${searchQuery}%,website.ilike.%${searchQuery}%`,
+      `brand.ilike.%${searchQuery}%,website.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`,
     )
   }
 
@@ -357,6 +381,7 @@ export default async function MediaBuyerClientsPage({
     clients?.map((c) => parseInt(c.id, 10)).filter(Boolean) || []
 
   // Get snapshot data with source info to determine what data each client has
+  // Only consider snapshots with actual records (total_records > 0)
   const { data: snapshotData } =
     clientIds.length > 0
       ? await db
@@ -364,42 +389,52 @@ export default async function MediaBuyerClientsPage({
           .select('client_id, total_records, source:api_sources(provider)')
           .in('client_id', clientIds)
           .eq('status', 'completed')
+          .gt('total_records', 0)
       : { data: null }
 
   // Build data availability map
   const dataAvailabilityMap = new Map<string, ClientDataAvailability>()
 
   if (snapshotData) {
-    // Group by client_id
+    // Group by client_id, tracking records per provider
     const clientDataMap = new Map<
       number,
-      { providers: Set<string>; totalRecords: number }
+      {
+        themeRecords: number
+        omnisendRecords: number
+        totalRecords: number
+      }
     >()
 
     snapshotData.forEach((snapshot) => {
-      if (!snapshot.client_id) return
+      if (!snapshot.client_id || !snapshot.total_records) return
 
       const existing = clientDataMap.get(snapshot.client_id) || {
-        providers: new Set<string>(),
+        themeRecords: 0,
+        omnisendRecords: 0,
         totalRecords: 0,
       }
 
       // Get provider from joined source data
-      const provider = (snapshot.source as { provider?: string } | null)
-        ?.provider
-      if (provider) {
-        existing.providers.add(provider.toLowerCase())
+      const provider = (
+        snapshot.source as { provider?: string } | null
+      )?.provider?.toLowerCase()
+
+      if (provider === 'shopify') {
+        existing.themeRecords += snapshot.total_records
+      } else if (provider === 'omnisend') {
+        existing.omnisendRecords += snapshot.total_records
       }
-      existing.totalRecords += snapshot.total_records || 0
+      existing.totalRecords += snapshot.total_records
 
       clientDataMap.set(snapshot.client_id, existing)
     })
 
-    // Convert to availability format
+    // Convert to availability format - only show indicators when records exist
     clientDataMap.forEach((data, clientId) => {
       dataAvailabilityMap.set(String(clientId), {
-        hasThemes: data.providers.has('shopify') || data.providers.has('theme'),
-        hasOmnisend: data.providers.has('omnisend'),
+        hasThemes: data.themeRecords > 0,
+        hasOmnisend: data.omnisendRecords > 0,
         totalRecords: data.totalRecords,
       })
     })

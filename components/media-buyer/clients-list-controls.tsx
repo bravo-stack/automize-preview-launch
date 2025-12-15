@@ -2,7 +2,7 @@
 
 import { Search, X } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 
 interface ClientsListControlsProps {
   searchQuery: string
@@ -10,6 +10,8 @@ interface ClientsListControlsProps {
   pageSizeOptions: number[]
   defaultPageSize?: number
 }
+
+const SEARCH_DEBOUNCE_MS = 300
 
 export default function ClientsListControls({
   searchQuery,
@@ -22,6 +24,21 @@ export default function ClientsListControls({
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
   const [localSearch, setLocalSearch] = useState(searchQuery)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Sync local state when URL changes externally (e.g., back/forward nav)
+  useEffect(() => {
+    setLocalSearch(searchQuery)
+  }, [searchQuery])
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
 
   const createQueryString = useCallback(
     (updates: Record<string, string | null>) => {
@@ -45,7 +62,7 @@ export default function ClientsListControls({
     [searchParams],
   )
 
-  const handleSearch = useCallback(
+  const executeSearch = useCallback(
     (value: string) => {
       startTransition(() => {
         const queryString = createQueryString({ search: value || null })
@@ -53,6 +70,23 @@ export default function ClientsListControls({
       })
     },
     [createQueryString, pathname, router],
+  )
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setLocalSearch(value)
+
+      // Clear existing timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+
+      // Set new debounced timer
+      debounceTimerRef.current = setTimeout(() => {
+        executeSearch(value)
+      }, SEARCH_DEBOUNCE_MS)
+    },
+    [executeSearch],
   )
 
   const handlePageSizeChange = useCallback(
@@ -69,31 +103,36 @@ export default function ClientsListControls({
   )
 
   const handleClearSearch = useCallback(() => {
+    // Clear debounce timer immediately
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
     setLocalSearch('')
-    handleSearch('')
-  }, [handleSearch])
+    executeSearch('')
+  }, [executeSearch])
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       {/* Search Input */}
       <div className="relative flex-1 sm:max-w-md">
         <Search
-          className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${
-            isPending ? 'text-white/20' : 'text-white/40'
+          className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors ${
+            isPending ? 'animate-pulse text-blue-400' : 'text-white/40'
           }`}
         />
         <input
           type="text"
           placeholder="Search by name or website..."
           value={localSearch}
-          onChange={(e) => {
-            setLocalSearch(e.target.value)
-            handleSearch(e.target.value)
-          }}
-          disabled={isPending}
-          className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder-white/40 transition-colors focus:border-white/20 focus:bg-white/[0.07] focus:outline-none disabled:opacity-50"
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder-white/40 transition-colors focus:border-white/20 focus:bg-white/[0.07] focus:outline-none"
         />
-        {localSearch && (
+        {isPending && (
+          <div className="absolute right-10 top-1/2 -translate-y-1/2">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-blue-400" />
+          </div>
+        )}
+        {localSearch && !isPending && (
           <button
             onClick={handleClearSearch}
             className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"

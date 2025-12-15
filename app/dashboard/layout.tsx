@@ -156,7 +156,7 @@ export default async function DashboardLayout({ children }) {
               ),
             },
             {
-              text: 'Pod Hub',
+              text: 'Client Hub',
               url: 'media-buyer/clients',
               svg: (
                 <svg
