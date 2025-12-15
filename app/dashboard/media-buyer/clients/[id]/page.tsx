@@ -1,382 +1,324 @@
-'use client'
-
-import {
-  AutomationsList,
-  CampaignMetricsCard,
-  CampaignsList,
-  ContactsSummary,
-  OrdersList,
-  ProductsSummary,
-  RevenueSummaryCard,
-  ThemeDetailsCard,
-} from '@/components/media-buyer'
-import type { ClientDataResponse, MediaBuyerClient } from '@/types/media-buyer'
-import {
-  ArrowLeft,
-  Building2,
-  Clock,
-  ExternalLink,
-  Globe,
-  Loader2,
-  Mail,
-  Phone,
-  RefreshCw,
-  Store,
-  User,
-} from 'lucide-react'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { createAdminClient } from '@/lib/db/admin'
+import type {
+  CampaignMetricsSummary,
+  ClientDataResponse,
+  OmnisendAutomationData,
+  OmnisendCampaignData,
+  OmnisendContactData,
+  OmnisendOrderData,
+  OmnisendProductData,
+  OmnisendRevenueSummary,
+  ThemeData,
+} from '@/types/media-buyer'
+import { notFound } from 'next/navigation'
+import { ClientDetail, ClientDetailError } from './client-detail'
 
 // ============================================================================
-// Client Header Component
+// Server-side Data Fetching
 // ============================================================================
 
-interface ClientHeaderProps {
-  client: MediaBuyerClient
-  onRefresh: () => void
-  isRefreshing: boolean
-}
+async function getClientData(clientId: number): Promise<ClientDataResponse> {
+  const db = createAdminClient()
 
-function ClientHeader({ client, onRefresh, isRefreshing }: ClientHeaderProps) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        {/* Client Info */}
-        <div className="flex items-start gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-            <Store className="h-8 w-8 text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">{client.brand}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-white/60">
-              {client.pod && (
-                <span className="flex items-center gap-1.5">
-                  <Building2 className="h-4 w-4" />
-                  {client.pod}
-                </span>
-              )}
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                  client.status === 'active'
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-yellow-500/20 text-yellow-400'
-                }`}
-              >
-                {client.status}
-              </span>
-              {client.is_monitored && (
-                <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-xs font-medium text-blue-400">
-                  Monitored
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+  // 1. Fetch client details
+  const { data: client, error: clientError } = await db
+    .from('clients')
+    .select(
+      'id, brand, pod, full_name, email, phone_number, website, status, store_id, is_monitored',
+    )
+    .eq('id', clientId)
+    .single()
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
-            />
-            Refresh Data
-          </button>
-        </div>
-      </div>
-
-      {/* Contact Info */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {client.full_name && (
-          <div className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4 text-white/40" />
-            <span className="text-white/70">{client.full_name}</span>
-          </div>
-        )}
-        {client.email && (
-          <a
-            href={`mailto:${client.email}`}
-            className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
-          >
-            <Mail className="h-4 w-4 text-white/40" />
-            <span className="truncate">{client.email}</span>
-          </a>
-        )}
-        {client.phone_number && (
-          <a
-            href={`tel:${client.phone_number}`}
-            className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
-          >
-            <Phone className="h-4 w-4 text-white/40" />
-            <span>{client.phone_number}</span>
-          </a>
-        )}
-        {client.website && (
-          <a
-            href={client.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
-          >
-            <Globe className="h-4 w-4 text-white/40" />
-            <span className="truncate">{client.website}</span>
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        )}
-        {client.store_id && (
-          <a
-            href={`https://${client.store_id}.myshopify.com/admin`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
-          >
-            <Store className="h-4 w-4 text-white/40" />
-            <span>{client.store_id}.myshopify.com</span>
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ============================================================================
-// Data Sync Status Component
-// ============================================================================
-
-interface DataSyncStatusProps {
-  lastUpdated: ClientDataResponse['lastUpdated']
-}
-
-function DataSyncStatus({ lastUpdated }: DataSyncStatusProps) {
-  const formatDate = (date: string | null) => {
-    if (!date) return 'Never'
-    return new Date(date).toLocaleString()
+  if (clientError || !client) {
+    throw new Error('Client not found')
   }
 
-  const sources = [
-    { name: 'Theme', date: lastUpdated.theme },
-    { name: 'Orders', date: lastUpdated.omnisendOrders },
-    { name: 'Automations', date: lastUpdated.omnisendAutomations },
-    { name: 'Campaigns', date: lastUpdated.omnisendCampaigns },
-    { name: 'Contacts', date: lastUpdated.omnisendContacts },
-    { name: 'Products', date: lastUpdated.omnisendProducts },
-  ]
+  // 2. Get all API sources
+  const { data: sources } = await db
+    .from('api_sources')
+    .select('id, provider, endpoint')
+    .eq('is_active', true)
 
-  return (
-    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-white/70">
-        <Clock className="h-4 w-4" />
-        Last Data Sync
-      </div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {sources.map((source) => (
-          <div
-            key={source.name}
-            className="flex items-center justify-between rounded border border-white/5 bg-white/5 px-3 py-2"
-          >
-            <span className="text-xs text-white/50">{source.name}</span>
-            <span
-              className={`text-xs ${source.date ? 'text-white/70' : 'text-white/30'}`}
-            >
-              {formatDate(source.date)}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+  const sourceMap = new Map<string, string>()
+  sources?.forEach((s) => {
+    sourceMap.set(`${s.provider}:${s.endpoint}`, s.id)
+  })
+
+  // 3. Get latest snapshots for this client from each source
+  const snapshotPromises = Array.from(sourceMap.entries()).map(
+    async ([key, sourceId]) => {
+      const { data: snapshot } = await db
+        .from('api_snapshots')
+        .select('id, created_at')
+        .eq('source_id', sourceId)
+        .eq('client_id', clientId)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      return { key, snapshot }
+    },
   )
-}
 
-// ============================================================================
-// Main Page Component
-// ============================================================================
+  const snapshotResults = await Promise.all(snapshotPromises)
+  const snapshotMap = new Map<string, { id: string; created_at: string }>()
+  snapshotResults.forEach(({ key, snapshot }) => {
+    if (snapshot) {
+      snapshotMap.set(key, snapshot)
+    }
+  })
 
-export default function ClientDetailPage() {
-  const params = useParams()
-  const clientId = params.id as string
+  // 4. Fetch records from each source's latest snapshot
+  const recordPromises = Array.from(snapshotMap.entries()).map(
+    async ([key, snapshot]) => {
+      const { data: records } = await db
+        .from('api_records')
+        .select('*')
+        .eq('snapshot_id', snapshot.id)
 
-  const [data, setData] = useState<ClientDataResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+      // Get metrics and attributes for these records
+      const recordIds = records?.map((r) => r.id) || []
 
-  const fetchClientData = useCallback(
-    async (showRefreshing = false) => {
-      if (showRefreshing) {
-        setIsRefreshing(true)
-      } else {
-        setIsLoading(true)
-      }
-      setError(null)
+      const [{ data: metrics }, { data: attributes }] = await Promise.all([
+        db
+          .from('api_record_metrics')
+          .select('*')
+          .in('record_id', recordIds.length > 0 ? recordIds : ['']),
+        db
+          .from('api_record_attributes')
+          .select('*')
+          .in('record_id', recordIds.length > 0 ? recordIds : ['']),
+      ])
 
-      try {
-        const res = await fetch(
-          `/api/media-buyer/client-data?clientId=${clientId}`,
-        )
-        const json = await res.json()
+      // Group metrics and attributes by record_id
+      const metricsByRecord = new Map<string, typeof metrics>()
+      const attributesByRecord = new Map<string, typeof attributes>()
 
-        if (!json.success) {
-          setError(json.error || 'Failed to fetch client data')
-          return
-        }
+      metrics?.forEach((m) => {
+        const existing = metricsByRecord.get(m.record_id) || []
+        existing.push(m)
+        metricsByRecord.set(m.record_id, existing)
+      })
 
-        setData(json.data)
-      } catch (err) {
-        setError('An error occurred while fetching data')
-        console.error(err)
-      } finally {
-        setIsLoading(false)
-        setIsRefreshing(false)
+      attributes?.forEach((a) => {
+        const existing = attributesByRecord.get(a.record_id) || []
+        existing.push(a)
+        attributesByRecord.set(a.record_id, existing)
+      })
+
+      // Combine records with their metrics and attributes
+      const enrichedRecords = records?.map((r) => ({
+        ...r,
+        metrics: metricsByRecord.get(r.id) || [],
+        attributes: attributesByRecord.get(r.id) || [],
+      }))
+
+      return {
+        key,
+        records: enrichedRecords || [],
+        lastUpdated: snapshot.created_at,
       }
     },
-    [clientId],
   )
 
-  useEffect(() => {
-    fetchClientData()
-  }, [fetchClientData])
+  const recordResults = await Promise.all(recordPromises)
+  const dataBySource = new Map<
+    string,
+    { records: (typeof recordResults)[0]['records']; lastUpdated: string }
+  >()
+  recordResults.forEach(({ key, records, lastUpdated }) => {
+    dataBySource.set(key, { records, lastUpdated })
+  })
 
-  const handleRefresh = () => {
-    fetchClientData(true)
+  // 5. Transform data for each source type
+  const themeData = dataBySource.get('shopify:themes')
+  const ordersData = dataBySource.get('omnisend:orders')
+  const automationsData = dataBySource.get('omnisend:automations')
+  const campaignsData = dataBySource.get('omnisend:campaigns')
+  const contactsData = dataBySource.get('omnisend:contacts')
+  const productsData = dataBySource.get('omnisend:products')
+
+  // Transform theme data
+  const theme: ThemeData | null = themeData?.records?.[0]
+    ? {
+        id: themeData.records[0].id,
+        external_id: themeData.records[0].external_id,
+        name: themeData.records[0].name,
+        status: themeData.records[0].status,
+        category: themeData.records[0].category,
+        record_date: themeData.records[0].record_date,
+        extra: themeData.records[0].extra as ThemeData['extra'],
+        attributes: themeData.records[0].attributes.map((a) => ({
+          attribute_name: a.attribute_name,
+          attribute_value: a.attribute_value,
+        })),
+      }
+    : null
+
+  // Transform orders data
+  const orders: OmnisendOrderData[] =
+    ordersData?.records?.map((r) => ({
+      id: r.id,
+      external_id: r.external_id,
+      name: r.name,
+      email: r.email,
+      status: r.status,
+      tags: r.tags,
+      amount: r.amount ? Number(r.amount) : null,
+      record_date: r.record_date,
+      attributes: r.attributes,
+    })) || []
+
+  // Calculate revenue summary
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.amount || 0), 0)
+  const orderCount = orders.length
+  const revenueSummary: OmnisendRevenueSummary = {
+    totalRevenue,
+    orderCount,
+    averageOrderValue: orderCount > 0 ? totalRevenue / orderCount : 0,
+    currency: 'USD',
   }
 
-  if (isLoading) {
-    return (
-      <main className="min-h-screen px-6 pb-24 pt-10 lg:px-12">
-        <div className="mx-auto max-w-[1800px]">
-          <div className="flex min-h-[400px] items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-12 w-12 animate-spin text-white/40" />
-              <p className="text-white/60">Loading client data...</p>
-            </div>
-          </div>
-        </div>
-      </main>
-    )
+  // Transform automations data
+  const automations: OmnisendAutomationData[] =
+    automationsData?.records?.map((r) => ({
+      id: r.id,
+      external_id: r.external_id,
+      name: r.name,
+      status: r.status,
+      record_date: r.record_date,
+    })) || []
+
+  // Transform campaigns data and calculate metrics
+  const campaigns: OmnisendCampaignData[] =
+    campaignsData?.records?.map((r) => ({
+      id: r.id,
+      external_id: r.external_id,
+      name: r.name,
+      status: r.status,
+      record_date: r.record_date,
+      metrics: r.metrics,
+      attributes: r.attributes,
+    })) || []
+
+  // Calculate campaign metrics summary
+  const campaignMetrics: CampaignMetricsSummary = {
+    totalSent: 0,
+    totalOpened: 0,
+    totalClicked: 0,
+    totalBounced: 0,
+    totalUnsubscribed: 0,
+    openRate: 0,
+    clickRate: 0,
+    bounceRate: 0,
   }
 
-  if (error || !data) {
-    return (
-      <main className="min-h-screen px-6 pb-24 pt-10 lg:px-12">
-        <div className="mx-auto max-w-[1800px]">
-          <Link
-            href="/dashboard/media-buyer/clients"
-            className="mb-6 inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Clients
-          </Link>
-          <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-red-500/20 bg-red-500/5">
-            <p className="text-lg font-medium text-red-400">
-              {error || 'Client not found'}
-            </p>
-            <button
-              onClick={() => fetchClientData()}
-              className="mt-4 rounded-lg bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      </main>
-    )
+  campaigns.forEach((c) => {
+    c.metrics.forEach((m) => {
+      const value = Number(m.metric_value)
+      switch (m.metric_name) {
+        case 'sent':
+          campaignMetrics.totalSent += value
+          break
+        case 'opened':
+          campaignMetrics.totalOpened += value
+          break
+        case 'clicked':
+          campaignMetrics.totalClicked += value
+          break
+        case 'bounced':
+          campaignMetrics.totalBounced += value
+          break
+        case 'unsubscribed':
+          campaignMetrics.totalUnsubscribed += value
+          break
+      }
+    })
+  })
+
+  // Calculate rates
+  if (campaignMetrics.totalSent > 0) {
+    campaignMetrics.openRate =
+      (campaignMetrics.totalOpened / campaignMetrics.totalSent) * 100
+    campaignMetrics.clickRate =
+      (campaignMetrics.totalClicked / campaignMetrics.totalSent) * 100
+    campaignMetrics.bounceRate =
+      (campaignMetrics.totalBounced / campaignMetrics.totalSent) * 100
   }
 
-  const { client, theme, omnisend, lastUpdated } = data
+  // Transform contacts data
+  const contacts: OmnisendContactData[] =
+    contactsData?.records?.map((r) => ({
+      id: r.id,
+      external_id: r.external_id,
+      name: r.name,
+      email: r.email,
+      status: r.status,
+      tags: r.tags,
+      record_date: r.record_date,
+      attributes: r.attributes,
+    })) || []
 
-  return (
-    <main className="min-h-screen px-6 pb-24 pt-10 lg:px-12">
-      <div className="mx-auto max-w-[1800px] space-y-6">
-        {/* Back Link */}
-        <Link
-          href="/dashboard/media-buyer/clients"
-          className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Clients
-        </Link>
+  // Transform products data
+  const products: OmnisendProductData[] =
+    productsData?.records?.map((r) => ({
+      id: r.id,
+      external_id: r.external_id,
+      name: r.name,
+      status: r.status,
+      category: r.category,
+      tags: r.tags,
+      record_date: r.record_date,
+      attributes: r.attributes,
+    })) || []
 
-        {/* Client Header */}
-        <ClientHeader
-          client={client}
-          onRefresh={handleRefresh}
-          isRefreshing={isRefreshing}
-        />
+  // 6. Build response
+  return {
+    client,
+    theme,
+    omnisend: {
+      orders,
+      automations,
+      campaigns,
+      contacts,
+      products,
+      revenueSummary,
+      campaignMetrics,
+    },
+    lastUpdated: {
+      theme: themeData?.lastUpdated || null,
+      omnisendOrders: ordersData?.lastUpdated || null,
+      omnisendAutomations: automationsData?.lastUpdated || null,
+      omnisendCampaigns: campaignsData?.lastUpdated || null,
+      omnisendContacts: contactsData?.lastUpdated || null,
+      omnisendProducts: productsData?.lastUpdated || null,
+    },
+  }
+}
 
-        {/* Data Sync Status */}
-        <DataSyncStatus lastUpdated={lastUpdated} />
+// ============================================================================
+// Page Component (Server Component)
+// ============================================================================
 
-        {/* Theme Section */}
-        <section>
-          <h2 className="mb-4 text-lg font-semibold text-white">
-            Shopify Theme
-          </h2>
-          <ThemeDetailsCard
-            theme={theme}
-            lastUpdated={lastUpdated.theme}
-            isLoading={isRefreshing}
-          />
-        </section>
+interface PageProps {
+  params: Promise<{ id: string }>
+}
 
-        {/* Omnisend Section */}
-        <section>
-          <h2 className="mb-4 text-lg font-semibold text-white">
-            Omnisend Performance
-          </h2>
+export default async function ClientDetailPage({ params }: PageProps) {
+  const { id } = await params
+  const clientId = parseInt(id, 10)
 
-          {/* Revenue & Campaign Metrics */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <RevenueSummaryCard
-              summary={omnisend.revenueSummary}
-              lastUpdated={lastUpdated.omnisendOrders}
-              isLoading={isRefreshing}
-            />
-            <CampaignMetricsCard
-              metrics={omnisend.campaignMetrics}
-              totalCampaigns={omnisend.campaigns.length}
-              lastUpdated={lastUpdated.omnisendCampaigns}
-              isLoading={isRefreshing}
-            />
-          </div>
+  if (isNaN(clientId)) {
+    notFound()
+  }
 
-          {/* Orders & Automations */}
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <OrdersList orders={omnisend.orders} isLoading={isRefreshing} />
-            <AutomationsList
-              automations={omnisend.automations}
-              lastUpdated={lastUpdated.omnisendAutomations}
-              isLoading={isRefreshing}
-            />
-          </div>
-
-          {/* Campaigns */}
-          <div className="mt-6">
-            <CampaignsList
-              campaigns={omnisend.campaigns}
-              isLoading={isRefreshing}
-            />
-          </div>
-
-          {/* Contacts & Products */}
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <ContactsSummary
-              contacts={omnisend.contacts}
-              lastUpdated={lastUpdated.omnisendContacts}
-              isLoading={isRefreshing}
-            />
-            <ProductsSummary
-              products={omnisend.products}
-              lastUpdated={lastUpdated.omnisendProducts}
-              isLoading={isRefreshing}
-            />
-          </div>
-        </section>
-      </div>
-    </main>
-  )
+  try {
+    const data = await getClientData(clientId)
+    return <ClientDetail initialData={data} />
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to load client data'
+    return <ClientDetailError error={message} />
+  }
 }
