@@ -799,6 +799,11 @@ export default function WatchtowerContainer() {
                       <strong>Sheet Snapshots:</strong> Google Sheet refresh
                       status - alert on sync failures or stale data
                     </li>
+                    <li>
+                      <strong>Communications Report:</strong> Communications
+                      report data - information on client and ixm team response
+                      times, including pod and guild information.
+                    </li>
                   </ul>
                 </div>
               </div>
