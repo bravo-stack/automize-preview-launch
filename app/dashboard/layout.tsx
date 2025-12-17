@@ -202,20 +202,21 @@ export default async function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="h-screen overflow-hidden">
-      <div className="hidden h-full lg:flex">
+    <div className="h-screen overflow-hidden bg-zinc-950">
+      <div className="flex h-full lg:flex">
+        {/* Sidebar */}
         <DashboardNav links={links} />
 
+        {/* Main Content Area */}
         <div
           id="main-focus"
-          style={{ width: 'calc(100% - 250px)' }}
-          className="flex flex-col transition-transform duration-300"
+          className="flex flex-1 flex-col transition-all duration-500 ease-in-out"
         >
-          <div className="flex h-[60px] items-center justify-start gap-2.5 border-b border-zinc-800 px-6">
-            {/* {role === 'pod' && <RefreshPodButtons data={sheet} pod={pod} />} */}
+          <div className="flex h-[60px] items-center border-b border-zinc-800 bg-zinc-950/50 px-6 backdrop-blur">
+            {/* Top Bar content */}
           </div>
 
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          <div className="flex-1 overflow-y-auto p-4">{children}</div>
         </div>
       </div>
     </div>
