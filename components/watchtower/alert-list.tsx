@@ -83,21 +83,30 @@ export default function AlertList({
     switch (severity) {
       case 'critical':
         return (
-          <Badge className="border-red-500/30 bg-red-500/20 text-red-400">
+          <Badge
+            variant="outline"
+            className="border-red-500/30 bg-red-500/20 text-red-400"
+          >
             <AlertTriangle className="mr-1 h-3 w-3" />
             Critical
           </Badge>
         )
       case 'warning':
         return (
-          <Badge className="border-yellow-500/30 bg-yellow-500/20 text-yellow-400">
+          <Badge
+            variant="outline"
+            className="border-yellow-500/30 bg-yellow-500/20 text-yellow-400"
+          >
             <AlertTriangle className="mr-1 h-3 w-3" />
             Warning
           </Badge>
         )
       default:
         return (
-          <Badge className="border-blue-500/30 bg-blue-500/20 text-blue-400">
+          <Badge
+            variant="outline"
+            className="border-blue-500/30 bg-blue-500/20 text-blue-400"
+          >
             <Info className="mr-1 h-3 w-3" />
             Info
           </Badge>

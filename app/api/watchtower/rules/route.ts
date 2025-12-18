@@ -5,8 +5,11 @@ import {
   deleteRuleWithGroup,
   getApiSourcesForRules,
   getAvailableParentRules,
+  getDeletedRulesPaginated,
   getRuleById,
   getRulesPaginated,
+  hardDeleteRule,
+  restoreRule,
   toggleRuleActive,
   updateRule,
 } from '@/lib/actions/watchtower'
@@ -58,6 +61,42 @@ export async function GET(request: NextRequest) {
         )
       }
       return NextResponse.json({ success: true, data: rule })
+    }
+
+    if (action === 'deleted') {
+      // Get deleted rules with pagination
+      const page = parseInt(searchParams.get('page') || '1', 10)
+      const pageSize = parseInt(searchParams.get('pageSize') || '20', 10)
+
+      const params = {
+        page,
+        pageSize,
+        source_id: searchParams.get('source_id') || undefined,
+        client_id: searchParams.get('client_id')
+          ? parseInt(searchParams.get('client_id')!, 10)
+          : undefined,
+        target_table:
+          (searchParams.get('target_table') as TargetTable) || undefined,
+        severity: (searchParams.get('severity') as Severity) || undefined,
+        group_id: searchParams.get('group_id') || undefined,
+      }
+
+      const { rules, total } = await getDeletedRulesPaginated(params)
+
+      const totalPages = Math.ceil(total / pageSize)
+
+      return NextResponse.json({
+        success: true,
+        data: rules,
+        pagination: {
+          page,
+          pageSize,
+          totalCount: total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      })
     }
 
     // Default: List rules with pagination
@@ -240,6 +279,25 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: true, is_active: isActive })
     }
 
+    // Handle restore action for soft-deleted rules
+    if (action === 'restore') {
+      const restoreGroup = updates.restore_group === true
+      const success = await restoreRule(id, restoreGroup)
+
+      if (!success) {
+        return NextResponse.json(
+          { success: false, error: 'Failed to restore rule' },
+          { status: 500 },
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        restored: true,
+        restoredGroup: restoreGroup,
+      })
+    }
+
     // Regular update
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
@@ -282,6 +340,7 @@ export async function DELETE(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const ruleId = searchParams.get('id')
     const deleteGroup = searchParams.get('deleteGroup') === 'true'
+    const hardDelete = searchParams.get('hardDelete') === 'true'
 
     if (!ruleId) {
       return NextResponse.json(
@@ -290,6 +349,28 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    // Handle permanent (hard) deletion
+    if (hardDelete) {
+      const result = await hardDeleteRule(ruleId, deleteGroup)
+
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: result.error || 'Failed to permanently delete rule',
+          },
+          { status: 400 },
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        hardDeleted: true,
+        deletedGroup: deleteGroup,
+      })
+    }
+
+    // Soft delete (default)
     const success = deleteGroup
       ? await deleteRuleWithGroup(ruleId, true)
       : await deleteRule(ruleId)

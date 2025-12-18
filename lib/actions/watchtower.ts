@@ -157,7 +157,7 @@ export async function getRules(
   } = {},
 ): Promise<WatchtowerRule[]> {
   const db = createAdminClient()
-  let query = db.from('watchtower_rules').select('*').eq('deleted_at', null)
+  let query = db.from('watchtower_rules').select('*').is('deleted_at', null)
 
   if (!options.includeInactive) {
     query = query.eq('is_active', true)
@@ -180,7 +180,7 @@ export async function getDependentRules(
   const { data, error } = await db
     .from('watchtower_rules')
     .select('*')
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .eq('parent_rule_id', parentRuleId)
     .eq('is_active', true)
 
@@ -196,7 +196,7 @@ export async function getCompoundRules(
   const { data, error } = await db
     .from('watchtower_rules')
     .select('*')
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .eq('group_id', groupId)
     .eq('is_active', true)
     .order('created_at')
@@ -592,7 +592,7 @@ export async function getRuleById(
       )
     `,
     )
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .eq('id', ruleId)
     .single()
 
@@ -606,7 +606,7 @@ export async function getRuleById(
     const { data: groupRules } = await db
       .from('watchtower_rules')
       .select('*')
-      .eq('deleted_at', null)
+      .is('deleted_at', null)
       .eq('group_id', rule.group_id)
       .neq('id', ruleId)
 
@@ -620,7 +620,7 @@ export async function getRuleById(
   const { data: childRules } = await db
     .from('watchtower_rules')
     .select('*')
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .eq('parent_rule_id', ruleId)
 
   return {
@@ -654,7 +654,7 @@ export async function getRulesPaginated(
     `,
       { count: 'exact' },
     )
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   // Apply filters
@@ -775,7 +775,7 @@ export async function deleteRuleWithGroup(
     const { data: rule } = await db
       .from('watchtower_rules')
       .select('group_id')
-      .eq('deleted_at', null)
+      .is('deleted_at', null)
       .eq('id', ruleId)
       .single()
 
@@ -811,6 +811,195 @@ export async function deleteRuleWithGroup(
   }
 
   return true
+}
+
+// ============================================================================
+// Deleted Rules Management
+// ============================================================================
+
+/**
+ * Get all deleted rules with pagination
+ */
+export async function getDeletedRulesPaginated(
+  params: RuleQueryParams = {},
+): Promise<{ rules: WatchtowerRuleWithRelations[]; total: number }> {
+  const db = createAdminClient()
+  const page = params.page || 1
+  const pageSize = params.pageSize || 20
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = db
+    .from('watchtower_rules')
+    .select(
+      `
+      *,
+      source:api_sources (
+        id,
+        provider,
+        display_name
+      )
+    `,
+      { count: 'exact' },
+    )
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+
+  // Apply filters
+  if (params.source_id) query = query.eq('source_id', params.source_id)
+  if (params.client_id) query = query.eq('client_id', params.client_id)
+  if (params.target_table) query = query.eq('target_table', params.target_table)
+  if (params.severity) query = query.eq('severity', params.severity)
+  if (params.group_id) query = query.eq('group_id', params.group_id)
+
+  const { data, error, count } = await query.range(from, to)
+
+  if (error) {
+    console.error('Error fetching deleted rules:', error)
+    return { rules: [], total: 0 }
+  }
+
+  return {
+    rules: (data || []) as WatchtowerRuleWithRelations[],
+    total: count || 0,
+  }
+}
+
+/**
+ * Restore a soft-deleted rule (and all rules in its group if compound)
+ */
+export async function restoreRule(
+  ruleId: string,
+  restoreGroup = false,
+): Promise<boolean> {
+  const db = createAdminClient()
+
+  // If restoreGroup is true and rule has a group_id, restore all rules in the group
+  if (restoreGroup) {
+    const { data: rule } = await db
+      .from('watchtower_rules')
+      .select('group_id')
+      .not('deleted_at', 'is', null)
+      .eq('id', ruleId)
+      .single()
+
+    if (rule?.group_id) {
+      const { error } = await db
+        .from('watchtower_rules')
+        .update({
+          deleted_at: null,
+          deleted_by: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('group_id', rule.group_id)
+
+      if (error) {
+        console.error('Error restoring rule group:', error)
+        return false
+      }
+      return true
+    }
+  }
+
+  // Restore single rule
+  const { error } = await db
+    .from('watchtower_rules')
+    .update({
+      deleted_at: null,
+      deleted_by: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', ruleId)
+
+  if (error) {
+    console.error('Error restoring rule:', error)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Hard delete a rule permanently (only allowed after 30 days of soft deletion)
+ */
+export async function hardDeleteRule(
+  ruleId: string,
+  deleteGroup = false,
+): Promise<{ success: boolean; error?: string }> {
+  const db = createAdminClient()
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+
+  // First, verify the rule is eligible for hard deletion
+  const { data: rule, error: fetchError } = await db
+    .from('watchtower_rules')
+    .select('id, group_id, deleted_at')
+    .eq('id', ruleId)
+    .not('deleted_at', 'is', null)
+    .single()
+
+  if (fetchError || !rule) {
+    return { success: false, error: 'Rule not found or not deleted' }
+  }
+
+  const deletedAt = new Date(rule.deleted_at)
+  if (deletedAt > thirtyDaysAgo) {
+    const daysRemaining = Math.ceil(
+      (deletedAt.getTime() - thirtyDaysAgo.getTime()) / (24 * 60 * 60 * 1000),
+    )
+    return {
+      success: false,
+      error: `Cannot permanently delete yet. ${daysRemaining} day(s) remaining until eligible for permanent deletion.`,
+    }
+  }
+
+  // If deleteGroup is true and rule has a group_id, hard delete all rules in the group
+  if (deleteGroup && rule.group_id) {
+    // Verify all group rules are eligible for hard deletion
+    const { data: groupRules, error: groupFetchError } = await db
+      .from('watchtower_rules')
+      .select('id, deleted_at')
+      .eq('group_id', rule.group_id)
+      .not('deleted_at', 'is', null)
+
+    if (groupFetchError) {
+      return { success: false, error: 'Failed to fetch group rules' }
+    }
+
+    // Check if all group rules are old enough
+    const ineligibleRules = groupRules?.filter(
+      (r) => new Date(r.deleted_at) > thirtyDaysAgo,
+    )
+    if (ineligibleRules && ineligibleRules.length > 0) {
+      return {
+        success: false,
+        error: `Cannot permanently delete group. ${ineligibleRules.length} rule(s) are not yet eligible.`,
+      }
+    }
+
+    const { error } = await db
+      .from('watchtower_rules')
+      .delete()
+      .eq('group_id', rule.group_id)
+
+    if (error) {
+      console.error('Error hard deleting rule group:', error)
+      return {
+        success: false,
+        error: 'Failed to permanently delete rule group',
+      }
+    }
+    return { success: true }
+  }
+
+  // Hard delete single rule
+  const { error } = await db.from('watchtower_rules').delete().eq('id', ruleId)
+
+  if (error) {
+    console.error('Error hard deleting rule:', error)
+    return { success: false, error: 'Failed to permanently delete rule' }
+  }
+
+  return { success: true }
 }
 
 /**
@@ -884,7 +1073,7 @@ export async function getWatchtowerStats(): Promise<WatchtowerStats> {
       db
         .from('watchtower_rules')
         .select('id, is_active, group_id')
-        .eq('deleted_at', null),
+        .is('deleted_at', null),
       db.from('watchtower_alerts').select('id, severity, is_acknowledged'),
       db.from('watchtower_alerts').select('id').gte('created_at', startOfDay),
       db.from('watchtower_alerts').select('id').gte('created_at', startOfWeek),
@@ -945,7 +1134,7 @@ export async function getAvailableParentRules(
   let query = db
     .from('watchtower_rules')
     .select('*')
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .eq('is_active', true)
     .is('group_id', null)
     .order('name')
@@ -1017,7 +1206,7 @@ export async function updateRuleTriggerTracking(
   const { data: rule, error: fetchError } = await db
     .from('watchtower_rules')
     .select('trigger_count')
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .eq('id', ruleId)
     .single()
 

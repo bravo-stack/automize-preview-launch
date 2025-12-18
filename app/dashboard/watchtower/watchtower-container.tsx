@@ -3,7 +3,12 @@
 import StatCard from '@/components/data-hub/stat-card'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { AlertList, RuleBuilder, RuleList } from '@/components/watchtower'
+import {
+  AlertList,
+  DeletedRuleList,
+  RuleBuilder,
+  RuleList,
+} from '@/components/watchtower'
 import DeleteAlertDialog from '@/components/watchtower/delete-alert-dialog'
 import { useWatchtowerPolling } from '@/hooks/use-watchtower-polling'
 import type {
@@ -24,12 +29,14 @@ import {
   Shield,
   ShieldAlert,
   ShieldCheck,
+  Trash2,
   XCircle,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 type WatchtowerTab = 'overview' | 'rules' | 'alerts'
+type RulesSubTab = 'active' | 'deleted'
 
 interface PaginationInfo {
   page: number
@@ -43,7 +50,11 @@ interface PaginationInfo {
 export default function WatchtowerContainer() {
   // STATES
   const [activeTab, setActiveTab] = useState<WatchtowerTab>('overview')
+  const [rulesSubTab, setRulesSubTab] = useState<RulesSubTab>('active')
   const [rules, setRules] = useState<WatchtowerRuleWithRelations[]>([])
+  const [deletedRules, setDeletedRules] = useState<
+    WatchtowerRuleWithRelations[]
+  >([])
   const [recentRules, setRecentRules] = useState<WatchtowerRuleWithRelations[]>(
     [],
   )
@@ -51,6 +62,8 @@ export default function WatchtowerContainer() {
   const [rulesPagination, setRulesPagination] = useState<PaginationInfo | null>(
     null,
   )
+  const [deletedRulesPagination, setDeletedRulesPagination] =
+    useState<PaginationInfo | null>(null)
   const [alertsPagination, setAlertsPagination] =
     useState<PaginationInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -69,6 +82,8 @@ export default function WatchtowerContainer() {
   // Filters
   const [rulesPage, setRulesPage] = useState(1)
   const [rulesPageSize, setRulesPageSize] = useState(20)
+  const [deletedRulesPage, setDeletedRulesPage] = useState(1)
+  const [deletedRulesPageSize, setDeletedRulesPageSize] = useState(20)
   const [alertsPage, setAlertsPage] = useState(1)
   const [alertsPageSize, setAlertsPageSize] = useState(20)
   const [severityFilter, setSeverityFilter] = useState<string>('')
@@ -132,6 +147,35 @@ export default function WatchtowerContainer() {
     },
     [activeFilter],
   )
+  const fetchDeletedRules = useCallback(
+    async (page: number = 1, pageSize: number = 20) => {
+      setIsLoading(true)
+      try {
+        const params = new URLSearchParams({
+          action: 'deleted',
+          page: page.toString(),
+          pageSize: pageSize.toString(),
+        })
+
+        const res = await fetch(`/api/watchtower/rules?${params}`)
+        const json = await res.json()
+
+        if (json.success) {
+          setDeletedRules(json.data)
+          setDeletedRulesPagination(json.pagination)
+        } else {
+          setError(json.error)
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to fetch deleted rules',
+        )
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [],
+  )
   const fetchAlerts = useCallback(
     async (page: number = 1, pageSize: number = 20) => {
       setIsLoading(true)
@@ -177,7 +221,11 @@ export default function WatchtowerContainer() {
   }, [fetchRecentRules])
   useEffect(() => {
     if (activeTab === 'rules') {
-      fetchRules(rulesPage, rulesPageSize)
+      if (rulesSubTab === 'active') {
+        fetchRules(rulesPage, rulesPageSize)
+      } else {
+        fetchDeletedRules(deletedRulesPage, deletedRulesPageSize)
+      }
     } else if (activeTab === 'alerts') {
       fetchAlerts(alertsPage, alertsPageSize)
     } else if (activeTab === 'overview') {
@@ -188,11 +236,15 @@ export default function WatchtowerContainer() {
     }
   }, [
     activeTab,
+    rulesSubTab,
     rulesPage,
     rulesPageSize,
+    deletedRulesPage,
+    deletedRulesPageSize,
     alertsPage,
     alertsPageSize,
     fetchRules,
+    fetchDeletedRules,
     fetchAlerts,
     fetchRecentRules,
   ])
@@ -275,11 +327,73 @@ export default function WatchtowerContainer() {
         fetchRules(rulesPage, rulesPageSize)
         fetchRecentRules()
         refreshStats()
+        toast.success('Rule moved to trash')
       } else {
         setError(json.error)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete rule')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  const handleRestoreRule = async (ruleId: string, restoreGroup = false) => {
+    setIsLoading(true)
+    try {
+      const res = await fetch('/api/watchtower/rules', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: ruleId,
+          action: 'restore',
+          restore_group: restoreGroup,
+        }),
+      })
+      const json = await res.json()
+
+      if (json.success) {
+        fetchDeletedRules(deletedRulesPage, deletedRulesPageSize)
+        fetchRules(rulesPage, rulesPageSize)
+        fetchRecentRules()
+        refreshStats()
+        toast.success('Rule restored successfully')
+      } else {
+        setError(json.error)
+        toast.error(json.error || 'Failed to restore rule')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to restore rule')
+      toast.error('Failed to restore rule')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  const handleHardDeleteRule = async (ruleId: string, deleteGroup = false) => {
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams({ id: ruleId, hardDelete: 'true' })
+      if (deleteGroup) params.set('deleteGroup', 'true')
+
+      const res = await fetch(`/api/watchtower/rules?${params}`, {
+        method: 'DELETE',
+      })
+      const json = await res.json()
+
+      if (json.success) {
+        fetchDeletedRules(deletedRulesPage, deletedRulesPageSize)
+        refreshStats()
+        toast.success('Rule permanently deleted')
+      } else {
+        setError(json.error)
+        toast.error(json.error || 'Failed to permanently delete rule')
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to permanently delete rule',
+      )
+      toast.error('Failed to permanently delete rule')
     } finally {
       setIsLoading(false)
     }
@@ -819,97 +933,251 @@ export default function WatchtowerContainer() {
               </div>
             ) : (
               <>
-                {/* Filters */}
-                <div className="flex flex-wrap items-center gap-4">
-                  <Select
-                    value={activeFilter}
-                    onChange={(e) => {
-                      setActiveFilter(e.target.value)
+                {/* Rules Sub-tabs */}
+                <div className="flex items-center gap-4 border-b border-white/10 pb-4">
+                  <button
+                    onClick={() => {
+                      setRulesSubTab('active')
                       setRulesPage(1)
                     }}
-                    className="w-40"
+                    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                      rulesSubTab === 'active'
+                        ? 'border border-emerald-500/30 bg-emerald-500/20 text-emerald-400'
+                        : 'border border-transparent text-white/60 hover:bg-white/5 hover:text-white/80'
+                    }`}
                   >
-                    <option value="">All Rules</option>
-                    <option value="true">Active Only</option>
-                    <option value="false">Inactive Only</option>
-                  </Select>
-
-                  <Select
-                    value={String(rulesPageSize)}
-                    onChange={(e) => {
-                      setRulesPageSize(Number(e.target.value))
-                      setRulesPage(1)
+                    <ShieldCheck className="h-4 w-4" />
+                    Active Rules
+                    {rulesPagination && (
+                      <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs">
+                        {rulesPagination.totalCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setRulesSubTab('deleted')
+                      setDeletedRulesPage(1)
                     }}
-                    className="w-32"
+                    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                      rulesSubTab === 'deleted'
+                        ? 'border border-red-500/30 bg-red-500/20 text-red-400'
+                        : 'border border-transparent text-white/60 hover:bg-white/5 hover:text-white/80'
+                    }`}
                   >
-                    <option value="10">10 per page</option>
-                    <option value="20">20 per page</option>
-                    <option value="50">50 per page</option>
-                    <option value="100">100 per page</option>
-                  </Select>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fetchRules(rulesPage, rulesPageSize)}
-                    disabled={isLoading}
-                  >
-                    <RefreshCw
-                      className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-                    />
-                    Refresh
-                  </Button>
+                    <Trash2 className="h-4 w-4" />
+                    Deleted Rules
+                    {deletedRulesPagination &&
+                      deletedRulesPagination.totalCount > 0 && (
+                        <span className="ml-1 rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-400">
+                          {deletedRulesPagination.totalCount}
+                        </span>
+                      )}
+                  </button>
                 </div>
 
-                {/* Loading Indicator */}
-                {isLoading && rules.length > 0 && (
-                  <div className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-white/60" />
-                    <span className="text-sm text-white/60">
-                      Refreshing rules...
-                    </span>
-                  </div>
-                )}
+                {/* Active Rules Content */}
+                {rulesSubTab === 'active' && (
+                  <>
+                    {/* Filters */}
+                    <div className="flex flex-wrap items-center gap-4">
+                      <Select
+                        value={activeFilter}
+                        onChange={(e) => {
+                          setActiveFilter(e.target.value)
+                          setRulesPage(1)
+                        }}
+                        className="w-40"
+                      >
+                        <option value="">All Rules</option>
+                        <option value="true">Active Only</option>
+                        <option value="false">Inactive Only</option>
+                      </Select>
 
-                {/* Rules List */}
-                <RuleList
-                  rules={rules}
-                  onEdit={(rule) => {
-                    setEditingRule(rule)
-                    setShowRuleBuilder(true)
-                  }}
-                  onDelete={handleDeleteRule}
-                  onToggle={handleToggleRule}
-                  isLoading={isLoading}
-                />
+                      <Select
+                        value={String(rulesPageSize)}
+                        onChange={(e) => {
+                          setRulesPageSize(Number(e.target.value))
+                          setRulesPage(1)
+                        }}
+                        className="w-32"
+                      >
+                        <option value="10">10 per page</option>
+                        <option value="20">20 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                      </Select>
 
-                {/* Pagination */}
-                {rulesPagination && rulesPagination.totalPages > 1 && (
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-white/60">
-                      Page {rulesPagination.page} of{' '}
-                      {rulesPagination.totalPages} ({rulesPagination.totalCount}{' '}
-                      rules)
-                    </p>
-                    <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setRulesPage((p) => p - 1)}
-                        disabled={!rulesPagination.hasPrevPage || isLoading}
+                        onClick={() => fetchRules(rulesPage, rulesPageSize)}
+                        disabled={isLoading}
                       >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setRulesPage((p) => p + 1)}
-                        disabled={!rulesPagination.hasNextPage || isLoading}
-                      >
-                        Next
+                        <RefreshCw
+                          className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                        />
+                        Refresh
                       </Button>
                     </div>
-                  </div>
+
+                    {/* Loading Indicator */}
+                    {isLoading && rules.length > 0 && (
+                      <div className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-white/60" />
+                        <span className="text-sm text-white/60">
+                          Refreshing rules...
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Rules List */}
+                    <RuleList
+                      rules={rules}
+                      onEdit={(rule) => {
+                        setEditingRule(rule)
+                        setShowRuleBuilder(true)
+                      }}
+                      onDelete={handleDeleteRule}
+                      onToggle={handleToggleRule}
+                      isLoading={isLoading}
+                    />
+
+                    {/* Pagination */}
+                    {rulesPagination && rulesPagination.totalPages > 1 && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-white/60">
+                          Page {rulesPagination.page} of{' '}
+                          {rulesPagination.totalPages} (
+                          {rulesPagination.totalCount} rules)
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRulesPage((p) => p - 1)}
+                            disabled={!rulesPagination.hasPrevPage || isLoading}
+                          >
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRulesPage((p) => p + 1)}
+                            disabled={!rulesPagination.hasNextPage || isLoading}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Deleted Rules Content */}
+                {rulesSubTab === 'deleted' && (
+                  <>
+                    {/* Info Banner */}
+                    <div className="flex items-start gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
+                      <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-400" />
+                      <div className="text-sm">
+                        <p className="font-medium text-yellow-400">
+                          Deleted rules recovery
+                        </p>
+                        <p className="mt-1 text-white/60">
+                          Deleted rules are kept for 30 days before they can be
+                          permanently removed. You can restore them at any time
+                          during this period.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex flex-wrap items-center gap-4">
+                      <Select
+                        value={String(deletedRulesPageSize)}
+                        onChange={(e) => {
+                          setDeletedRulesPageSize(Number(e.target.value))
+                          setDeletedRulesPage(1)
+                        }}
+                        className="w-32"
+                      >
+                        <option value="10">10 per page</option>
+                        <option value="20">20 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                      </Select>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          fetchDeletedRules(
+                            deletedRulesPage,
+                            deletedRulesPageSize,
+                          )
+                        }
+                        disabled={isLoading}
+                      >
+                        <RefreshCw
+                          className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                        />
+                        Refresh
+                      </Button>
+                    </div>
+
+                    {/* Loading Indicator */}
+                    {isLoading && deletedRules.length > 0 && (
+                      <div className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-white/60" />
+                        <span className="text-sm text-white/60">
+                          Refreshing deleted rules...
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Deleted Rules List */}
+                    <DeletedRuleList
+                      rules={deletedRules}
+                      onRestore={handleRestoreRule}
+                      onHardDelete={handleHardDeleteRule}
+                      isLoading={isLoading}
+                    />
+
+                    {/* Pagination */}
+                    {deletedRulesPagination &&
+                      deletedRulesPagination.totalPages > 1 && (
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-white/60">
+                            Page {deletedRulesPagination.page} of{' '}
+                            {deletedRulesPagination.totalPages} (
+                            {deletedRulesPagination.totalCount} deleted rules)
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDeletedRulesPage((p) => p - 1)}
+                              disabled={
+                                !deletedRulesPagination.hasPrevPage || isLoading
+                              }
+                            >
+                              Previous
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDeletedRulesPage((p) => p + 1)}
+                              disabled={
+                                !deletedRulesPagination.hasNextPage || isLoading
+                              }
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                  </>
                 )}
               </>
             )}

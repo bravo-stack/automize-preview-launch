@@ -277,6 +277,9 @@ export interface WatchtowerRule {
   discord_channel_id: string | null
   email_recipients: string[] | null
   last_notified_at: string | null
+  // Soft delete fields
+  deleted_at: string | null
+  deleted_by: string | null
   created_at: string
   updated_at: string
 }

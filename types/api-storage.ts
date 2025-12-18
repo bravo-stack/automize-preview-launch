@@ -172,6 +172,9 @@ export interface WatchtowerRule {
   // Trigger tracking
   last_triggered_at: string | null
   trigger_count: number
+  // Soft delete fields
+  deleted_at: string | null
+  deleted_by: string | null
   // Timestamps
   created_at: string
   updated_at: string
