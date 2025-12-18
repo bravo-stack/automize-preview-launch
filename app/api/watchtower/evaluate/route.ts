@@ -17,8 +17,9 @@ import type {
   RuleCondition,
   TargetTable,
   WatchtowerAlert as WatchtowerAlertType,
+  WatchtowerRule,
 } from '@/types/api-storage'
-import type { WatchtowerRule, WatchtowerStats } from '@/types/watchtower'
+import type { WatchtowerStats } from '@/types/watchtower'
 import { NextResponse } from 'next/server'
 
 // Force dynamic rendering to prevent caching

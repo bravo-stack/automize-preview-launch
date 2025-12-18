@@ -86,6 +86,11 @@ interface Pod {
   whatsapp_number: string | null
 }
 
+interface ChannelIdEntry {
+  channel_id: string
+  label: string | null
+}
+
 interface RuleBuilderProps {
   onSave: (rule: CreateRuleInput | CompoundRuleInput) => Promise<void>
   onCancel: () => void
@@ -105,32 +110,24 @@ export default function RuleBuilder({
   const [targetTable, setTargetTable] = useState<string>('')
   const [severity, setSeverity] = useState<string>('warning')
   const [logicOperator, setLogicOperator] = useState<string>('AND')
-  // Time range in days: null = all time, 0 = today, positive number = last N days
   const [timeRangeDays, setTimeRangeDays] = useState<number | null>(null)
   const [useCustomTimeRange, setUseCustomTimeRange] = useState(false)
-
-  // Single rule fields
   const [fieldName, setFieldName] = useState('')
   const [condition, setCondition] = useState<string>('greater_than')
   const [thresholdValue, setThresholdValue] = useState('')
-
-  // Compound rule clauses
   const [clauses, setClauses] = useState<RuleClause[]>([])
 
-  // Notification settings
+  // SIMPLIFIED NOTIFICATION STATE - No more primary/additional distinction
   const [notifyDiscord, setNotifyDiscord] = useState(false)
   const [notifyWhatsapp, setNotifyWhatsapp] = useState(false)
-  const [selectedPodId, setSelectedPodId] = useState<string>('')
-  // Multiple pods for Discord notifications
+
+  // Selected pods (unified - replaces selectedPodId and selectedPodIds)
   const [selectedPodIds, setSelectedPodIds] = useState<string[]>([])
-  // Extra Discord channel IDs
-  const [extraDiscordChannelIds, setExtraDiscordChannelIds] = useState<
-    string[]
-  >([])
-  const [newChannelId, setNewChannelId] = useState<string>('')
-  // Extra WhatsApp numbers
-  const [extraWhatsappNumbers, setExtraWhatsappNumbers] = useState<string[]>([])
-  const [newWhatsappNumber, setNewWhatsappNumber] = useState<string>('')
+
+  // Channel IDs (stored in separate table)
+  const [channelIds, setChannelIds] = useState<ChannelIdEntry[]>([])
+  const [newChannelId, setNewChannelId] = useState('')
+  const [newChannelLabel, setNewChannelLabel] = useState('')
 
   // Dependency settings
   const [parentRuleId, setParentRuleId] = useState<string>('')
@@ -185,10 +182,8 @@ export default function RuleBuilder({
       setTargetTable(editRule.target_table || '')
       setSeverity(editRule.severity)
       setLogicOperator(editRule.logic_operator)
-      // Handle numeric time_range_days
       const days = editRule.time_range_days
       setTimeRangeDays(days)
-      // Check if it's a custom value (not in presets)
       const isPreset = TIME_RANGE_PRESETS.some((p) => p.value === days)
       setUseCustomTimeRange(!isPreset && days !== null)
       setFieldName(editRule.field_name)
@@ -196,17 +191,23 @@ export default function RuleBuilder({
       setThresholdValue(editRule.threshold_value || '')
       setNotifyDiscord(editRule.notify_discord)
       setNotifyWhatsapp(editRule.notify_whatsapp)
-      setSelectedPodId(editRule.pod_id || '')
-      // Load multi-pod selection
+
+      // Load pod selection (unified)
       setSelectedPodIds(editRule.pod_ids || [])
-      // Load extra Discord channel IDs
-      setExtraDiscordChannelIds(editRule.extra_discord_channel_ids || [])
-      // Load extra WhatsApp numbers
-      setExtraWhatsappNumbers(editRule.extra_whatsapp_numbers || [])
+
+      // Load channel IDs from relation (if available)
+      if ((editRule as any).channel_ids) {
+        setChannelIds(
+          (editRule as any).channel_ids.map((c: any) => ({
+            channel_id: c.channel_id,
+            label: c.label,
+          })),
+        )
+      }
+
       setParentRuleId(editRule.parent_rule_id || '')
       setDependencyCondition(editRule.dependency_condition || '')
 
-      // If editing a grouped rule, it's compound
       setIsCompound(!!editRule.group_id)
     }
   }, [editRule])
@@ -375,13 +376,52 @@ export default function RuleBuilder({
     [],
   )
 
+  // Computed: Get Discord IDs from selected pods
+  const selectedPodsWithDiscord = useMemo(() => {
+    return availablePods.filter(
+      (pod) => selectedPodIds.includes(pod.id.toString()) && pod.discord_id,
+    )
+  }, [availablePods, selectedPodIds])
+
+  // Computed: Get WhatsApp numbers from selected pods
+  const selectedPodsWithWhatsapp = useMemo(() => {
+    return availablePods.filter(
+      (pod) =>
+        selectedPodIds.includes(pod.id.toString()) && pod.whatsapp_number,
+    )
+  }, [availablePods, selectedPodIds])
+
+  const handleAddChannelId = () => {
+    if (
+      newChannelId.trim() &&
+      !channelIds.some((c) => c.channel_id === newChannelId.trim())
+    ) {
+      setChannelIds((prev) => [
+        ...prev,
+        {
+          channel_id: newChannelId.trim(),
+          label: newChannelLabel.trim() || null,
+        },
+      ])
+      setNewChannelId('')
+      setNewChannelLabel('')
+    }
+  }
+
+  const handleRemoveChannelId = (channelId: string) => {
+    setChannelIds((prev) => prev.filter((c) => c.channel_id !== channelId))
+  }
+
+  const handleTogglePod = (podId: string) => {
+    setSelectedPodIds((prev) =>
+      prev.includes(podId)
+        ? prev.filter((id) => id !== podId)
+        : [...prev, podId],
+    )
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-
-    // Get the selected pod's discord_id for notifications (primary pod)
-    const selectedPod = availablePods.find(
-      (p) => p.id.toString() === selectedPodId,
-    )
 
     const baseData = {
       name,
@@ -389,27 +429,12 @@ export default function RuleBuilder({
       severity: severity as 'info' | 'warning' | 'critical',
       time_range_days: timeRangeDays,
       notify_discord: notifyDiscord,
-      discord_channel_id:
-        notifyDiscord && selectedPod?.discord_id
-          ? selectedPod.discord_id
-          : undefined,
-      // Include extra Discord channel IDs
-      extra_discord_channel_ids:
-        notifyDiscord && extraDiscordChannelIds.length > 0
-          ? extraDiscordChannelIds
-          : undefined,
       notify_whatsapp: notifyWhatsapp,
-      // Include extra WhatsApp numbers
-      extra_whatsapp_numbers:
-        notifyWhatsapp && extraWhatsappNumbers.length > 0
-          ? extraWhatsappNumbers
-          : undefined,
-      pod_id: selectedPodId || undefined,
-      // Include multiple pod IDs for notifications
-      pod_ids:
-        (notifyDiscord || notifyWhatsapp) && selectedPodIds.length > 0
-          ? selectedPodIds
-          : undefined,
+      // Simplified: Just pod_ids (no more primary distinction)
+      pod_ids: selectedPodIds.length > 0 ? selectedPodIds : undefined,
+      // Channel IDs to be stored in separate table
+      channel_ids:
+        notifyDiscord && channelIds.length > 0 ? channelIds : undefined,
       parent_rule_id: parentRuleId || undefined,
       dependency_condition: (dependencyCondition || undefined) as
         | 'triggered'
@@ -419,17 +444,9 @@ export default function RuleBuilder({
     }
 
     if (isCompound && clauses.length > 0) {
-      // Compound rule
       const compoundRule: CompoundRuleInput = {
         ...baseData,
-        target_table: (targetTable || undefined) as
-          | 'facebook_metrics'
-          | 'finance_metrics'
-          | 'api_records'
-          | 'form_submissions'
-          | 'api_snapshots'
-          | 'sheet_snapshots'
-          | undefined,
+        target_table: (targetTable || undefined) as TargetTable | undefined,
         clauses: clauses.map((c) => ({
           id: c.id,
           field_name: c.field_name,
@@ -440,17 +457,9 @@ export default function RuleBuilder({
       }
       await onSave(compoundRule)
     } else {
-      // Single rule
       const singleRule: CreateRuleInput = {
         ...baseData,
-        target_table: (targetTable || undefined) as
-          | 'facebook_metrics'
-          | 'finance_metrics'
-          | 'api_records'
-          | 'form_submissions'
-          | 'api_snapshots'
-          | 'sheet_snapshots'
-          | undefined,
+        target_table: (targetTable || undefined) as TargetTable | undefined,
         field_name: fieldName,
         condition: condition as RuleCondition,
         threshold_value: thresholdValue || undefined,
@@ -910,322 +919,179 @@ export default function RuleBuilder({
       {/* Notification Settings */}
       <div className="space-y-4">
         <h3 className="text-sm font-medium text-white/80">
-          Discord Notifications
+          Notification Settings
         </h3>
         <p className="text-xs text-white/50">
-          Send immediate Discord notifications when this rule triggers
+          Configure how you want to be notified when this rule triggers
         </p>
 
-        <label className="flex items-center gap-2 text-sm text-white/70">
-          <input
-            type="checkbox"
-            checked={notifyDiscord}
-            onChange={(e) => setNotifyDiscord(e.target.checked)}
-            className="rounded border-white/20 bg-zinc-900"
-          />
-          Enable Discord Notifications
-        </label>
+        {/* Notification Type Toggles */}
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm text-white/70">
+            <input
+              type="checkbox"
+              checked={notifyDiscord}
+              onChange={(e) => setNotifyDiscord(e.target.checked)}
+              className="rounded border-white/20 bg-zinc-900"
+            />
+            Discord Notifications
+          </label>
+          <label className="flex items-center gap-2 text-sm text-white/70">
+            <input
+              type="checkbox"
+              checked={notifyWhatsapp}
+              onChange={(e) => setNotifyWhatsapp(e.target.checked)}
+              className="rounded border-white/20 bg-zinc-900"
+            />
+            WhatsApp Notifications
+          </label>
+        </div>
 
-        {/* Pod Selection for Discord */}
-        {notifyDiscord && (
-          <div className="space-y-4">
-            {/* Primary Pod Selection */}
-            <Select
-              label="Primary Pod (for main Discord channel)"
-              value={selectedPodId}
-              onChange={(e) => setSelectedPodId(e.target.value)}
-            >
-              <option value="">Select a pod...</option>
-              {availablePods.map((pod) => (
-                <option key={pod.id} value={pod.id.toString()}>
-                  {pod.name}
-                </option>
-              ))}
-            </Select>
-
-            {selectedPodId && availablePods && availablePods?.length > 0 ? (
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs">
-                {(() => {
-                  const pod = availablePods.find(
-                    (p) => p.id.toString() === selectedPodId,
-                  )
-                  if (!pod) return null
-                  return (
-                    <div className="space-y-1">
-                      <p className="font-medium text-white/80">{pod.name}</p>
-                      <p className="text-white/50">
-                        Discord ID:{' '}
-                        <span className="font-mono text-blue-400">
-                          {pod.discord_id || 'Not configured'}
-                        </span>
-                      </p>
-                    </div>
-                  )
-                })()}
-              </div>
-            ) : null}
-
-            {/* Warning if selected pod is missing Discord ID */}
-            {selectedPodId &&
-              !availablePods.find((p) => p.id.toString() === selectedPodId)
-                ?.discord_id && (
-                <p className="text-xs text-yellow-400">
-                  ⚠️ Selected pod does not have a Discord ID configured
-                </p>
-              )}
-
-            {/* Multiple Pods Selection */}
-            <div className="space-y-2">
-              <label className="block text-sm text-white/70">
-                Additional Pods (Optional)
+        {/* Pod Selection - Unified for both Discord and WhatsApp */}
+        {(notifyDiscord || notifyWhatsapp) && (
+          <div className="space-y-4 rounded-lg border border-white/10 bg-white/5 p-4">
+            <div>
+              <label className="block text-sm font-medium text-white/80">
+                Select Pods for Notifications
               </label>
-              <p className="text-xs text-white/40">
-                Select multiple pods to notify their Discord channels as well
+              <p className="mt-1 text-xs text-white/40">
+                Selected pods&apos; Discord IDs and WhatsApp numbers will
+                receive notifications
               </p>
-              <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto rounded-lg border border-white/10 bg-zinc-900/50 p-3">
-                {availablePods
-                  .filter((pod) => pod.id.toString() !== selectedPodId)
-                  .map((pod) => (
-                    <label
-                      key={pod.id}
-                      className="flex items-center gap-2 text-sm text-white/70"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedPodIds.includes(pod.id.toString())}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedPodIds((prev) => [
-                              ...prev,
-                              pod.id.toString(),
-                            ])
-                          } else {
-                            setSelectedPodIds((prev) =>
-                              prev.filter((id) => id !== pod.id.toString()),
-                            )
-                          }
-                        }}
-                        className="rounded border-white/20 bg-zinc-900"
-                      />
-                      <span className="truncate">{pod.name}</span>
-                      {pod.discord_id ? (
-                        <span className="text-xs text-blue-400">✓</span>
-                      ) : (
-                        <span className="text-xs text-yellow-400">⚠</span>
-                      )}
-                    </label>
-                  ))}
-              </div>
-              {selectedPodIds.length > 0 && (
-                <p className="text-xs text-blue-400">
-                  {selectedPodIds.length} additional pod
-                  {selectedPodIds.length > 1 ? 's' : ''} selected
-                </p>
-              )}
             </div>
 
-            {/* Extra Discord Channel IDs */}
-            <div className="space-y-2">
-              <label className="block text-sm text-white/70">
-                Extra Discord Channel IDs (Optional)
-              </label>
-              <p className="text-xs text-white/40">
-                Add custom channel IDs to also receive notifications
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter Discord Channel ID"
-                  value={newChannelId}
-                  onChange={(e) => setNewChannelId(e.target.value)}
-                  className="flex-1 border-white/10 bg-zinc-900"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (
-                      newChannelId.trim() &&
-                      !extraDiscordChannelIds.includes(newChannelId.trim())
-                    ) {
-                      setExtraDiscordChannelIds((prev) => [
-                        ...prev,
-                        newChannelId.trim(),
-                      ])
-                      setNewChannelId('')
-                    }
-                  }}
-                  disabled={!newChannelId.trim()}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              {extraDiscordChannelIds.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {extraDiscordChannelIds.map((channelId) => (
-                    <span
-                      key={channelId}
-                      className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70"
-                    >
-                      <code className="font-mono text-blue-400">
-                        {channelId.slice(0, 12)}
-                        {channelId.length > 12 ? '...' : ''}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExtraDiscordChannelIds((prev) =>
-                            prev.filter((id) => id !== channelId),
-                          )
-                        }
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+            {/* Pod Selection Grid */}
+            <div className="grid max-h-48 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+              {availablePods.map((pod) => {
+                const isSelected = selectedPodIds.includes(pod.id.toString())
+                const hasDiscord = !!pod.discord_id
+                const hasWhatsapp = !!pod.whatsapp_number
+
+                return (
+                  <button
+                    key={pod.id}
+                    type="button"
+                    onClick={() => handleTogglePod(pod.id.toString())}
+                    className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
+                      isSelected
+                        ? 'border-emerald-500/50 bg-emerald-500/10'
+                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    <span className="font-medium text-white/90">
+                      {pod.name}
                     </span>
-                  ))}
-                </div>
-              )}
+                    <div className="flex gap-2 text-xs">
+                      {hasDiscord ? (
+                        <span className="text-blue-400">Discord ✓</span>
+                      ) : (
+                        <span className="text-white/30">No Discord</span>
+                      )}
+                      {hasWhatsapp ? (
+                        <span className="text-green-400">WhatsApp ✓</span>
+                      ) : (
+                        <span className="text-white/30">No WhatsApp</span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
+
+            {/* Selected Pods Summary */}
+            {selectedPodIds.length > 0 && (
+              <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-3">
+                <p className="mb-2 text-xs font-medium text-white/70">
+                  Selected: {selectedPodIds.length} pod
+                  {selectedPodIds.length > 1 ? 's' : ''}
+                </p>
+                {notifyDiscord && (
+                  <p className="text-xs text-blue-400">
+                    Discord: {selectedPodsWithDiscord.length} channel
+                    {selectedPodsWithDiscord.length !== 1 ? 's' : ''} will be
+                    notified
+                    {selectedPodsWithDiscord.length < selectedPodIds.length && (
+                      <span className="ml-1 text-yellow-400">
+                        (
+                        {selectedPodIds.length - selectedPodsWithDiscord.length}{' '}
+                        missing Discord ID)
+                      </span>
+                    )}
+                  </p>
+                )}
+                {notifyWhatsapp && (
+                  <p className="text-xs text-green-400">
+                    WhatsApp: {selectedPodsWithWhatsapp.length} number
+                    {selectedPodsWithWhatsapp.length !== 1 ? 's' : ''} will be
+                    notified
+                    {selectedPodsWithWhatsapp.length <
+                      selectedPodIds.length && (
+                      <span className="ml-1 text-yellow-400">
+                        (
+                        {selectedPodIds.length -
+                          selectedPodsWithWhatsapp.length}{' '}
+                        missing WhatsApp)
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
-      </div>
 
-      {/* WhatsApp Notification Settings */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/80">
-          WhatsApp Notifications
-        </h3>
-        <p className="text-xs text-white/50">
-          Send immediate WhatsApp notifications when this rule triggers
-        </p>
-
-        <label className="flex items-center gap-2 text-sm text-white/70">
-          <input
-            type="checkbox"
-            checked={notifyWhatsapp}
-            onChange={(e) => setNotifyWhatsapp(e.target.checked)}
-            className="rounded border-white/20 bg-zinc-900"
-          />
-          Enable WhatsApp Notifications
-        </label>
-
-        {/* Pod Selection for WhatsApp (if Discord not already selecting one) */}
-        {notifyWhatsapp &&
-        !notifyDiscord &&
-        availablePods &&
-        availablePods?.length > 0 ? (
+        {/* Extra Discord Channel IDs */}
+        {notifyDiscord && (
           <div className="space-y-3">
-            <Select
-              label="Select Pod"
-              value={selectedPodId}
-              onChange={(e) => setSelectedPodId(e.target.value)}
-            >
-              <option value="">Select a pod...</option>
-              {availablePods.map((pod) => (
-                <option key={pod.id} value={pod.id.toString()}>
-                  {pod.name}
-                  {pod.whatsapp_number
-                    ? ` (WhatsApp: ${pod.whatsapp_number.slice(0, 8)}...)`
-                    : ''}
-                </option>
-              ))}
-            </Select>
-          </div>
-        ) : null}
-
-        {/* WhatsApp number info display */}
-        {notifyWhatsapp &&
-        selectedPodId &&
-        availablePods &&
-        availablePods?.length > 0 ? (
-          <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs">
-            {(() => {
-              const pod = availablePods.find(
-                (p) => p.id.toString() === selectedPodId,
-              )
-              if (!pod) return null
-              return (
-                <div className="space-y-1">
-                  <p className="font-medium text-white/80">{pod.name}</p>
-                  <p className="text-white/50">
-                    WhatsApp:{' '}
-                    <span className="font-mono text-green-400">
-                      {pod.whatsapp_number || 'Not configured'}
-                    </span>
-                  </p>
-                </div>
-              )
-            })()}
-          </div>
-        ) : null}
-
-        {/* Warning if selected pod is missing WhatsApp number */}
-        {notifyWhatsapp &&
-          selectedPodId &&
-          !availablePods.find((p) => p.id.toString() === selectedPodId)
-            ?.whatsapp_number && (
-            <p className="text-xs text-yellow-400">
-              ⚠️ Selected pod does not have a WhatsApp number configured
-            </p>
-          )}
-
-        {/* Extra WhatsApp Numbers */}
-        {notifyWhatsapp && (
-          <div className="space-y-2">
-            <label className="block text-sm text-white/70">
-              Extra WhatsApp Numbers (Optional)
-            </label>
-            <p className="text-xs text-white/40">
-              Add custom WhatsApp numbers to also receive notifications
-            </p>
+            <div>
+              <label className="block text-sm font-medium text-white/80">
+                Additional Discord Channel IDs
+              </label>
+              <p className="mt-1 text-xs text-white/40">
+                Add custom channel IDs that aren&apos;t tied to any pod
+              </p>
+            </div>
             <div className="flex gap-2">
               <Input
-                placeholder="Enter WhatsApp number (e.g., +1234567890)"
-                value={newWhatsappNumber}
-                onChange={(e) => setNewWhatsappNumber(e.target.value)}
+                placeholder="Channel ID"
+                value={newChannelId}
+                onChange={(e) => setNewChannelId(e.target.value)}
                 className="flex-1 border-white/10 bg-zinc-900"
+              />
+              <Input
+                placeholder="Label (optional)"
+                value={newChannelLabel}
+                onChange={(e) => setNewChannelLabel(e.target.value)}
+                className="w-32 border-white/10 bg-zinc-900"
               />
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  if (
-                    newWhatsappNumber.trim() &&
-                    !extraWhatsappNumbers.includes(newWhatsappNumber.trim())
-                  ) {
-                    setExtraWhatsappNumbers((prev) => [
-                      ...prev,
-                      newWhatsappNumber.trim(),
-                    ])
-                    setNewWhatsappNumber('')
-                  }
-                }}
-                disabled={!newWhatsappNumber.trim()}
+                onClick={handleAddChannelId}
+                disabled={!newChannelId.trim()}
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            {extraWhatsappNumbers.length > 0 && (
+            {channelIds.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {extraWhatsappNumbers.map((number) => (
+                {channelIds.map((channel) => (
                   <span
-                    key={number}
+                    key={channel.channel_id}
                     className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70"
                   >
-                    <code className="font-mono text-green-400">
-                      {number.length > 15
-                        ? `${number.slice(0, 8)}...${number.slice(-4)}`
-                        : number}
+                    {channel.label && (
+                      <span className="text-white/50">{channel.label}:</span>
+                    )}
+                    <code className="font-mono text-blue-400">
+                      {channel.channel_id.length > 12
+                        ? `${channel.channel_id.slice(0, 12)}...`
+                        : channel.channel_id}
                     </code>
                     <button
                       type="button"
-                      onClick={() =>
-                        setExtraWhatsappNumbers((prev) =>
-                          prev.filter((n) => n !== number),
-                        )
-                      }
+                      onClick={() => handleRemoveChannelId(channel.channel_id)}
                       className="text-red-400 hover:text-red-300"
                     >
                       <X className="h-3 w-3" />

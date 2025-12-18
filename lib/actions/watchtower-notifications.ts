@@ -69,20 +69,10 @@ export async function sendDiscordNotification(
   try {
     const message = formatDiscordAlert(alert, rule)
     const channelsToNotify: string[] = []
+    const db = createAdminClient()
 
-    // Add primary channel (from pod or severity fallback)
-    const primaryChannel =
-      rule.discord_channel_id || DISCORD_CHANNELS[rule.severity]
-    channelsToNotify.push(primaryChannel)
-
-    // Add extra Discord channel IDs if configured
-    if (rule.extra_discord_channel_ids?.length) {
-      channelsToNotify.push(...rule.extra_discord_channel_ids)
-    }
-
-    // Add Discord channels from additional pods if configured
+    // Add Discord channels from selected pods
     if (rule.pod_ids?.length) {
-      const db = createAdminClient()
       const { data: pods } = await db
         .from('pod')
         .select('discord_id')
@@ -94,6 +84,21 @@ export async function sendDiscordNotification(
           .filter((id): id is string => !!id)
         channelsToNotify.push(...podChannels)
       }
+    }
+
+    // Add custom channel IDs from watchtower_channel_ids table
+    const { data: customChannels } = await db
+      .from('watchtower_channel_ids')
+      .select('channel_id')
+      .eq('rule_id', rule.id)
+
+    if (customChannels) {
+      channelsToNotify.push(...customChannels.map((c) => c.channel_id))
+    }
+
+    // Fallback to severity-based channel if no channels configured
+    if (channelsToNotify.length === 0) {
+      channelsToNotify.push(DISCORD_CHANNELS[rule.severity])
     }
 
     // Deduplicate channels
@@ -204,50 +209,36 @@ export async function sendWhatsAppNotification(
   rule: WatchtowerRule,
 ): Promise<boolean> {
   const message = formatWhatsAppAlert(alert, rule)
-  const podsToNotify: { name: string; whatsapp_number: string }[] = []
+  const numbersToNotify: { name: string; whatsapp_number: string }[] = []
+  const db = createAdminClient()
 
-  // Add primary pod if configured
-  if (rule.pod_id) {
-    const pod = await getPodInfo(rule.pod_id)
-    if (pod?.whatsapp_number) {
-      podsToNotify.push({
-        name: pod.name,
-        whatsapp_number: pod.whatsapp_number,
-      })
-    }
-  }
-
-  // Add additional pods if configured
+  // Get WhatsApp numbers from selected pods
   if (rule.pod_ids?.length) {
-    const additionalPods = await getMultiplePodsInfo(rule.pod_ids)
-    for (const pod of additionalPods) {
-      if (pod.whatsapp_number) {
-        podsToNotify.push({
-          name: pod.name,
-          whatsapp_number: pod.whatsapp_number,
-        })
+    const { data: pods } = await db
+      .from('pod')
+      .select('name, whatsapp_number')
+      .in('id', rule.pod_ids)
+
+    if (pods) {
+      for (const pod of pods) {
+        if (pod.whatsapp_number) {
+          numbersToNotify.push({
+            name: pod.name,
+            whatsapp_number: pod.whatsapp_number,
+          })
+        }
       }
     }
   }
 
-  // Add extra WhatsApp numbers if configured (not tied to pods)
-  if (rule.extra_whatsapp_numbers?.length) {
-    for (const number of rule.extra_whatsapp_numbers) {
-      podsToNotify.push({
-        name: `Direct: ${number.slice(-4)}`,
-        whatsapp_number: number,
-      })
-    }
-  }
-
   // Deduplicate by WhatsApp number
-  const uniquePods = podsToNotify.filter(
-    (pod, index, self) =>
+  const uniqueNumbers = numbersToNotify.filter(
+    (item, index, self) =>
       index ===
-      self.findIndex((p) => p.whatsapp_number === pod.whatsapp_number),
+      self.findIndex((p) => p.whatsapp_number === item.whatsapp_number),
   )
 
-  if (uniquePods.length === 0) {
+  if (uniqueNumbers.length === 0) {
     console.warn(
       `[WhatsApp] Rule ${rule.id} has notify_whatsapp enabled but no valid WhatsApp numbers found`,
     )
@@ -256,15 +247,15 @@ export async function sendWhatsAppNotification(
 
   // Send to all unique WhatsApp numbers
   const results = await Promise.allSettled(
-    uniquePods.map(async (pod) => {
+    uniqueNumbers.map(async (recipient) => {
       const result = await sendAndLogWhatsAppMessage(
-        pod.whatsapp_number,
+        recipient.whatsapp_number,
         message,
-        pod.name,
+        recipient.name,
         'watchtower_alert',
-        pod.name,
+        recipient.name,
       )
-      return { pod: pod.name, success: result.success }
+      return { name: recipient.name, success: result.success }
     }),
   )
 
@@ -273,7 +264,7 @@ export async function sendWhatsAppNotification(
   ).length
 
   console.log(
-    `[WhatsApp] Notification sent for alert ${alert.id} to ${successCount}/${uniquePods.length} pods`,
+    `[WhatsApp] Notification sent for alert ${alert.id} to ${successCount}/${uniqueNumbers.length} numbers`,
   )
 
   return successCount > 0

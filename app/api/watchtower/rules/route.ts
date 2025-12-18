@@ -13,6 +13,7 @@ import {
   toggleRuleActive,
   updateRule,
 } from '@/lib/actions/watchtower'
+import { createAdminClient } from '@/lib/db/admin'
 import type { Severity, TargetTable } from '@/types/api-storage'
 import type { RuleSortBy } from '@/types/watchtower'
 import { NextRequest, NextResponse } from 'next/server'
@@ -157,78 +158,38 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const { channel_ids, ...ruleData } = body
 
-    // Check if this is a compound rule (has clauses array)
-    if (
-      body.clauses &&
-      Array.isArray(body.clauses) &&
-      body.clauses.length > 0
-    ) {
-      // Validate compound rule
-      if (!body.name || body.clauses.length === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Compound rules require a name and at least one clause',
-          },
-          { status: 400 },
-        )
-      }
-
-      // Validate each clause
-      for (const clause of body.clauses) {
-        if (!clause.field_name || !clause.condition) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'Each clause must have field_name and condition',
-            },
-            { status: 400 },
-          )
-        }
-      }
-
-      const rules = await createCompoundRule(body)
-
-      if (rules.length === 0) {
-        return NextResponse.json(
-          { success: false, error: 'Failed to create compound rule' },
-          { status: 500 },
-        )
-      }
-
-      return NextResponse.json(
-        { success: true, data: rules, compound: true },
-        { status: 201 },
-      )
+    // Create the rule (existing logic)
+    let rule
+    if (body.clauses && Array.isArray(body.clauses)) {
+      rule = await createCompoundRule(ruleData)
+    } else {
+      rule = await createRule(ruleData)
     }
 
-    // Single rule creation
-    const { name, field_name, condition } = body
-
-    if (!name || !field_name || !condition) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Missing required fields: name, field_name, condition',
-        },
-        { status: 400 },
+    // Insert channel IDs if provided
+    if (channel_ids && Array.isArray(channel_ids) && channel_ids.length > 0) {
+      const db = createAdminClient()
+      const channelRecords = channel_ids.map(
+        (c: { channel_id: string; label?: string }) => ({
+          rule_id: rule.id,
+          channel_id: c.channel_id,
+          label: c.label || null,
+        }),
       )
+
+      const { error: channelError } = await db
+        .from('watchtower_channel_ids')
+        .insert(channelRecords)
+
+      if (channelError) {
+        console.error('Error inserting channel IDs:', channelError)
+        // Rule was created, but channel IDs failed - log but don't fail
+      }
     }
 
-    const rule = await createRule(body)
-
-    if (!rule) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to create rule' },
-        { status: 500 },
-      )
-    }
-
-    return NextResponse.json(
-      { success: true, data: rule, compound: false },
-      { status: 201 },
-    )
+    return NextResponse.json({ success: true, data: rule })
   } catch (error) {
     console.error('Error creating rule:', error)
     return NextResponse.json(
@@ -248,7 +209,28 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, action, ...updates } = body
+    const { id, channel_ids, action, ...updates } = body
+
+    // Update channel IDs if provided
+    if (channel_ids !== undefined) {
+      const db = createAdminClient()
+
+      // Delete existing channel IDs for this rule
+      await db.from('watchtower_channel_ids').delete().eq('rule_id', id)
+
+      // Insert new channel IDs
+      if (Array.isArray(channel_ids) && channel_ids.length > 0) {
+        const channelRecords = channel_ids.map(
+          (c: { channel_id: string; label?: string }) => ({
+            rule_id: id,
+            channel_id: c.channel_id,
+            label: c.label || null,
+          }),
+        )
+
+        await db.from('watchtower_channel_ids').insert(channelRecords)
+      }
+    }
 
     if (!id) {
       return NextResponse.json(
