@@ -102,3 +102,42 @@ export interface PodWithWhatsApp {
   user_id: string | null
   whatsapp_number: string | null
 }
+
+// ============================================================================
+// WhatsApp Message Log Types
+// ============================================================================
+
+// Source features that can trigger WhatsApp messages
+export type WhatsAppSourceFeature =
+  | 'daily_summary'
+  | 'ad_error'
+  | 'watchtower_alert'
+
+// Delivery status for WhatsApp messages
+export type WhatsAppDeliveryStatus = 'sent' | 'failed' | 'pending'
+
+// WhatsApp message log entry (matches whatsapp_message_logs table)
+export interface WhatsAppMessageLog {
+  id: number
+  sent_at: string
+  pod_name: string
+  recipient_name: string | null
+  recipient_phone_number: string
+  source_feature: WhatsAppSourceFeature
+  message_content: string | null
+  delivery_status: WhatsAppDeliveryStatus
+  twilio_message_sid: string | null
+  failure_reason: string | null
+}
+
+// Input for creating a WhatsApp message log entry
+export interface WhatsAppMessageLogInput {
+  pod_name: string
+  recipient_name?: string | null
+  recipient_phone_number: string
+  source_feature: WhatsAppSourceFeature
+  message_content?: string | null
+  delivery_status: WhatsAppDeliveryStatus
+  twilio_message_sid?: string | null
+  failure_reason?: string | null
+}

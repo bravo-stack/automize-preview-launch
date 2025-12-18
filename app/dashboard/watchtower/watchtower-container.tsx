@@ -41,6 +41,7 @@ interface PaginationInfo {
 }
 
 export default function WatchtowerContainer() {
+  // STATES
   const [activeTab, setActiveTab] = useState<WatchtowerTab>('overview')
   const [rules, setRules] = useState<WatchtowerRuleWithRelations[]>([])
   const [recentRules, setRecentRules] = useState<WatchtowerRuleWithRelations[]>(
@@ -73,8 +74,6 @@ export default function WatchtowerContainer() {
   const [severityFilter, setSeverityFilter] = useState<string>('')
   const [acknowledgedFilter, setAcknowledgedFilter] = useState<string>('')
   const [activeFilter, setActiveFilter] = useState<string>('')
-
-  // Track when new alerts are created
   const [newAlertsCreated, setNewAlertsCreated] = useState(false)
 
   // ============================================================================
@@ -106,8 +105,6 @@ export default function WatchtowerContainer() {
       setNewAlertsCreated(true)
     },
   })
-
-  // Fetch Rules
   const fetchRules = useCallback(
     async (page: number = 1, pageSize: number = 20) => {
       setIsLoading(true)
@@ -135,8 +132,6 @@ export default function WatchtowerContainer() {
     },
     [activeFilter],
   )
-
-  // Fetch Alerts
   const fetchAlerts = useCallback(
     async (page: number = 1, pageSize: number = 20) => {
       setIsLoading(true)
@@ -166,8 +161,6 @@ export default function WatchtowerContainer() {
     },
     [severityFilter, acknowledgedFilter],
   )
-
-  // Fetch recent rules for overview
   const fetchRecentRules = useCallback(async () => {
     try {
       const res = await fetch('/api/watchtower/rules?page=1&pageSize=5')
@@ -179,12 +172,9 @@ export default function WatchtowerContainer() {
       console.error('Error fetching recent rules:', err)
     }
   }, [])
-
-  // Initial fetch for recent rules (stats handled by polling hook)
   useEffect(() => {
     fetchRecentRules()
   }, [fetchRecentRules])
-
   useEffect(() => {
     if (activeTab === 'rules') {
       fetchRules(rulesPage, rulesPageSize)
@@ -206,8 +196,6 @@ export default function WatchtowerContainer() {
     fetchAlerts,
     fetchRecentRules,
   ])
-
-  // Auto-refresh alerts when new ones are created and user is on alerts tab
   useEffect(() => {
     if (newAlertsCreated && activeTab === 'alerts') {
       fetchAlerts(alertsPage, alertsPageSize)
@@ -215,7 +203,7 @@ export default function WatchtowerContainer() {
     }
   }, [newAlertsCreated, activeTab, alertsPage, alertsPageSize, fetchAlerts])
 
-  // Handlers
+  // HANDLERS
   const handleCreateRule = async (
     ruleData: CreateRuleInput | CompoundRuleInput,
   ) => {
@@ -243,7 +231,6 @@ export default function WatchtowerContainer() {
       setIsLoading(false)
     }
   }
-
   const handleUpdateRule = async (
     ruleData: CreateRuleInput | CompoundRuleInput,
   ) => {
@@ -273,7 +260,6 @@ export default function WatchtowerContainer() {
       setIsLoading(false)
     }
   }
-
   const handleDeleteRule = async (ruleId: string, deleteGroup = false) => {
     setIsLoading(true)
     try {
@@ -298,7 +284,6 @@ export default function WatchtowerContainer() {
       setIsLoading(false)
     }
   }
-
   const handleToggleRule = async (ruleId: string, isActive: boolean) => {
     setIsLoading(true)
     try {
@@ -326,7 +311,6 @@ export default function WatchtowerContainer() {
       setIsLoading(false)
     }
   }
-
   const handleAcknowledgeAlert = async (alertId: string) => {
     setIsLoading(true)
     try {
@@ -351,7 +335,6 @@ export default function WatchtowerContainer() {
       setIsLoading(false)
     }
   }
-
   const handleBulkAcknowledge = async (alertIds: string[]) => {
     setIsLoading(true)
     try {
@@ -376,13 +359,9 @@ export default function WatchtowerContainer() {
       setIsLoading(false)
     }
   }
-
-  // Opens the delete confirmation dialog
   const handleDeleteAlertClick = (alert: WatchtowerAlertWithRelations) => {
     setAlertToDelete(alert)
   }
-
-  // Performs the actual delete when confirmed
   const handleConfirmDeleteAlert = async () => {
     if (!alertToDelete) return
 
@@ -406,7 +385,6 @@ export default function WatchtowerContainer() {
       setIsDeleting(false)
     }
   }
-
   const tabs: { id: WatchtowerTab; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Overview', icon: <Shield className="h-4 w-4" /> },
     { id: 'rules', label: 'Rules', icon: <ShieldCheck className="h-4 w-4" /> },

@@ -42,7 +42,8 @@
     "react-hot-toast": "^2.5.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
-    "twilio": "^5.10.6"
+    "twilio": "^5.10.6",
+    "twilio-client": "^1.15.1"
   },
   "devDependencies": {
     "@types/node": "^20",

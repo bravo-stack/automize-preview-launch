@@ -1,6 +1,11 @@
 'use server'
 
-import type { WhatsAppSendResult } from '@/types/whatsapp'
+import { createAdminClient } from '@/lib/db/admin'
+import type {
+  WhatsAppMessageLogInput,
+  WhatsAppSendResult,
+  WhatsAppSourceFeature,
+} from '@/types/whatsapp'
 import twilio from 'twilio'
 
 // ============================================================================
@@ -100,4 +105,69 @@ export async function sendWhatsAppToMany(
   )
 
   return results
+}
+
+// ============================================================================
+// WhatsApp Message Logging
+// ============================================================================
+
+/**
+ * Log a WhatsApp message to the whatsapp_message_logs table
+ */
+export async function logWhatsAppMessage(
+  input: WhatsAppMessageLogInput,
+): Promise<{ success: boolean; error?: string }> {
+  const db = createAdminClient()
+
+  const { error } = await db.from('whatsapp_message_logs').insert({
+    pod_name: input.pod_name,
+    recipient_name: input.recipient_name || null,
+    recipient_phone_number: input.recipient_phone_number,
+    source_feature: input.source_feature,
+    message_content: input.message_content || null,
+    delivery_status: input.delivery_status,
+    twilio_message_sid: input.twilio_message_sid || null,
+    failure_reason: input.failure_reason || null,
+  })
+
+  if (error) {
+    console.error('[WhatsApp] Failed to log message:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
+}
+
+/**
+ * Send WhatsApp message and log the result
+ * Combines sending and logging into a single operation
+ */
+export async function sendAndLogWhatsAppMessage(
+  to: string,
+  message: string,
+  podName: string,
+  sourceFeature: WhatsAppSourceFeature,
+  recipientName?: string,
+): Promise<WhatsAppSendResult> {
+  const result = await sendWhatsAppMessage(to, message)
+
+  // Clean phone number for logging (ensure consistent format)
+  let cleanTo = to.replace('whatsapp:', '').trim()
+  if (!cleanTo.startsWith('+')) {
+    cleanTo = `+${cleanTo}`
+  }
+
+  // Log the message attempt
+  await logWhatsAppMessage({
+    pod_name: podName,
+    recipient_name: recipientName || null,
+    recipient_phone_number: cleanTo,
+    source_feature: sourceFeature,
+    message_content: message,
+    delivery_status: result.success ? 'sent' : 'failed',
+    twilio_message_sid: result.messageId || null,
+    failure_reason: result.error || null,
+  })
+
+  return result
 }

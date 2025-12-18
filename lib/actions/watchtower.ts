@@ -60,6 +60,7 @@ export interface CreateRuleInput {
   notify_day_of_week?: number
   notify_discord?: boolean
   discord_channel_id?: string
+  notify_whatsapp?: boolean
   pod_id?: string
 }
 
@@ -99,6 +100,7 @@ export async function createRule(
       notify_day_of_week: input.notify_day_of_week ?? null,
       notify_discord: input.notify_discord || false,
       discord_channel_id: input.discord_channel_id || null,
+      notify_whatsapp: input.notify_whatsapp || false,
       pod_id: input.pod_id || null,
     })
     .select()
@@ -130,7 +132,13 @@ export async function updateRule(
 
 export async function deleteRule(ruleId: string): Promise<boolean> {
   const db = createAdminClient()
-  const { error } = await db.from('watchtower_rules').delete().eq('id', ruleId)
+  const { error } = await db
+    .from('watchtower_rules')
+    .update({
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', ruleId)
 
   if (error) {
     console.error('Error deleting rule:', error)
@@ -149,7 +157,7 @@ export async function getRules(
   } = {},
 ): Promise<WatchtowerRule[]> {
   const db = createAdminClient()
-  let query = db.from('watchtower_rules').select('*')
+  let query = db.from('watchtower_rules').select('*').eq('deleted_at', null)
 
   if (!options.includeInactive) {
     query = query.eq('is_active', true)
@@ -172,6 +180,7 @@ export async function getDependentRules(
   const { data, error } = await db
     .from('watchtower_rules')
     .select('*')
+    .eq('deleted_at', null)
     .eq('parent_rule_id', parentRuleId)
     .eq('is_active', true)
 
@@ -187,6 +196,7 @@ export async function getCompoundRules(
   const { data, error } = await db
     .from('watchtower_rules')
     .select('*')
+    .eq('deleted_at', null)
     .eq('group_id', groupId)
     .eq('is_active', true)
     .order('created_at')
@@ -545,6 +555,7 @@ export async function createCompoundRule(
     notify_day_of_week: input.notify_day_of_week ?? null,
     notify_discord: input.notify_discord ?? false,
     discord_channel_id: input.discord_channel_id || null,
+    notify_whatsapp: input.notify_whatsapp ?? false,
     pod_id: input.pod_id || null,
   }))
 
@@ -581,6 +592,7 @@ export async function getRuleById(
       )
     `,
     )
+    .eq('deleted_at', null)
     .eq('id', ruleId)
     .single()
 
@@ -594,6 +606,7 @@ export async function getRuleById(
     const { data: groupRules } = await db
       .from('watchtower_rules')
       .select('*')
+      .eq('deleted_at', null)
       .eq('group_id', rule.group_id)
       .neq('id', ruleId)
 
@@ -607,6 +620,7 @@ export async function getRuleById(
   const { data: childRules } = await db
     .from('watchtower_rules')
     .select('*')
+    .eq('deleted_at', null)
     .eq('parent_rule_id', ruleId)
 
   return {
@@ -640,6 +654,7 @@ export async function getRulesPaginated(
     `,
       { count: 'exact' },
     )
+    .eq('deleted_at', null)
     .order('created_at', { ascending: false })
 
   // Apply filters
@@ -760,13 +775,17 @@ export async function deleteRuleWithGroup(
     const { data: rule } = await db
       .from('watchtower_rules')
       .select('group_id')
+      .eq('deleted_at', null)
       .eq('id', ruleId)
       .single()
 
     if (rule?.group_id) {
       const { error } = await db
         .from('watchtower_rules')
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
         .eq('group_id', rule.group_id)
 
       if (error) {
@@ -778,7 +797,13 @@ export async function deleteRuleWithGroup(
   }
 
   // Delete single rule
-  const { error } = await db.from('watchtower_rules').delete().eq('id', ruleId)
+  const { error } = await db
+    .from('watchtower_rules')
+    .update({
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', ruleId)
 
   if (error) {
     console.error('Error deleting rule:', error)
@@ -856,7 +881,10 @@ export async function getWatchtowerStats(): Promise<WatchtowerStats> {
 
   const [rulesRes, alertsRes, todayAlertsRes, weekAlertsRes] =
     await Promise.all([
-      db.from('watchtower_rules').select('id, is_active, group_id'),
+      db
+        .from('watchtower_rules')
+        .select('id, is_active, group_id')
+        .eq('deleted_at', null),
       db.from('watchtower_alerts').select('id, severity, is_acknowledged'),
       db.from('watchtower_alerts').select('id').gte('created_at', startOfDay),
       db.from('watchtower_alerts').select('id').gte('created_at', startOfWeek),
@@ -917,6 +945,7 @@ export async function getAvailableParentRules(
   let query = db
     .from('watchtower_rules')
     .select('*')
+    .eq('deleted_at', null)
     .eq('is_active', true)
     .is('group_id', null)
     .order('name')
@@ -988,6 +1017,7 @@ export async function updateRuleTriggerTracking(
   const { data: rule, error: fetchError } = await db
     .from('watchtower_rules')
     .select('trigger_count')
+    .eq('deleted_at', null)
     .eq('id', ruleId)
     .single()
 

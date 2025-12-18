@@ -437,6 +437,11 @@ export default function RuleList({
                     {rule.discord_channel_id?.slice(0, 8) || 'configured'}...
                   </Badge>
                 )}
+                {rule.notify_whatsapp && (
+                  <Badge variant="outline" className="text-green-400/60">
+                    WhatsApp
+                  </Badge>
+                )}
                 {rule.notify_schedule && (
                   <Badge variant="outline" className="text-white/60">
                     Schedule: {rule.notify_schedule} at {rule.notify_time}

@@ -347,6 +347,7 @@ export interface WatchtowerRule {
   notify_day_of_week: number | null
   notify_discord: boolean
   discord_channel_id: string | null
+  notify_whatsapp: boolean
   pod_id: string | null
   last_notified_at: string | null
   // Trigger tracking
@@ -459,6 +460,7 @@ export interface CreateRuleInput {
   notify_day_of_week?: number | null
   notify_discord?: boolean
   discord_channel_id?: string | null
+  notify_whatsapp?: boolean
   pod_id?: string | null
 }
 
@@ -511,6 +513,7 @@ export interface CompoundRuleInput {
   notify_day_of_week?: number | null
   notify_discord?: boolean
   discord_channel_id?: string | null
+  notify_whatsapp?: boolean
   pod_id?: string | null
   // Dependencies
   parent_rule_id?: string | null

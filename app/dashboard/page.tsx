@@ -300,11 +300,11 @@ function SectionCard({ section }: { section: QuickLinkSection }) {
       <div className="relative p-5">
         {/* Header */}
         <div className="mb-4 flex items-start justify-between">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-zinc-800/80 text-zinc-400 transition-all duration-300 group-hover:scale-110 group-hover:bg-zinc-700 group-hover:text-white">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-zinc-400 text-zinc-800/80 transition-all duration-300 group-hover:scale-110 group-hover:bg-zinc-700 group-hover:text-white">
             {section.icon}
           </div>
           {section.badge && (
-            <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-400">
+            <span className="rounded-full bg-zinc-400 px-2.5 py-1 text-xs font-medium text-zinc-800">
               {section.badge}
             </span>
           )}

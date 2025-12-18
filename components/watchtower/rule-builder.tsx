@@ -83,6 +83,7 @@ interface Pod {
   id: number
   name: string
   discord_id: string | null
+  whatsapp_number: string | null
 }
 
 interface RuleBuilderProps {
@@ -118,6 +119,7 @@ export default function RuleBuilder({
 
   // Notification settings
   const [notifyDiscord, setNotifyDiscord] = useState(false)
+  const [notifyWhatsapp, setNotifyWhatsapp] = useState(false)
   const [selectedPodId, setSelectedPodId] = useState<string>('')
 
   // Dependency settings
@@ -183,6 +185,7 @@ export default function RuleBuilder({
       setCondition(editRule.condition)
       setThresholdValue(editRule.threshold_value || '')
       setNotifyDiscord(editRule.notify_discord)
+      setNotifyWhatsapp(editRule.notify_whatsapp)
       setSelectedPodId(editRule.pod_id || '')
       setParentRuleId(editRule.parent_rule_id || '')
       setDependencyCondition(editRule.dependency_condition || '')
@@ -374,6 +377,7 @@ export default function RuleBuilder({
         notifyDiscord && selectedPod?.discord_id
           ? selectedPod.discord_id
           : undefined,
+      notify_whatsapp: notifyWhatsapp,
       pod_id: selectedPodId || undefined,
       parent_rule_id: parentRuleId || undefined,
       dependency_condition: (dependencyCondition || undefined) as
@@ -942,6 +946,80 @@ export default function RuleBuilder({
               )}
           </div>
         )}
+      </div>
+
+      {/* WhatsApp Notification Settings */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-white/80">
+          WhatsApp Notifications
+        </h3>
+        <p className="text-xs text-white/50">
+          Send immediate WhatsApp notifications when this rule triggers
+        </p>
+
+        <label className="flex items-center gap-2 text-sm text-white/70">
+          <input
+            type="checkbox"
+            checked={notifyWhatsapp}
+            onChange={(e) => setNotifyWhatsapp(e.target.checked)}
+            className="rounded border-white/20 bg-zinc-900"
+          />
+          Enable WhatsApp Notifications
+        </label>
+
+        {/* Pod Selection for WhatsApp (if Discord not already selecting one) */}
+        {notifyWhatsapp && !notifyDiscord && (
+          <div className="space-y-3">
+            <Select
+              label="Select Pod"
+              value={selectedPodId}
+              onChange={(e) => setSelectedPodId(e.target.value)}
+            >
+              <option value="">Select a pod...</option>
+              {availablePods.map((pod) => (
+                <option key={pod.id} value={pod.id.toString()}>
+                  {pod.name}
+                  {pod.whatsapp_number
+                    ? ` (WhatsApp: ${pod.whatsapp_number.slice(0, 8)}...)`
+                    : ''}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+
+        {/* WhatsApp number info display */}
+        {notifyWhatsapp && selectedPodId && (
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs">
+            {(() => {
+              const pod = availablePods.find(
+                (p) => p.id.toString() === selectedPodId,
+              )
+              if (!pod) return null
+              return (
+                <div className="space-y-1">
+                  <p className="font-medium text-white/80">{pod.name}</p>
+                  <p className="text-white/50">
+                    WhatsApp:{' '}
+                    <span className="font-mono text-green-400">
+                      {pod.whatsapp_number || 'Not configured'}
+                    </span>
+                  </p>
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
+        {/* Warning if selected pod is missing WhatsApp number */}
+        {notifyWhatsapp &&
+          selectedPodId &&
+          !availablePods.find((p) => p.id.toString() === selectedPodId)
+            ?.whatsapp_number && (
+            <p className="text-xs text-yellow-400">
+              ⚠️ Selected pod does not have a WhatsApp number configured
+            </p>
+          )}
       </div>
 
       {/* Actions */}

@@ -272,6 +272,7 @@ export interface WatchtowerRule {
   notify_time: string | null
   notify_day_of_week: number | null
   notify_discord: boolean
+  notify_whatsapp: boolean
   notify_email: boolean
   discord_channel_id: string | null
   email_recipients: string[] | null

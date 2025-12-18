@@ -8,7 +8,7 @@ export const revalidate = 0
 
 /**
  * GET /api/watchtower/pods
- * Fetches all pods with their discord_id for Discord notification configuration.
+ * Fetches all pods with their discord_id and whatsapp_number for notification configuration.
  */
 export async function GET() {
   try {
@@ -16,7 +16,7 @@ export async function GET() {
 
     const { data: pods, error } = await db
       .from('pod')
-      .select('id, name, discord_id')
+      .select('id, name, discord_id, whatsapp_number')
       .order('name', { ascending: true })
 
     if (error) {

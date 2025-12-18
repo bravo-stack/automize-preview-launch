@@ -294,6 +294,7 @@ export async function GET() {
     .from('watchtower_rules')
     .select('target_table')
     .eq('is_active', true)
+    .eq('deleted_at', null)
     .not('target_table', 'is', null)
 
   const targetTables = Array.from(
