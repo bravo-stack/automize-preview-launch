@@ -1,21 +1,18 @@
 'use server'
 
 import type {
+  AlertQueryParams,
+  CompoundRuleInput,
   DependencyCondition,
   LogicOperator,
   NotifySchedule,
   RuleCondition,
+  RuleQueryParams,
   Severity,
   TargetTable,
   WatchtowerAlert,
-  WatchtowerAlertWithRule,
-  WatchtowerRule,
-} from '@/types/api-storage'
-import type {
-  AlertQueryParams,
-  CompoundRuleInput,
-  RuleQueryParams,
   WatchtowerAlertWithRelations,
+  WatchtowerRule,
   WatchtowerRuleWithRelations,
   WatchtowerStats,
 } from '@/types/watchtower'
@@ -351,7 +348,7 @@ export async function getAlerts(
     severity?: Severity
     limit?: number
   } = {},
-): Promise<WatchtowerAlertWithRule[]> {
+): Promise<WatchtowerAlertWithRelations[]> {
   const db = createAdminClient()
   let query = db
     .from('watchtower_alerts')
@@ -368,7 +365,7 @@ export async function getAlerts(
 
   const { data, error } = await query
   if (error) return []
-  return (data || []) as WatchtowerAlertWithRule[]
+  return (data || []) as WatchtowerAlertWithRelations[]
 }
 
 export async function acknowledgeAlert(

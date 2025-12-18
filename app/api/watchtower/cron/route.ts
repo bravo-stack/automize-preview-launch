@@ -28,7 +28,7 @@ import type {
   TargetTable,
   WatchtowerAlert as WatchtowerAlertType,
   WatchtowerRule,
-} from '@/types/api-storage'
+} from '@/types/watchtower'
 import { NextResponse } from 'next/server'
 
 interface EvaluationResult {

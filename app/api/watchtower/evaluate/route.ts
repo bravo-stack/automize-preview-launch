@@ -18,8 +18,8 @@ import type {
   TargetTable,
   WatchtowerAlert as WatchtowerAlertType,
   WatchtowerRule,
-} from '@/types/api-storage'
-import type { WatchtowerStats } from '@/types/watchtower'
+  WatchtowerStats,
+} from '@/types/watchtower'
 import { NextResponse } from 'next/server'
 
 // Force dynamic rendering to prevent caching
