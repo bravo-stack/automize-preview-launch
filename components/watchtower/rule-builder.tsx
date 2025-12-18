@@ -963,7 +963,7 @@ export default function RuleBuilder({
             </div>
 
             {/* Pod Selection Grid */}
-            <div className="grid max-h-48 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid max-h-96 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
               {availablePods.map((pod) => {
                 const isSelected = selectedPodIds.includes(pod.id.toString())
                 const hasDiscord = !!pod.discord_id
