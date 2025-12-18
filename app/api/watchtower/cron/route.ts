@@ -27,8 +27,8 @@ import type {
   RuleCondition,
   TargetTable,
   WatchtowerAlert as WatchtowerAlertType,
+  WatchtowerRule,
 } from '@/types/api-storage'
-import type { WatchtowerRule } from '@/types/watchtower'
 import { NextResponse } from 'next/server'
 
 interface EvaluationResult {
