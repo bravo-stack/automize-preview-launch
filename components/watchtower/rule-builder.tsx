@@ -121,6 +121,13 @@ export default function RuleBuilder({
   const [notifyDiscord, setNotifyDiscord] = useState(false)
   const [notifyWhatsapp, setNotifyWhatsapp] = useState(false)
   const [selectedPodId, setSelectedPodId] = useState<string>('')
+  // Multiple pods for Discord notifications
+  const [selectedPodIds, setSelectedPodIds] = useState<string[]>([])
+  // Extra Discord channel IDs
+  const [extraDiscordChannelIds, setExtraDiscordChannelIds] = useState<
+    string[]
+  >([])
+  const [newChannelId, setNewChannelId] = useState<string>('')
 
   // Dependency settings
   const [parentRuleId, setParentRuleId] = useState<string>('')
@@ -187,6 +194,10 @@ export default function RuleBuilder({
       setNotifyDiscord(editRule.notify_discord)
       setNotifyWhatsapp(editRule.notify_whatsapp)
       setSelectedPodId(editRule.pod_id || '')
+      // Load multi-pod selection
+      setSelectedPodIds(editRule.pod_ids || [])
+      // Load extra Discord channel IDs
+      setExtraDiscordChannelIds(editRule.extra_discord_channel_ids || [])
       setParentRuleId(editRule.parent_rule_id || '')
       setDependencyCondition(editRule.dependency_condition || '')
 
@@ -362,7 +373,7 @@ export default function RuleBuilder({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
-    // Get the selected pod's discord_id for notifications
+    // Get the selected pod's discord_id for notifications (primary pod)
     const selectedPod = availablePods.find(
       (p) => p.id.toString() === selectedPodId,
     )
@@ -377,8 +388,18 @@ export default function RuleBuilder({
         notifyDiscord && selectedPod?.discord_id
           ? selectedPod.discord_id
           : undefined,
+      // Include extra Discord channel IDs
+      extra_discord_channel_ids:
+        notifyDiscord && extraDiscordChannelIds.length > 0
+          ? extraDiscordChannelIds
+          : undefined,
       notify_whatsapp: notifyWhatsapp,
       pod_id: selectedPodId || undefined,
+      // Include multiple pod IDs for notifications
+      pod_ids:
+        (notifyDiscord || notifyWhatsapp) && selectedPodIds.length > 0
+          ? selectedPodIds
+          : undefined,
       parent_rule_id: parentRuleId || undefined,
       dependency_condition: (dependencyCondition || undefined) as
         | 'triggered'
@@ -897,9 +918,10 @@ export default function RuleBuilder({
 
         {/* Pod Selection for Discord */}
         {notifyDiscord && (
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {/* Primary Pod Selection */}
             <Select
-              label="Select Pod"
+              label="Primary Pod (for main Discord channel)"
               value={selectedPodId}
               onChange={(e) => setSelectedPodId(e.target.value)}
             >
@@ -907,7 +929,6 @@ export default function RuleBuilder({
               {availablePods.map((pod) => (
                 <option key={pod.id} value={pod.id.toString()}>
                   {pod.name}
-                  {/* {pod.discord_id ? ` [POD] ` : ''} */}
                 </option>
               ))}
             </Select>
@@ -942,6 +963,120 @@ export default function RuleBuilder({
                   ⚠️ Selected pod does not have a Discord ID configured
                 </p>
               )}
+
+            {/* Multiple Pods Selection */}
+            <div className="space-y-2">
+              <label className="block text-sm text-white/70">
+                Additional Pods (Optional)
+              </label>
+              <p className="text-xs text-white/40">
+                Select multiple pods to notify their Discord channels as well
+              </p>
+              <div className="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto rounded-lg border border-white/10 bg-zinc-900/50 p-3">
+                {availablePods
+                  .filter((pod) => pod.id.toString() !== selectedPodId)
+                  .map((pod) => (
+                    <label
+                      key={pod.id}
+                      className="flex items-center gap-2 text-sm text-white/70"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPodIds.includes(pod.id.toString())}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPodIds((prev) => [
+                              ...prev,
+                              pod.id.toString(),
+                            ])
+                          } else {
+                            setSelectedPodIds((prev) =>
+                              prev.filter((id) => id !== pod.id.toString()),
+                            )
+                          }
+                        }}
+                        className="rounded border-white/20 bg-zinc-900"
+                      />
+                      <span className="truncate">{pod.name}</span>
+                      {pod.discord_id ? (
+                        <span className="text-xs text-blue-400">✓</span>
+                      ) : (
+                        <span className="text-xs text-yellow-400">⚠</span>
+                      )}
+                    </label>
+                  ))}
+              </div>
+              {selectedPodIds.length > 0 && (
+                <p className="text-xs text-blue-400">
+                  {selectedPodIds.length} additional pod
+                  {selectedPodIds.length > 1 ? 's' : ''} selected
+                </p>
+              )}
+            </div>
+
+            {/* Extra Discord Channel IDs */}
+            <div className="space-y-2">
+              <label className="block text-sm text-white/70">
+                Extra Discord Channel IDs (Optional)
+              </label>
+              <p className="text-xs text-white/40">
+                Add custom channel IDs to also receive notifications
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter Discord Channel ID"
+                  value={newChannelId}
+                  onChange={(e) => setNewChannelId(e.target.value)}
+                  className="flex-1 border-white/10 bg-zinc-900"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (
+                      newChannelId.trim() &&
+                      !extraDiscordChannelIds.includes(newChannelId.trim())
+                    ) {
+                      setExtraDiscordChannelIds((prev) => [
+                        ...prev,
+                        newChannelId.trim(),
+                      ])
+                      setNewChannelId('')
+                    }
+                  }}
+                  disabled={!newChannelId.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {extraDiscordChannelIds.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {extraDiscordChannelIds.map((channelId) => (
+                    <span
+                      key={channelId}
+                      className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70"
+                    >
+                      <code className="font-mono text-blue-400">
+                        {channelId.slice(0, 12)}
+                        {channelId.length > 12 ? '...' : ''}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExtraDiscordChannelIds((prev) =>
+                            prev.filter((id) => id !== channelId),
+                          )
+                        }
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

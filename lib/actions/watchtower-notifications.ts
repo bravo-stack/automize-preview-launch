@@ -60,21 +60,56 @@ function formatDiscordAlert(
 
 /**
  * Send Discord notification for an alert
+ * Supports primary channel, extra channel IDs, and multiple pod Discord channels
  */
 export async function sendDiscordNotification(
   alert: WatchtowerAlert,
   rule: WatchtowerRule,
 ): Promise<boolean> {
   try {
-    // Determine channel - use custom channel if specified, otherwise use severity-based channel
-    const channel = rule.discord_channel_id || DISCORD_CHANNELS[rule.severity]
     const message = formatDiscordAlert(alert, rule)
+    const channelsToNotify: string[] = []
 
-    await sendDiscordMessage(channel, message)
-    console.log(
-      `Discord notification sent for alert ${alert.id} to channel ${channel}`,
+    // Add primary channel (from pod or severity fallback)
+    const primaryChannel =
+      rule.discord_channel_id || DISCORD_CHANNELS[rule.severity]
+    channelsToNotify.push(primaryChannel)
+
+    // Add extra Discord channel IDs if configured
+    if (rule.extra_discord_channel_ids?.length) {
+      channelsToNotify.push(...rule.extra_discord_channel_ids)
+    }
+
+    // Add Discord channels from additional pods if configured
+    if (rule.pod_ids?.length) {
+      const db = createAdminClient()
+      const { data: pods } = await db
+        .from('pod')
+        .select('discord_id')
+        .in('id', rule.pod_ids)
+
+      if (pods) {
+        const podChannels = pods
+          .map((p) => p.discord_id)
+          .filter((id): id is string => !!id)
+        channelsToNotify.push(...podChannels)
+      }
+    }
+
+    // Deduplicate channels
+    const uniqueChannels = [...new Set(channelsToNotify)]
+
+    // Send to all channels
+    const results = await Promise.allSettled(
+      uniqueChannels.map((channel) => sendDiscordMessage(channel, message)),
     )
-    return true
+
+    const successCount = results.filter((r) => r.status === 'fulfilled').length
+    console.log(
+      `[Discord] Notification sent for alert ${alert.id} to ${successCount}/${uniqueChannels.length} channels`,
+    )
+
+    return successCount > 0
   } catch (error) {
     console.error('Failed to send Discord notification:', error)
     return false
@@ -138,59 +173,100 @@ async function getPodInfo(
 }
 
 /**
+ * Get multiple pods' information including WhatsApp numbers
+ */
+async function getMultiplePodsInfo(
+  podIds: string[],
+): Promise<{ name: string; whatsapp_number: string | null }[]> {
+  if (!podIds.length) return []
+
+  const db = createAdminClient()
+
+  const { data: pods, error } = await db
+    .from('pod')
+    .select('name, whatsapp_number')
+    .in('id', podIds)
+
+  if (error || !pods) {
+    console.error(`[WhatsApp] Failed to fetch pods:`, error)
+    return []
+  }
+
+  return pods
+}
+
+/**
  * Send WhatsApp notification for an alert
+ * Supports primary pod and multiple additional pods
  */
 export async function sendWhatsAppNotification(
   alert: WatchtowerAlert,
   rule: WatchtowerRule,
 ): Promise<boolean> {
-  // Require pod_id for WhatsApp notifications
-  if (!rule.pod_id) {
-    console.warn(
-      `[WhatsApp] Rule ${rule.id} has notify_whatsapp enabled but no pod_id configured`,
-    )
-    return false
-  }
-
-  // Fetch pod info to get WhatsApp number
-  const pod = await getPodInfo(rule.pod_id)
-  if (!pod) {
-    console.error(`[WhatsApp] Could not fetch pod info for rule ${rule.id}`)
-    return false
-  }
-
-  if (!pod.whatsapp_number) {
-    console.warn(`[WhatsApp] Pod ${pod.name} has no WhatsApp number configured`)
-    return false
-  }
-
   const message = formatWhatsAppAlert(alert, rule)
+  const podsToNotify: { name: string; whatsapp_number: string }[] = []
 
-  try {
-    const result = await sendAndLogWhatsAppMessage(
-      pod.whatsapp_number,
-      message,
-      pod.name,
-      'watchtower_alert',
-      pod.name, // Use pod name as recipient name
-    )
-
-    if (result.success) {
-      console.log(
-        `[WhatsApp] Notification sent for alert ${alert.id} to ${pod.whatsapp_number}`,
-      )
-      return true
-    } else {
-      console.error(
-        `[WhatsApp] Failed to send notification for alert ${alert.id}:`,
-        result.error,
-      )
-      return false
+  // Add primary pod if configured
+  if (rule.pod_id) {
+    const pod = await getPodInfo(rule.pod_id)
+    if (pod?.whatsapp_number) {
+      podsToNotify.push({
+        name: pod.name,
+        whatsapp_number: pod.whatsapp_number,
+      })
     }
-  } catch (error) {
-    console.error('[WhatsApp] Failed to send notification:', error)
+  }
+
+  // Add additional pods if configured
+  if (rule.pod_ids?.length) {
+    const additionalPods = await getMultiplePodsInfo(rule.pod_ids)
+    for (const pod of additionalPods) {
+      if (pod.whatsapp_number) {
+        podsToNotify.push({
+          name: pod.name,
+          whatsapp_number: pod.whatsapp_number,
+        })
+      }
+    }
+  }
+
+  // Deduplicate by WhatsApp number
+  const uniquePods = podsToNotify.filter(
+    (pod, index, self) =>
+      index ===
+      self.findIndex((p) => p.whatsapp_number === pod.whatsapp_number),
+  )
+
+  if (uniquePods.length === 0) {
+    console.warn(
+      `[WhatsApp] Rule ${rule.id} has notify_whatsapp enabled but no valid WhatsApp numbers found`,
+    )
     return false
   }
+
+  // Send to all unique WhatsApp numbers
+  const results = await Promise.allSettled(
+    uniquePods.map(async (pod) => {
+      const result = await sendAndLogWhatsAppMessage(
+        pod.whatsapp_number,
+        message,
+        pod.name,
+        'watchtower_alert',
+        pod.name,
+      )
+      return { pod: pod.name, success: result.success }
+    }),
+  )
+
+  const successCount = results.filter(
+    (r) => r.status === 'fulfilled' && r.value.success,
+  ).length
+
+  console.log(
+    `[WhatsApp] Notification sent for alert ${alert.id} to ${successCount}/${uniquePods.length} pods`,
+  )
+
+  return successCount > 0
 }
 
 // ============================================================================

@@ -166,8 +166,12 @@ export interface WatchtowerRule {
   notify_day_of_week: number | null
   notify_discord: boolean
   discord_channel_id: string | null
+  // Support for multiple extra Discord channel IDs
+  extra_discord_channel_ids: string[] | null
   notify_whatsapp: boolean
   pod_id: string | null
+  // Support for multiple pods
+  pod_ids: string[] | null
   last_notified_at: string | null
   // Trigger tracking
   last_triggered_at: string | null

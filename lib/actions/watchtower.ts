@@ -60,8 +60,12 @@ export interface CreateRuleInput {
   notify_day_of_week?: number
   notify_discord?: boolean
   discord_channel_id?: string
+  // Support for multiple extra Discord channel IDs
+  extra_discord_channel_ids?: string[]
   notify_whatsapp?: boolean
   pod_id?: string
+  // Support for multiple pods
+  pod_ids?: string[]
 }
 
 // ============================================================================
@@ -100,8 +104,11 @@ export async function createRule(
       notify_day_of_week: input.notify_day_of_week ?? null,
       notify_discord: input.notify_discord || false,
       discord_channel_id: input.discord_channel_id || null,
+      // TODO: Add these columns to DB schema first:
+      extra_discord_channel_ids: input.extra_discord_channel_ids || null,
       notify_whatsapp: input.notify_whatsapp || false,
       pod_id: input.pod_id || null,
+      pod_ids: input.pod_ids || null,
     })
     .select()
     .single()
@@ -555,8 +562,11 @@ export async function createCompoundRule(
     notify_day_of_week: input.notify_day_of_week ?? null,
     notify_discord: input.notify_discord ?? false,
     discord_channel_id: input.discord_channel_id || null,
+    // TODO: Add these columns to DB schema first:
+    extra_discord_channel_ids: input.extra_discord_channel_ids || null,
     notify_whatsapp: input.notify_whatsapp ?? false,
     pod_id: input.pod_id || null,
+    pod_ids: input.pod_ids || null,
   }))
 
   const { data, error } = await db
