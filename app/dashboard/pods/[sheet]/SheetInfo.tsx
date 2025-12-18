@@ -1,9 +1,9 @@
 'use client'
 
+import NotificationModal from '@/components/NotificationModal'
 import { deleteSheet } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import NotificationModal from '@/components/NotificationModal'
 
 interface SheetInfoProps {
   links: string[]
@@ -173,7 +173,9 @@ export default function SheetInfo({ links, data, pod }: SheetInfoProps) {
 
             <div>
               <h4>Last Refresh</h4>
-              <span className="text-sm">{lastRefresh}</span>
+              <span className="text-sm">
+                {new Date(lastRefresh).toDateString()}
+              </span>
             </div>
 
             <button

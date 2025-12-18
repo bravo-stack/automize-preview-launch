@@ -129,7 +129,9 @@ export default function SheetInfo({ links, data, role }: SheetInfoProps) {
 
             <div>
               <h4>Last Refresh</h4>
-              <span className="text-sm">{lastRefresh}</span>
+              <span className="text-sm">
+                {new Date(lastRefresh).toDateString()}
+              </span>
             </div>
 
             <button
