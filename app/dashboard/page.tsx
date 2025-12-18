@@ -294,7 +294,7 @@ function SectionCard({ section }: { section: QuickLinkSection }) {
     <div className="group relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-900">
       {/* Gradient Background */}
       <div
-        className={`absolute inset-0 bg-gradient-to-br ${section.gradient} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
+        className={`absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
       />
 
       <div className="relative p-5">

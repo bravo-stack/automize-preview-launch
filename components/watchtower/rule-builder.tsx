@@ -948,7 +948,9 @@ export default function RuleBuilder({
         </div>
 
         {/* Pod Selection - Unified for both Discord and WhatsApp */}
-        {(notifyDiscord || notifyWhatsapp) && (
+        {(notifyDiscord || notifyWhatsapp) &&
+        availablePods &&
+        availablePods?.length > 0 ? (
           <div className="space-y-4 rounded-lg border border-white/10 bg-white/5 p-4">
             <div>
               <label className="block text-sm font-medium text-white/80">
@@ -1038,7 +1040,7 @@ export default function RuleBuilder({
               </div>
             )}
           </div>
-        )}
+        ) : null}
 
         {/* Extra Discord Channel IDs */}
         {notifyDiscord && (
