@@ -914,7 +914,7 @@ export default function RuleBuilder({
               ))}
             </Select>
 
-            {selectedPodId && (
+            {selectedPodId && availablePods && availablePods?.length > 0 ? (
               <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs">
                 {(() => {
                   const pod = availablePods.find(
@@ -934,7 +934,7 @@ export default function RuleBuilder({
                   )
                 })()}
               </div>
-            )}
+            ) : null}
 
             {/* Warning if selected pod is missing Discord ID */}
             {selectedPodId &&
