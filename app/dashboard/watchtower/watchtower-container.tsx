@@ -92,6 +92,10 @@ export default function WatchtowerContainer() {
   const [activeFilter, setActiveFilter] = useState<string>('')
   const [newAlertsCreated, setNewAlertsCreated] = useState(false)
 
+  // Sorting
+  const [rulesSortBy, setRulesSortBy] = useState<string>('created_desc')
+  const [alertsSortBy, setAlertsSortBy] = useState<string>('created_desc')
+
   // ============================================================================
   // Real-time Stats Polling
   // ============================================================================
@@ -122,12 +126,17 @@ export default function WatchtowerContainer() {
     },
   })
   const fetchRules = useCallback(
-    async (page: number = 1, pageSize: number = 20) => {
+    async (
+      page: number = 1,
+      pageSize: number = 20,
+      sortBy: string = 'created_desc',
+    ) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams({
           page: page.toString(),
           pageSize: pageSize.toString(),
+          sortBy,
         })
         if (activeFilter) params.set('is_active', activeFilter)
 
@@ -148,6 +157,7 @@ export default function WatchtowerContainer() {
     },
     [activeFilter],
   )
+
   const fetchDeletedRules = useCallback(
     async (page: number = 1, pageSize: number = 20) => {
       setIsLoading(true)
@@ -178,12 +188,17 @@ export default function WatchtowerContainer() {
     [],
   )
   const fetchAlerts = useCallback(
-    async (page: number = 1, pageSize: number = 20) => {
+    async (
+      page: number = 1,
+      pageSize: number = 20,
+      sortBy: string = 'created_desc',
+    ) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams({
           page: page.toString(),
           pageSize: pageSize.toString(),
+          sortBy,
         })
         if (severityFilter) params.set('severity', severityFilter)
         if (acknowledgedFilter)
@@ -223,12 +238,12 @@ export default function WatchtowerContainer() {
   useEffect(() => {
     if (activeTab === 'rules') {
       if (rulesSubTab === 'active') {
-        fetchRules(rulesPage, rulesPageSize)
+        fetchRules(rulesPage, rulesPageSize, rulesSortBy)
       } else {
         fetchDeletedRules(deletedRulesPage, deletedRulesPageSize)
       }
     } else if (activeTab === 'alerts') {
-      fetchAlerts(alertsPage, alertsPageSize)
+      fetchAlerts(alertsPage, alertsPageSize, alertsSortBy)
     } else if (activeTab === 'overview') {
       fetchRecentRules()
       setIsLoading(false)
@@ -240,10 +255,12 @@ export default function WatchtowerContainer() {
     rulesSubTab,
     rulesPage,
     rulesPageSize,
+    rulesSortBy,
     deletedRulesPage,
     deletedRulesPageSize,
     alertsPage,
     alertsPageSize,
+    alertsSortBy,
     fetchRules,
     fetchDeletedRules,
     fetchAlerts,
@@ -251,10 +268,17 @@ export default function WatchtowerContainer() {
   ])
   useEffect(() => {
     if (newAlertsCreated && activeTab === 'alerts') {
-      fetchAlerts(alertsPage, alertsPageSize)
+      fetchAlerts(alertsPage, alertsPageSize, alertsSortBy)
       setNewAlertsCreated(false)
     }
-  }, [newAlertsCreated, activeTab, alertsPage, alertsPageSize, fetchAlerts])
+  }, [
+    newAlertsCreated,
+    activeTab,
+    alertsPage,
+    alertsPageSize,
+    alertsSortBy,
+    fetchAlerts,
+  ])
 
   // HANDLERS
   const handleCreateRule = async (
@@ -937,6 +961,21 @@ export default function WatchtowerContainer() {
                     {/* Filters */}
                     <div className="flex flex-wrap items-center gap-4">
                       <Select
+                        value={rulesSortBy}
+                        onChange={(e) => {
+                          setRulesSortBy(e.target.value)
+                          setRulesPage(1)
+                        }}
+                        className="w-44"
+                      >
+                        <option value="created_desc">Newest First</option>
+                        <option value="created_asc">Oldest First</option>
+                        <option value="name_asc">Name (A-Z)</option>
+                        <option value="name_desc">Name (Z-A)</option>
+                        <option value="triggers_desc">Most Triggered</option>
+                      </Select>
+
+                      <Select
                         value={activeFilter}
                         onChange={(e) => {
                           setActiveFilter(e.target.value)
@@ -966,7 +1005,9 @@ export default function WatchtowerContainer() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => fetchRules(rulesPage, rulesPageSize)}
+                        onClick={() =>
+                          fetchRules(rulesPage, rulesPageSize, rulesSortBy)
+                        }
                         disabled={isLoading}
                       >
                         <RefreshCw
@@ -1144,6 +1185,19 @@ export default function WatchtowerContainer() {
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-4">
               <Select
+                value={alertsSortBy}
+                onChange={(e) => {
+                  setAlertsSortBy(e.target.value)
+                  setAlertsPage(1)
+                }}
+                className="w-44"
+              >
+                <option value="created_desc">Newest First</option>
+                <option value="created_asc">Oldest First</option>
+                <option value="severity_desc">Severity (High-Low)</option>
+              </Select>
+
+              <Select
                 value={severityFilter}
                 onChange={(e) => {
                   setSeverityFilter(e.target.value)
@@ -1187,7 +1241,9 @@ export default function WatchtowerContainer() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchAlerts(alertsPage, alertsPageSize)}
+                onClick={() =>
+                  fetchAlerts(alertsPage, alertsPageSize, alertsSortBy)
+                }
                 disabled={isLoading}
               >
                 <RefreshCw

@@ -549,6 +549,14 @@ export interface RuleEvaluationResult {
 // Query Parameters
 // ============================================================================
 
+export type RuleSortBy =
+  | 'name_asc'
+  | 'name_desc'
+  | 'created_asc'
+  | 'created_desc'
+  | 'triggers_desc'
+export type AlertSortBy = 'created_asc' | 'created_desc' | 'severity_desc'
+
 export interface RuleQueryParams {
   source_id?: string
   client_id?: number
@@ -558,6 +566,7 @@ export interface RuleQueryParams {
   group_id?: string
   page?: number
   pageSize?: number
+  sortBy?: RuleSortBy
 }
 
 export interface AlertQueryParams {
@@ -570,6 +579,7 @@ export interface AlertQueryParams {
   end_date?: string
   page?: number
   pageSize?: number
+  sortBy?: AlertSortBy
 }
 
 // ============================================================================

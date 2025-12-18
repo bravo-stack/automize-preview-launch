@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const snapshotId = searchParams.get('snapshotId') || undefined
     const pod = searchParams.get('pod') || undefined
     const datePreset = searchParams.get('datePreset') || undefined
+    const sortBy = searchParams.get('sortBy') || 'name_asc'
 
     const result = await getFacebookMetrics({
       page,
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
       snapshotId,
       pod,
       datePreset,
+      sortBy,
     })
 
     return NextResponse.json({

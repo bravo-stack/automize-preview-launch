@@ -907,9 +907,7 @@ export default function RuleBuilder({
               {availablePods.map((pod) => (
                 <option key={pod.id} value={pod.id.toString()}>
                   {pod.name}
-                  {pod.discord_id
-                    ? ` (Discord: ${pod.discord_id.slice(0, 8)}...)`
-                    : ''}
+                  {/* {pod.discord_id ? ` [POD] ` : ''} */}
                 </option>
               ))}
             </Select>
@@ -968,7 +966,10 @@ export default function RuleBuilder({
         </label>
 
         {/* Pod Selection for WhatsApp (if Discord not already selecting one) */}
-        {notifyWhatsapp && !notifyDiscord && (
+        {notifyWhatsapp &&
+        !notifyDiscord &&
+        availablePods &&
+        availablePods?.length > 0 ? (
           <div className="space-y-3">
             <Select
               label="Select Pod"
@@ -986,10 +987,13 @@ export default function RuleBuilder({
               ))}
             </Select>
           </div>
-        )}
+        ) : null}
 
         {/* WhatsApp number info display */}
-        {notifyWhatsapp && selectedPodId && (
+        {notifyWhatsapp &&
+        selectedPodId &&
+        availablePods &&
+        availablePods?.length > 0 ? (
           <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs">
             {(() => {
               const pod = availablePods.find(
@@ -1009,7 +1013,7 @@ export default function RuleBuilder({
               )
             })()}
           </div>
-        )}
+        ) : null}
 
         {/* Warning if selected pod is missing WhatsApp number */}
         {notifyWhatsapp &&

@@ -33,14 +33,21 @@ export default function FacebookView() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [selectedPod, setSelectedPod] = useState<string>('')
+  const [sortBy, setSortBy] = useState<string>('name_asc')
 
   const fetchData = useCallback(
-    async (page: number, size: number, pod?: string) => {
+    async (
+      page: number,
+      size: number,
+      pod?: string,
+      sort: string = 'name_asc',
+    ) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams({
           page: String(page),
           pageSize: String(size),
+          sortBy: sort,
         })
         if (pod) params.set('pod', pod)
 
@@ -74,8 +81,8 @@ export default function FacebookView() {
   )
 
   useEffect(() => {
-    fetchData(currentPage, pageSize, selectedPod)
-  }, [fetchData, currentPage, pageSize, selectedPod])
+    fetchData(currentPage, pageSize, selectedPod, sortBy)
+  }, [fetchData, currentPage, pageSize, selectedPod, sortBy])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -89,6 +96,11 @@ export default function FacebookView() {
   const handlePodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedPod(e.target.value)
     setCurrentPage(1) // Reset to first page when changing filter
+  }
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortBy(e.target.value)
+    setCurrentPage(1) // Reset to first page when changing sort
   }
 
   const formatCurrency = (value: number | null) => {
@@ -240,7 +252,20 @@ export default function FacebookView() {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <div>
+          <label className="block text-sm text-white/60">Sort by</label>
+          <select
+            value={sortBy}
+            onChange={handleSortChange}
+            className="mt-1 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none [&>option]:bg-zinc-900 [&>option]:text-white"
+          >
+            <option value="name_asc">Name (A-Z)</option>
+            <option value="name_desc">Name (Z-A)</option>
+            <option value="created_desc">Newest First</option>
+            <option value="created_asc">Oldest First</option>
+          </select>
+        </div>
         <div>
           <label className="block text-sm text-white/60">Filter by Pod</label>
           <select

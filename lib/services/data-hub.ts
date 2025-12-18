@@ -192,10 +192,18 @@ export async function getFacebookMetrics(
     snapshotId?: string
     pod?: string
     datePreset?: string
+    sortBy?: string
   },
 ): Promise<PaginatedResponse<RefreshSnapshotMetric>> {
   const db = createAdminClient()
-  const { page, pageSize, snapshotId, pod, datePreset } = params
+  const {
+    page,
+    pageSize,
+    snapshotId,
+    pod,
+    datePreset,
+    sortBy = 'name_asc',
+  } = params
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
@@ -221,7 +229,23 @@ export async function getFacebookMetrics(
       { count: 'exact' },
     )
     .eq('snapshot.refresh_type', 'autometric')
-    .order('created_at', { ascending: false })
+
+  // Apply sorting
+  switch (sortBy) {
+    case 'name_desc':
+      query = query.order('account_name', { ascending: false })
+      break
+    case 'created_asc':
+      query = query.order('created_at', { ascending: true })
+      break
+    case 'created_desc':
+      query = query.order('created_at', { ascending: false })
+      break
+    case 'name_asc':
+    default:
+      query = query.order('account_name', { ascending: true })
+      break
+  }
 
   if (snapshotId) query = query.eq('snapshot_id', snapshotId)
   if (pod) query = query.eq('pod', pod)
@@ -340,10 +364,20 @@ export async function getFinanceCategoryStats(): Promise<FinanceCategoryStats> {
 }
 
 export async function getFinanceMetrics(
-  params: PaginationParams & { snapshotId?: string; rebillStatus?: string },
+  params: PaginationParams & {
+    snapshotId?: string
+    rebillStatus?: string
+    sortBy?: string
+  },
 ): Promise<PaginatedResponse<RefreshSnapshotMetric>> {
   const db = createAdminClient()
-  const { page, pageSize, snapshotId, rebillStatus } = params
+  const {
+    page,
+    pageSize,
+    snapshotId,
+    rebillStatus,
+    sortBy = 'name_asc',
+  } = params
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
@@ -369,7 +403,23 @@ export async function getFinanceMetrics(
       { count: 'exact' },
     )
     .eq('snapshot.refresh_type', 'financialx')
-    .order('created_at', { ascending: false })
+
+  // Apply sorting
+  switch (sortBy) {
+    case 'name_desc':
+      query = query.order('account_name', { ascending: false })
+      break
+    case 'created_asc':
+      query = query.order('created_at', { ascending: true })
+      break
+    case 'created_desc':
+      query = query.order('created_at', { ascending: false })
+      break
+    case 'name_asc':
+    default:
+      query = query.order('account_name', { ascending: true })
+      break
+  }
 
   if (snapshotId) query = query.eq('snapshot_id', snapshotId)
   if (rebillStatus) query = query.eq('rebill_status', rebillStatus)

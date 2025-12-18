@@ -8,12 +8,14 @@ export async function GET(request: NextRequest) {
     const pageSize = parseInt(searchParams.get('pageSize') || '15', 10)
     const snapshotId = searchParams.get('snapshotId') || undefined
     const rebillStatus = searchParams.get('rebillStatus') || undefined
+    const sortBy = searchParams.get('sortBy') || 'name_asc'
 
     const result = await getFinanceMetrics({
       page,
       pageSize,
       snapshotId,
       rebillStatus,
+      sortBy,
     })
 
     return NextResponse.json({

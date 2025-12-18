@@ -638,6 +638,7 @@ export async function getRulesPaginated(
   const db = createAdminClient()
   const page = params.page || 1
   const pageSize = params.pageSize || 20
+  const sortBy = params.sortBy || 'created_desc'
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
@@ -655,7 +656,26 @@ export async function getRulesPaginated(
       { count: 'exact' },
     )
     .is('deleted_at', null)
-    .order('created_at', { ascending: false })
+
+  // Apply sorting
+  switch (sortBy) {
+    case 'name_asc':
+      query = query.order('name', { ascending: true })
+      break
+    case 'name_desc':
+      query = query.order('name', { ascending: false })
+      break
+    case 'created_asc':
+      query = query.order('created_at', { ascending: true })
+      break
+    case 'triggers_desc':
+      query = query.order('trigger_count', { ascending: false })
+      break
+    case 'created_desc':
+    default:
+      query = query.order('created_at', { ascending: false })
+      break
+  }
 
   // Apply filters
   if (params.source_id) query = query.eq('source_id', params.source_id)
@@ -688,13 +708,12 @@ export async function getAlertsPaginated(
   const db = createAdminClient()
   const page = params.page || 1
   const pageSize = params.pageSize || 20
+  const sortBy = params.sortBy || 'created_desc'
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let query = db
-    .from('watchtower_alerts')
-    .select(
-      `
+  let query = db.from('watchtower_alerts').select(
+    `
       *,
       rule:watchtower_rules (
         id,
@@ -712,9 +731,25 @@ export async function getAlertsPaginated(
         )
       )
     `,
-      { count: 'exact' },
-    )
-    .order('created_at', { ascending: false })
+    { count: 'exact' },
+  )
+
+  // Apply sorting
+  switch (sortBy) {
+    case 'created_asc':
+      query = query.order('created_at', { ascending: true })
+      break
+    case 'severity_desc':
+      // Order by severity (critical first, then warning, then info)
+      query = query
+        .order('severity', { ascending: true })
+        .order('created_at', { ascending: false })
+      break
+    case 'created_desc':
+    default:
+      query = query.order('created_at', { ascending: false })
+      break
+  }
 
   // Apply filters
   if (params.rule_id) query = query.eq('rule_id', params.rule_id)

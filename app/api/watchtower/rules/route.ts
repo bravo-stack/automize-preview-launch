@@ -14,6 +14,7 @@ import {
   updateRule,
 } from '@/lib/actions/watchtower'
 import type { Severity, TargetTable } from '@/types/api-storage'
+import type { RuleSortBy } from '@/types/watchtower'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Force dynamic rendering to prevent caching
@@ -102,10 +103,12 @@ export async function GET(request: NextRequest) {
     // Default: List rules with pagination
     const page = parseInt(searchParams.get('page') || '1', 10)
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10)
+    const sortBy = (searchParams.get('sortBy') || 'created_desc') as RuleSortBy
 
     const params = {
       page,
       pageSize,
+      sortBy,
       source_id: searchParams.get('source_id') || undefined,
       client_id: searchParams.get('client_id')
         ? parseInt(searchParams.get('client_id')!, 10)

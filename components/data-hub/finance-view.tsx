@@ -34,14 +34,21 @@ export default function FinanceView() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [rebillFilter, setRebillFilter] = useState<string>('')
+  const [sortBy, setSortBy] = useState<string>('name_asc')
 
   const fetchData = useCallback(
-    async (page: number, size: number, rebillStatus?: string) => {
+    async (
+      page: number,
+      size: number,
+      rebillStatus?: string,
+      sort: string = 'name_asc',
+    ) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams({
           page: String(page),
           pageSize: String(size),
+          sortBy: sort,
         })
         if (rebillStatus) params.set('rebillStatus', rebillStatus)
 
@@ -75,8 +82,8 @@ export default function FinanceView() {
   )
 
   useEffect(() => {
-    fetchData(currentPage, pageSize, rebillFilter)
-  }, [fetchData, currentPage, pageSize, rebillFilter])
+    fetchData(currentPage, pageSize, rebillFilter, sortBy)
+  }, [fetchData, currentPage, pageSize, rebillFilter, sortBy])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -85,6 +92,11 @@ export default function FinanceView() {
   const handlePageSizeChange = (size: number) => {
     setPageSize(size)
     setCurrentPage(1) // Reset to first page when changing page size
+  }
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortBy(e.target.value)
+    setCurrentPage(1) // Reset to first page when changing sort
   }
 
   const handleRebillFilterChange = (
@@ -237,7 +249,20 @@ export default function FinanceView() {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <div>
+          <label className="block text-sm text-white/60">Sort by</label>
+          <select
+            value={sortBy}
+            onChange={handleSortChange}
+            className="mt-1 rounded-md border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none [&>option]:bg-zinc-900 [&>option]:text-white"
+          >
+            <option value="name_asc">Name (A-Z)</option>
+            <option value="name_desc">Name (Z-A)</option>
+            <option value="created_desc">Newest First</option>
+            <option value="created_asc">Oldest First</option>
+          </select>
+        </div>
         <div>
           <label className="block text-sm text-white/60">Rebill Status</label>
           <select

@@ -6,6 +6,7 @@ import {
   getAlertsPaginated,
 } from '@/lib/actions/watchtower'
 import type { Severity } from '@/types/api-storage'
+import type { AlertSortBy } from '@/types/watchtower'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ============================================================================
@@ -17,10 +18,12 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1', 10)
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10)
+    const sortBy = (searchParams.get('sortBy') || 'created_desc') as AlertSortBy
 
     const params = {
       page,
       pageSize,
+      sortBy,
       rule_id: searchParams.get('rule_id') || undefined,
       snapshot_id: searchParams.get('snapshot_id') || undefined,
       client_id: searchParams.get('client_id')

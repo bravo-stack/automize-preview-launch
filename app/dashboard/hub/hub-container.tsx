@@ -362,39 +362,6 @@ export default function HubPageContainer() {
                     </div>
                   </div>
                 </div>
-
-                {/* Data Sources Info */}
-                <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-6">
-                  <div className="flex items-start gap-3">
-                    <Info className="mt-0.5 h-5 w-5 text-blue-400" />
-                    <div>
-                      <h3 className="font-medium text-blue-400">
-                        Data Organization Guide
-                      </h3>
-                      <ul className="mt-2 space-y-1 text-sm text-blue-400/80">
-                        <li>
-                          <strong>Facebook:</strong> Autometric sheets data -
-                          Facebook Ads performance metrics synced from Google
-                          Sheets
-                        </li>
-                        <li>
-                          <strong>Finance Sheet:</strong> FinancialX sheets data
-                          - Rebill and accounting metrics synced from Google
-                          Sheets
-                        </li>
-                        <li>
-                          <strong>API Data:</strong> Data fetched from external
-                          APIs including Omnisend, Shopify, Themes, and other
-                          integrations
-                        </li>
-                        <li>
-                          <strong>Forms:</strong> Client submissions for Day
-                          Drop requests and Website Revamp requests
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
               </>
             ) : (
               <div className="flex min-h-[400px] items-center justify-center rounded-lg border border-white/10 bg-white/5">
