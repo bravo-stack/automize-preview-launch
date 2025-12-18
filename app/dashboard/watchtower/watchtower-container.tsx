@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { WatchtowerInfoTrig } from './watchtower-info-trigg'
 
 type WatchtowerTab = 'overview' | 'rules' | 'alerts'
 type RulesSubTab = 'active' | 'deleted'
@@ -523,12 +524,17 @@ export default function WatchtowerContainer() {
             </p>
           </div>
 
-          {activeTab === 'rules' && !showRuleBuilder && (
-            <Button onClick={() => setShowRuleBuilder(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Rule
-            </Button>
-          )}
+          <div className="inline-flex w-fit items-center gap-3">
+            {activeTab === 'rules' && !showRuleBuilder && (
+              <Button onClick={() => setShowRuleBuilder(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Rule
+              </Button>
+            )}
+
+            {/* Hub Data Domains Info */}
+            <WatchtowerInfoTrig />
+          </div>
         </header>
         {/* Error Display */}
         {error && (
@@ -847,57 +853,6 @@ export default function WatchtowerContainer() {
                     </div>
                   ))
                 )}
-              </div>
-            </div>
-
-            {/* Hub Data Domains Info */}
-            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-6">
-              <div className="flex items-start gap-3">
-                <Info className="mt-0.5 h-5 w-5 text-blue-400" />
-                <div>
-                  <h3 className="font-medium text-blue-400">
-                    Available Data Domains for Monitoring
-                  </h3>
-                  <p className="mt-1 text-sm text-blue-400/80">
-                    Rules can be configured to monitor data from any of these
-                    Hub domains:
-                  </p>
-                  <ul className="mt-3 space-y-2 text-sm text-blue-400/80">
-                    <li>
-                      <strong>Facebook (Autometric):</strong> Facebook Ads
-                      performance metrics from Autometric sheets - ad spend,
-                      ROAS, CPA, CTR, hook rate, and more
-                    </li>
-                    <li>
-                      <strong>Finance (FinancialX):</strong> Rebill and
-                      accounting metrics from FinancialX sheets - rebill spend,
-                      rebill ROAS, revenue tracking
-                    </li>
-                    <li>
-                      <strong>API Data Records:</strong> Individual records from
-                      external APIs like Omnisend, Shopify, and other
-                      integrations
-                    </li>
-                    <li>
-                      <strong>Form Submissions:</strong> Day Drop requests and
-                      Website Revamp submissions - status tracking and SLA
-                      monitoring
-                    </li>
-                    <li>
-                      <strong>API Snapshots:</strong> API data sync health -
-                      alert on failures or high error rates
-                    </li>
-                    <li>
-                      <strong>Sheet Snapshots:</strong> Google Sheet refresh
-                      status - alert on sync failures or stale data
-                    </li>
-                    <li>
-                      <strong>Communications Report:</strong> Communications
-                      report data - information on client and ixm team response
-                      times, including pod and guild information.
-                    </li>
-                  </ul>
-                </div>
               </div>
             </div>
 

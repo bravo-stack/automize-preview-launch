@@ -7,8 +7,6 @@ import type { WatchtowerRuleWithRelations } from '@/types/watchtower'
 import { getTimeRangeDaysLabel } from '@/types/watchtower'
 import {
   AlertTriangle,
-  Bell,
-  BellOff,
   Calendar,
   ChevronDown,
   ChevronUp,
@@ -308,20 +306,6 @@ export default function RuleList({
             </div>
 
             <div className="flex items-center gap-2">
-              <span
-                title={
-                  rule.notify_immediately
-                    ? 'Immediate notifications'
-                    : 'Scheduled notifications'
-                }
-              >
-                {rule.notify_immediately ? (
-                  <Bell className="h-4 w-4 text-green-400" />
-                ) : (
-                  <BellOff className="h-4 w-4 text-white/30" />
-                )}
-              </span>
-
               {rule.parent_rule_id && (
                 <span title="Has dependency">
                   <Link2 className="h-4 w-4 text-blue-400" />
@@ -525,20 +509,6 @@ export default function RuleList({
             </div>
 
             <div className="flex items-center gap-2">
-              <span
-                title={
-                  mainRule.notify_immediately
-                    ? 'Immediate notifications'
-                    : 'Scheduled notifications'
-                }
-              >
-                {mainRule.notify_immediately ? (
-                  <Bell className="h-4 w-4 text-green-400" />
-                ) : (
-                  <BellOff className="h-4 w-4 text-white/30" />
-                )}
-              </span>
-
               <Button
                 variant="ghost"
                 size="icon"
