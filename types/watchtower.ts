@@ -348,7 +348,7 @@ export interface WatchtowerRule {
   notify_discord: boolean
   discord_channel_id: string | null
   // Support multiple discord channel IDs
-  extra_discord_channel_ids: string[] | null
+  extra_discord_channel_ids?: string[] | null
   notify_whatsapp: boolean
   // Support multiple extra WhatsApp numbers
   extra_whatsapp_numbers?: string[] | null
