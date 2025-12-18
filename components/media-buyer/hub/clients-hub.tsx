@@ -58,7 +58,7 @@ export function ClientsHub({
       {/* Header */}
       <header>
         <h1 className="bg-gradient-to-b from-white via-zinc-300/90 to-white/70 bg-clip-text text-4xl font-bold tracking-wide text-transparent">
-          Hub
+          Client Dashboard
         </h1>
         <p className="mt-2 text-lg text-white/60">
           View theme configurations and Omnisend performance metrics for your

@@ -54,7 +54,7 @@ export default async function MediaBuyerPage() {
         actions={
           <Link
             href="/dashboard/media-buyer/clients"
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            className="flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black transition-colors"
           >
             View Clients
             <svg
