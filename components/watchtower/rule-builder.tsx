@@ -128,6 +128,9 @@ export default function RuleBuilder({
     string[]
   >([])
   const [newChannelId, setNewChannelId] = useState<string>('')
+  // Extra WhatsApp numbers
+  const [extraWhatsappNumbers, setExtraWhatsappNumbers] = useState<string[]>([])
+  const [newWhatsappNumber, setNewWhatsappNumber] = useState<string>('')
 
   // Dependency settings
   const [parentRuleId, setParentRuleId] = useState<string>('')
@@ -198,6 +201,8 @@ export default function RuleBuilder({
       setSelectedPodIds(editRule.pod_ids || [])
       // Load extra Discord channel IDs
       setExtraDiscordChannelIds(editRule.extra_discord_channel_ids || [])
+      // Load extra WhatsApp numbers
+      setExtraWhatsappNumbers(editRule.extra_whatsapp_numbers || [])
       setParentRuleId(editRule.parent_rule_id || '')
       setDependencyCondition(editRule.dependency_condition || '')
 
@@ -394,6 +399,11 @@ export default function RuleBuilder({
           ? extraDiscordChannelIds
           : undefined,
       notify_whatsapp: notifyWhatsapp,
+      // Include extra WhatsApp numbers
+      extra_whatsapp_numbers:
+        notifyWhatsapp && extraWhatsappNumbers.length > 0
+          ? extraWhatsappNumbers
+          : undefined,
       pod_id: selectedPodId || undefined,
       // Include multiple pod IDs for notifications
       pod_ids:
@@ -1159,6 +1169,73 @@ export default function RuleBuilder({
               ⚠️ Selected pod does not have a WhatsApp number configured
             </p>
           )}
+
+        {/* Extra WhatsApp Numbers */}
+        {notifyWhatsapp && (
+          <div className="space-y-2">
+            <label className="block text-sm text-white/70">
+              Extra WhatsApp Numbers (Optional)
+            </label>
+            <p className="text-xs text-white/40">
+              Add custom WhatsApp numbers to also receive notifications
+            </p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter WhatsApp number (e.g., +1234567890)"
+                value={newWhatsappNumber}
+                onChange={(e) => setNewWhatsappNumber(e.target.value)}
+                className="flex-1 border-white/10 bg-zinc-900"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (
+                    newWhatsappNumber.trim() &&
+                    !extraWhatsappNumbers.includes(newWhatsappNumber.trim())
+                  ) {
+                    setExtraWhatsappNumbers((prev) => [
+                      ...prev,
+                      newWhatsappNumber.trim(),
+                    ])
+                    setNewWhatsappNumber('')
+                  }
+                }}
+                disabled={!newWhatsappNumber.trim()}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {extraWhatsappNumbers.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {extraWhatsappNumbers.map((number) => (
+                  <span
+                    key={number}
+                    className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70"
+                  >
+                    <code className="font-mono text-green-400">
+                      {number.length > 15
+                        ? `${number.slice(0, 8)}...${number.slice(-4)}`
+                        : number}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExtraWhatsappNumbers((prev) =>
+                          prev.filter((n) => n !== number),
+                        )
+                      }
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Actions */}

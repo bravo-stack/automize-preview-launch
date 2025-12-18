@@ -97,7 +97,7 @@ export async function sendDiscordNotification(
     }
 
     // Deduplicate channels
-    const uniqueChannels = [...new Set(channelsToNotify)]
+    const uniqueChannels = Array.from(new Set(channelsToNotify))
 
     // Send to all channels
     const results = await Promise.allSettled(
@@ -227,6 +227,16 @@ export async function sendWhatsAppNotification(
           whatsapp_number: pod.whatsapp_number,
         })
       }
+    }
+  }
+
+  // Add extra WhatsApp numbers if configured (not tied to pods)
+  if (rule.extra_whatsapp_numbers?.length) {
+    for (const number of rule.extra_whatsapp_numbers) {
+      podsToNotify.push({
+        name: `Direct: ${number.slice(-4)}`,
+        whatsapp_number: number,
+      })
     }
   }
 
