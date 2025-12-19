@@ -19,6 +19,7 @@ export default function WhatsAppLogsContainer() {
 
   // Filters
   const [podFilter, setPodFilter] = useState('')
+  const [sourceFilter, setSourceFilter] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
@@ -52,13 +53,14 @@ export default function WhatsAppLogsContainer() {
   const filteredLogs = logs.filter((log) => {
     const matchesPod =
       !podFilter || log.pod_name.toLowerCase().includes(podFilter.toLowerCase())
+    const matchesSource = !sourceFilter || log.source_feature === sourceFilter
     const matchesSearch =
       !searchTerm ||
       log.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.recipient_phone_number.includes(searchTerm) ||
       log.message_content?.toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchesPod && matchesSearch
+    return matchesPod && matchesSource && matchesSearch
   })
 
   const formatDate = (dateString: string) => {
@@ -74,13 +76,28 @@ export default function WhatsAppLogsContainer() {
   }
 
   const formatSourceName = (source: string) => {
-    return source
+    let formattedSource = ''
+
+    if (!source || source.trim() === '') {
+      return 'Empty Source'
+    }
+
+    if (source === 'ad_error') {
+      formattedSource = 'ad_account_error'
+    } else {
+      formattedSource = source
+    }
+
+    return formattedSource
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
   }
 
   const uniquePods = Array.from(new Set(logs.map((log) => log.pod_name))).sort()
+  const uniqueSources = Array.from(
+    new Set(logs.map((log) => log.source_feature)),
+  ).sort()
 
   return (
     <div className="min-h-screen bg-black px-6 py-8 text-white">
@@ -124,6 +141,23 @@ export default function WhatsAppLogsContainer() {
                 {uniquePods.map((pod) => (
                   <option key={pod} value={pod}>
                     {pod}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-neutral-400">
+                Source
+              </label>
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+              >
+                <option value="">All Sources</option>
+                {uniqueSources.map((source, index) => (
+                  <option key={index} value={source}>
+                    {formatSourceName(source)}
                   </option>
                 ))}
               </select>
@@ -313,7 +347,7 @@ export default function WhatsAppLogsContainer() {
           if (!open) setSelectedLog(null)
         }}
       >
-        <DialogContent className="max-h-[80vh] w-full max-w-2xl border border-neutral-800 bg-neutral-950 text-white">
+        <DialogContent className="max-h-[80vh] w-full max-w-2xl overflow-y-auto border border-neutral-800 bg-neutral-950 text-white">
           {selectedLog && (
             <>
               <DialogHeader>
