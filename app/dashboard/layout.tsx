@@ -215,7 +215,7 @@ export default async function DashboardLayout({ children }) {
         {/* Main Content Area */}
         <div
           id="main-focus"
-          className="flex flex-1 flex-col transition-all duration-500 ease-in-out"
+          className="flex min-w-0 flex-1 flex-col transition-all duration-500 ease-in-out"
         >
           <div className="flex h-[60px] items-center border-b border-zinc-800 bg-zinc-950/50 px-6 backdrop-blur">
             {/* Top Bar content */}

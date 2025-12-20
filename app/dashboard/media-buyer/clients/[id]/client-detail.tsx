@@ -17,8 +17,6 @@ import {
   Clock,
   ExternalLink,
   Globe,
-  Mail,
-  Phone,
   RefreshCw,
   Store,
   User,
@@ -89,31 +87,15 @@ function ClientHeader({ client, onRefresh, isRefreshing }: ClientHeaderProps) {
 
       {/* Contact Info */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {client.full_name && (
+        {client?.full_name && (
           <div className="flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-white/40" />
-            <span className="text-white/70">{client.full_name}</span>
+            <span className="text-white/70">
+              {client?.full_name?.split(' ')[0]}
+            </span>
           </div>
         )}
-        {client.email && (
-          <a
-            href={`mailto:${client.email}`}
-            className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
-          >
-            <Mail className="h-4 w-4 text-white/40" />
-            <span className="truncate">{client.email}</span>
-          </a>
-        )}
-        {client.phone_number && (
-          <a
-            href={`tel:${client.phone_number}`}
-            className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
-          >
-            <Phone className="h-4 w-4 text-white/40" />
-            <span>{client.phone_number}</span>
-          </a>
-        )}
-        {client.website && (
+        {client?.website && (
           <a
             href={client.website}
             target="_blank"
@@ -125,7 +107,7 @@ function ClientHeader({ client, onRefresh, isRefreshing }: ClientHeaderProps) {
             <ExternalLink className="h-3 w-3" />
           </a>
         )}
-        {client.store_id && (
+        {client?.store_id && (
           <a
             href={`https://${client.store_id}.myshopify.com/admin`}
             target="_blank"
