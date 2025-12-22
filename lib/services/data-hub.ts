@@ -47,7 +47,10 @@ export async function getDataHubOverview(): Promise<DataHubOverview> {
     db.from('api_records').select('id', { count: 'exact', head: true }),
     db
       .from('watchtower_alerts')
-      .select('id, severity, is_acknowledged', { count: 'exact' }),
+      .select('id, severity, is_acknowledged, watchtower_rules!inner(id)', {
+        count: 'exact',
+      })
+      .is('watchtower_rules.deleted_at', null),
     db
       .from('form_submissions')
       .select('id, status, form_type', { count: 'exact' }),
@@ -892,7 +895,7 @@ export async function getWatchtowerAlerts(
     .select(
       `
       *,
-      rule:watchtower_rules (
+      rule:watchtower_rules!inner (
         id,
         name,
         severity,
@@ -924,6 +927,7 @@ export async function getWatchtowerAlerts(
     `,
       { count: 'exact' },
     )
+    .is('rule.deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (severity) query = query.eq('severity', severity)

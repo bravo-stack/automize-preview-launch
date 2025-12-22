@@ -232,7 +232,8 @@ export async function createAlert(
   // ============================================================================
   const { data: existingAlert } = await db
     .from('watchtower_alerts')
-    .select('id')
+    .select('id, watchtower_rules!inner(id)')
+    .is('watchtower_rules.deleted_at', null)
     .eq('rule_id', ruleId)
     .eq('current_value', currentValue)
     .eq('message', message)
@@ -352,7 +353,8 @@ export async function getAlerts(
   const db = createAdminClient()
   let query = db
     .from('watchtower_alerts')
-    .select('*, rule:watchtower_rules(*)')
+    .select('*, rule:watchtower_rules!inner(*)')
+    .is('rule.deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (options.clientId) query = query.eq('client_id', options.clientId)
@@ -431,7 +433,8 @@ export async function getAlertStats(
 
   let query = db
     .from('watchtower_alerts')
-    .select('severity, is_acknowledged')
+    .select('severity, is_acknowledged, watchtower_rules!inner(id)')
+    .is('watchtower_rules.deleted_at', null)
     .gte('created_at', startDate)
 
   if (options.clientId) query = query.eq('client_id', options.clientId)
@@ -477,7 +480,8 @@ export async function checkRuleDependency(
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const { data: parentAlerts } = await db
     .from('watchtower_alerts')
-    .select('is_acknowledged')
+    .select('is_acknowledged, watchtower_rules!inner(id)')
+    .is('watchtower_rules.deleted_at', null)
     .eq('rule_id', rule.parent_rule_id)
     .gte('created_at', cutoff)
 
@@ -719,10 +723,12 @@ export async function getAlertsPaginated(
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
-  let query = db.from('watchtower_alerts').select(
-    `
+  let query = db
+    .from('watchtower_alerts')
+    .select(
+      `
       *,
-      rule:watchtower_rules (
+      rule:watchtower_rules!inner (
         id,
         name,
         severity,
@@ -738,8 +744,9 @@ export async function getAlertsPaginated(
         )
       )
     `,
-    { count: 'exact' },
-  )
+      { count: 'exact' },
+    )
+    .is('rule.deleted_at', null)
 
   // Apply sorting
   switch (sortBy) {
@@ -1116,9 +1123,20 @@ export async function getWatchtowerStats(): Promise<WatchtowerStats> {
         .from('watchtower_rules')
         .select('id, is_active, group_id')
         .is('deleted_at', null),
-      db.from('watchtower_alerts').select('id, severity, is_acknowledged'),
-      db.from('watchtower_alerts').select('id').gte('created_at', startOfDay),
-      db.from('watchtower_alerts').select('id').gte('created_at', startOfWeek),
+      db
+        .from('watchtower_alerts')
+        .select('id, severity, is_acknowledged, watchtower_rules!inner(id)')
+        .is('watchtower_rules.deleted_at', null),
+      db
+        .from('watchtower_alerts')
+        .select('id, watchtower_rules!inner(id)')
+        .is('watchtower_rules.deleted_at', null)
+        .gte('created_at', startOfDay),
+      db
+        .from('watchtower_alerts')
+        .select('id, watchtower_rules!inner(id)')
+        .is('watchtower_rules.deleted_at', null)
+        .gte('created_at', startOfWeek),
     ])
 
   const rules = rulesRes.data || []
