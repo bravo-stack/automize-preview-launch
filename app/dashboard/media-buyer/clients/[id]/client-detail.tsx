@@ -107,7 +107,7 @@ function ClientHeader({ client, onRefresh, isRefreshing }: ClientHeaderProps) {
             <ExternalLink className="h-3 w-3" />
           </a>
         )}
-        {client?.store_id && (
+        {/* {client?.store_id && (
           <a
             href={`https://${client.store_id}.myshopify.com/admin`}
             target="_blank"
@@ -118,7 +118,7 @@ function ClientHeader({ client, onRefresh, isRefreshing }: ClientHeaderProps) {
             <span>{client.store_id}.myshopify.com</span>
             <ExternalLink className="h-3 w-3" />
           </a>
-        )}
+        )} */}
       </div>
     </div>
   )

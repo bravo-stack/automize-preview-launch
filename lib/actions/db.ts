@@ -88,10 +88,10 @@ export async function createUser(email, password, pod, discord): Promise<any> {
   }
 }
 
-export async function deleteUser(user_id): Promise<any> {
+export async function deleteUser(user_id: string): Promise<{ error: boolean }> {
   const db = createAdminClient()
   const { error } = await db.auth.admin.deleteUser(user_id)
-  if (error) console.log(error)
+  if (error) console.error(error)
   return { error: error ? true : false }
 }
 
