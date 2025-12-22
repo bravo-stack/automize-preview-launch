@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## IXM Archive Viewer
 
-## Getting Started
+Automize now ships an internal-only IXM Archive Viewer reachable at `/dashboard/archives`. The Discord bot shares deep links that target `/dashboard/archives/{archiveId}` so reviewers can inspect transcripts, attachments, and metadata that live in Supabase.
 
-First, run the development server:
+### Environment variables
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| Name                            | Required         | Description                                                                                                                                                                |
+| ------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | ✅               | Project URL used by both the App Router server layer and client-side TanStack Query hooks.                                                                                 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅               | Public anon key. The session JWT provided to IXM reviewers must include the `role = 'ixm_internal'` custom claim so RLS allows read-only access.                           |
+| `SUPABASE_ADMIN_KEY`            | ✅ (server-only) | Service-role key used inside `lib/db/admin.ts` for SSR data that must bypass RLS. Never expose this to the browser.                                                        |
+| `AUTOMIZE_DOMAIN`               | optional         | If you deploy Automize behind a vanity domain, configure this so Automize links render with the correct hostname; otherwise the UI falls back to `window.location.origin`. |
+
+Run `npm run dev` to start the local environment after exporting the variables above.
+
+### Supabase RLS policies
+
+Grant read-only access to IXM reviewers by scoping every archive row to JWTs that declare the `ixm_internal` role:
+
+```sql
+alter table public.discord_channel_archives enable row level security;
+
+create policy "Allow IXM internal archive reads"
+	on public.discord_channel_archives for select
+	using (auth.jwt()->>'role' = 'ixm_internal');
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Apply a similar whitelist to the Storage bucket so the UI must mint signed URLs:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sql
+-- bucket: discord-archives
+create policy "Allow ixm_internal signed access" on storage.objects
+	for select using (
+		bucket_id = 'discord-archives'
+		and auth.jwt()->>'role' = 'ixm_internal'
+	);
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+> **Important:** the `discord-archives` bucket remains `private`. Never expose the raw object keys—always call `supabase.storage.from('discord-archives').createSignedUrl(...)` from the client. Signed URLs in the Archive Viewer expire after 60 seconds and the UI automatically prompts the user to retry if a link has gone stale.
 
-## Learn More
+### Feature overview
 
-To learn more about Next.js, take a look at the following resources:
+- TanStack Query + Supabase client-side hooks: `useArchives`, `useArchiveDetails`, and `useSignedUrl` power the list and detail experiences with refetch-on-focus caching.
+- `/dashboard/archives`: grouped by Discord category with collapsible channel stacks, quick message/attachment counts, live filters (guild/channel/category/batch/date), pagination (20/page), plus bulk transcript downloads and metadata CSV export.
+- `/dashboard/archives/{archiveId}`: monochrome detail view with inline transcript preview, image attachment embeds (while keeping signed download links), and quick copy actions for Automize links, storage prefixes, and batch IDs.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Development flow
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```bash
+npm install
+npm run dev
+```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Use the Discord bot to request archives, then open the Automize deep link inside your authenticated IXM session to exercise the new UI.

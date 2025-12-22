@@ -1,4 +1,5 @@
 import { ThemeProvider } from '@/components/ThemeProvider'
+import { QueryProvider } from '@/components/providers/query-provider'
 import { GeistSans } from 'geist/font/sans'
 import type { Metadata } from 'next'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   title: 'Automize',
   description: 'The only business optimization solution you need.',
 }
-
+// vercel tax
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -23,7 +24,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <NuqsAdapter>{children}</NuqsAdapter>
+          <QueryProvider>
+            <NuqsAdapter>{children}</NuqsAdapter>
+          </QueryProvider>
         </ThemeProvider>
         <Toaster position="top-right" />
       </body>

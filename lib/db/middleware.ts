@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { safeCompare } from '../utils'
 
 // Routes that require exec role
 const EXEC_ONLY_ROUTES = [
@@ -58,6 +59,8 @@ export async function updateSession(request: NextRequest) {
     error,
   } = await supabase.auth.getUser()
 
+  const API_SECRET_KEY = process.env.PRIVATE_API_KEY
+
   if (user) {
     if (request.nextUrl.pathname === '/login') {
       const url = request.nextUrl.clone()
@@ -76,6 +79,20 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
+  } else if (request.nextUrl.pathname.startsWith('/api')) {
+    const apiKey = request.headers.get('x-api-key')
+
+    // If no key provided, block
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Missing API key' }, { status: 401 })
+    }
+
+    // Use constant-time comparison to prevent timing attacks
+    const isValid = await safeCompare(apiKey, process.env.PRIVATE_API_KEY!)
+
+    if (!isValid) {
+      return new NextResponse('Unauthorized', { status: 401 })
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
