@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type SyncStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -184,6 +184,19 @@ export default function ServicesPage() {
   const isSyncing =
     Object.values(syncState).some((s) => s.status === 'loading') ||
     shopifyThemesState.status === 'loading'
+
+  // Prevent refresh/close while syncing
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSyncing) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isSyncing])
 
   return (
     <main className="min-h-screen px-24 pb-24 pt-10">

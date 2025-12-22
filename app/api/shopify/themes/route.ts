@@ -222,94 +222,117 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if streaming is requested
     const acceptHeader = request.headers.get('accept')
     const isStreaming = acceptHeader?.includes('text/event-stream')
+
+    // Common state
+    let totalThemes = 0
+    let savedRecords = 0
+    const errors: Array<{ client: string; error: string }> = []
+    let processedCount = 0
+    const totalClients = clients.length
+
+    // Helper to process a single client
+    const processClient = async (client: (typeof clients)[0]) => {
+      try {
+        const decryptedKey = decrypt(client.shopify_key)
+        const themes = await fetchShopifyThemes(client.store_id, decryptedKey)
+
+        // Update stats
+        totalThemes += themes.length
+
+        if (themes.length > 0) {
+          const snapshot = await createSnapshot(source.id, 'manual', client.id)
+          if (snapshot) {
+            await updateSnapshotStatus(snapshot.id, 'processing')
+
+            let clientSaved = 0
+            for (const theme of themes) {
+              const record = mapThemeToRecord(theme, client)
+              const result = await upsertThemeRecord(
+                db,
+                snapshot.id,
+                client.id,
+                record,
+              )
+              if (result.success) clientSaved++
+            }
+
+            savedRecords += clientSaved
+            await updateSnapshotStatus(snapshot.id, 'completed', themes.length)
+          } else {
+            errors.push({
+              client: client.brand,
+              error: 'Failed to create snapshot',
+            })
+          }
+        }
+      } catch (error: any) {
+        errors.push({ client: client.brand, error: error.message })
+      } finally {
+        processedCount++
+      }
+    }
 
     if (isStreaming) {
       const encoder = new TextEncoder()
       const stream = new ReadableStream({
         async start(controller) {
-          let totalThemes = 0
-          let savedRecords = 0
-          const errors: Array<{ client: string; error: string }> = []
-
-          // Send initial progress
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ type: 'init', total: clients.length })}\n\n`,
-            ),
-          )
-
-          for (let i = 0; i < clients.length; i++) {
-            const client = clients[i]
-
-            // Send progress update
+          // Send init
+          try {
             controller.enqueue(
               encoder.encode(
-                `data: ${JSON.stringify({ type: 'progress', current: i + 1, total: clients.length, client: client.brand })}\n\n`,
+                `data: ${JSON.stringify({ type: 'init', total: totalClients })}\n\n`,
               ),
             )
-
-            try {
-              const decryptedKey = decrypt(client.shopify_key)
-              const themes = await fetchShopifyThemes(
-                client.store_id,
-                decryptedKey,
-              )
-
-              totalThemes += themes.length
-
-              if (themes.length > 0) {
-                const snapshot = await createSnapshot(
-                  source.id,
-                  'manual',
-                  client.id,
-                )
-                if (snapshot) {
-                  await updateSnapshotStatus(snapshot.id, 'processing')
-
-                  for (const theme of themes) {
-                    const record = mapThemeToRecord(theme, client)
-                    const result = await upsertThemeRecord(
-                      db,
-                      snapshot.id,
-                      client.id,
-                      record,
-                    )
-
-                    if (result.success) {
-                      savedRecords++
-                    }
-                  }
-
-                  await updateSnapshotStatus(
-                    snapshot.id,
-                    'completed',
-                    themes.length,
-                  )
-                } else {
-                  errors.push({
-                    client: client.brand,
-                    error: 'Failed to create snapshot',
-                  })
-                }
-              }
-            } catch (error: any) {
-              errors.push({
-                client: client.brand,
-                error: error.message,
-              })
-            }
+          } catch (e) {
+            // Stream might be closed, continue processing
           }
 
-          // Send final result
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ type: 'complete', success: true, totalClients: clients.length, totalThemes, savedRecords, errors: errors.length > 0 ? errors : undefined })}\n\n`,
-            ),
-          )
-          controller.close()
+          const BATCH_SIZE = 5
+          for (let i = 0; i < clients.length; i += BATCH_SIZE) {
+            const batch = clients.slice(i, i + BATCH_SIZE)
+
+            // Process batch
+            await Promise.all(
+              batch.map(async (client) => {
+                await processClient(client)
+                try {
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({
+                        type: 'progress',
+                        current: processedCount,
+                        total: totalClients,
+                        client: client.brand,
+                      })}\n\n`,
+                    ),
+                  )
+                } catch (e) {
+                  // Stream closed, ignore
+                }
+              }),
+            )
+          }
+
+          // Send complete
+          try {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'complete',
+                  success: true,
+                  totalClients,
+                  totalThemes,
+                  savedRecords,
+                  errors: errors.length > 0 ? errors : undefined,
+                })}\n\n`,
+              ),
+            )
+            controller.close()
+          } catch (e) {
+            // Stream closed
+          }
         },
       })
 
@@ -320,69 +343,22 @@ export async function POST(request: Request) {
           Connection: 'keep-alive',
         },
       })
-    }
-
-    // Non-streaming fallback
-    let totalThemes = 0
-    let savedRecords = 0
-    const errors: Array<{ client: string; error: string }> = []
-
-    // Process each client
-    for (const client of clients) {
-      try {
-        const decryptedKey = decrypt(client.shopify_key)
-        const themes = await fetchShopifyThemes(client.store_id, decryptedKey)
-
-        totalThemes += themes.length
-
-        if (themes.length === 0) {
-          continue
-        }
-
-        // Create snapshot for this client
-        const snapshot = await createSnapshot(source.id, 'manual', client.id)
-        if (!snapshot) {
-          errors.push({
-            client: client.brand,
-            error: 'Failed to create snapshot',
-          })
-          continue
-        }
-
-        await updateSnapshotStatus(snapshot.id, 'processing')
-
-        // Upsert each theme (already filtered to main only from API)
-        for (const theme of themes) {
-          const record = mapThemeToRecord(theme, client)
-          const result = await upsertThemeRecord(
-            db,
-            snapshot.id,
-            client.id,
-            record,
-          )
-
-          if (result.success) {
-            savedRecords++
-          }
-        }
-
-        // Update snapshot status
-        await updateSnapshotStatus(snapshot.id, 'completed', themes.length)
-      } catch (error: any) {
-        errors.push({
-          client: client.brand,
-          error: error.message,
-        })
+    } else {
+      // Non-streaming parallel execution
+      const BATCH_SIZE = 5
+      for (let i = 0; i < clients.length; i += BATCH_SIZE) {
+        const batch = clients.slice(i, i + BATCH_SIZE)
+        await Promise.all(batch.map(processClient))
       }
-    }
 
-    return NextResponse.json({
-      success: true,
-      totalClients: clients.length,
-      totalThemes,
-      savedRecords,
-      errors: errors.length > 0 ? errors : undefined,
-    })
+      return NextResponse.json({
+        success: true,
+        totalClients,
+        totalThemes,
+        savedRecords,
+        errors: errors.length > 0 ? errors : undefined,
+      })
+    }
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },
