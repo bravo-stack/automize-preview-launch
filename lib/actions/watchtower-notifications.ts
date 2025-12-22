@@ -106,7 +106,11 @@ export async function sendDiscordNotification(
 
     // Send to all channels
     const results = await Promise.allSettled(
-      uniqueChannels.map((channel) => sendDiscordMessage(channel, message)),
+      uniqueChannels.map((channel) =>
+        sendDiscordMessage(channel, message, {
+          sourceFeature: 'watchtower_alert',
+        }),
+      ),
     )
 
     const successCount = results.filter((r) => r.status === 'fulfilled').length

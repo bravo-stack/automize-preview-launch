@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/db/admin'
+import { createClient } from '@/lib/db/server'
 import type {
   CampaignMetricsSummary,
   ClientDataResponse,
@@ -10,7 +11,7 @@ import type {
   OmnisendRevenueSummary,
   ThemeData,
 } from '@/types/media-buyer'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { ClientDetail, ClientDetailError } from './client-detail'
 
 // ============================================================================
@@ -308,6 +309,17 @@ interface PageProps {
 export default async function ClientDetailPage({ params }: PageProps) {
   const { id } = await params
   const clientId = parseInt(id, 10)
+  const db = createClient()
+
+  const {
+    data: { user },
+  } = await db.auth.getUser()
+
+  if (!user || !user.email) {
+    redirect('/login')
+  }
+
+  const role = user.user_metadata.role ?? 'exec'
 
   if (isNaN(clientId)) {
     notFound()
@@ -315,7 +327,7 @@ export default async function ClientDetailPage({ params }: PageProps) {
 
   try {
     const data = await getClientData(clientId)
-    return <ClientDetail initialData={data} />
+    return <ClientDetail role={role} initialData={data} />
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to load client data'

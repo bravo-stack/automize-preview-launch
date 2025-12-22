@@ -6,16 +6,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { WhatsAppMessageLog } from '@/types/whatsapp'
+import type { DiscordMessageLog } from '@/types/discord'
 import { useEffect, useState } from 'react'
 
-export default function WhatsAppLogsContainer() {
-  const [logs, setLogs] = useState<WhatsAppMessageLog[]>([])
+export default function DiscordLogsContainer() {
+  const [logs, setLogs] = useState<DiscordMessageLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedLog, setSelectedLog] = useState<WhatsAppMessageLog | null>(
-    null,
-  )
+  const [selectedLog, setSelectedLog] = useState<DiscordMessageLog | null>(null)
 
   // Filters
   const [podFilter, setPodFilter] = useState('')
@@ -34,7 +32,7 @@ export default function WhatsAppLogsContainer() {
       const params = new URLSearchParams()
       params.append('limit', '500')
 
-      const response = await fetch(`/api/whatsapp/logs?${params.toString()}`)
+      const response = await fetch(`/api/discord/logs?${params.toString()}`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch logs')
@@ -52,12 +50,12 @@ export default function WhatsAppLogsContainer() {
 
   const filteredLogs = logs.filter((log) => {
     const matchesPod =
-      !podFilter || log.pod_name.toLowerCase().includes(podFilter.toLowerCase())
+      !podFilter || log.pod_name?.toLowerCase().includes(podFilter.toLowerCase())
     const matchesSource = !sourceFilter || log.source_feature === sourceFilter
     const matchesSearch =
       !searchTerm ||
-      log.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.recipient_phone_number.includes(searchTerm) ||
+      log.channel_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.channel_id?.includes(searchTerm) ||
       log.message_content?.toLowerCase().includes(searchTerm.toLowerCase())
 
     return matchesPod && matchesSource && matchesSearch
@@ -76,25 +74,17 @@ export default function WhatsAppLogsContainer() {
   }
 
   const formatSourceName = (source: string) => {
-    let formattedSource = ''
-
     if (!source || source.trim() === '') {
       return 'Empty Source'
     }
 
-    if (source === 'ad_error') {
-      formattedSource = 'ad_account_error'
-    } else {
-      formattedSource = source
-    }
-
-    return formattedSource
+    return source
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
   }
 
-  const uniquePods = Array.from(new Set(logs.map((log) => log.pod_name))).sort()
+  const uniquePods = Array.from(new Set(logs.map((log) => log.pod_name).filter(Boolean))).sort() as string[]
   const uniqueSources = Array.from(
     new Set(logs.map((log) => log.source_feature)),
   ).sort()
@@ -105,10 +95,10 @@ export default function WhatsAppLogsContainer() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-semibold tracking-tight">
-            WhatsApp Message Logs
+            Discord Message Logs
           </h1>
           <p className="text-sm text-neutral-400">
-            A chronological record of every WhatsApp message sent.
+            A chronological record of every Discord message sent.
           </p>
         </div>
 
@@ -121,7 +111,7 @@ export default function WhatsAppLogsContainer() {
               </label>
               <input
                 type="text"
-                placeholder="Name, phone, or message..."
+                placeholder="Channel name, ID, or message..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
@@ -264,7 +254,7 @@ export default function WhatsAppLogsContainer() {
                       Pod
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.08em] text-neutral-500">
-                      Recipient
+                      Channel
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-[0.08em] text-neutral-500">
                       Source
@@ -287,18 +277,24 @@ export default function WhatsAppLogsContainer() {
                         {formatDate(log.sent_at)}
                       </td>
                       <td className="whitespace-nowrap px-6 py-3">
-                        <span className="inline-flex items-center rounded-full border border-neutral-700 bg-neutral-900 px-2.5 py-0.5 text-xs font-medium text-neutral-100">
-                          {log.pod_name}
-                        </span>
+                        {log.pod_name ? (
+                          <span className="inline-flex items-center rounded-full border border-neutral-700 bg-neutral-900 px-2.5 py-0.5 text-xs font-medium text-neutral-100">
+                            {log.pod_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-neutral-600">N/A</span>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-6 py-3 text-sm">
                         <div>
                           <div className="text-sm font-medium text-neutral-100">
-                            {log.recipient_name || 'N/A'}
+                            {log.channel_name}
                           </div>
-                          <div className="text-xs text-neutral-500">
-                            {log.recipient_phone_number}
-                          </div>
+                          {log.channel_id && (
+                            <div className="text-xs text-neutral-500">
+                              {log.channel_id}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-6 py-3">
@@ -307,7 +303,13 @@ export default function WhatsAppLogsContainer() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-6 py-3">
-                        <span className="inline-flex items-center rounded-full border border-neutral-700 bg-neutral-900 px-2.5 py-0.5 text-xs font-medium capitalize text-neutral-100">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${
+                            log.delivery_status === 'sent'
+                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                              : 'border-red-500/30 bg-red-500/10 text-red-400'
+                          }`}
+                        >
                           {log.delivery_status}
                         </span>
                       </td>
@@ -362,34 +364,35 @@ export default function WhatsAppLogsContainer() {
                 <div className="space-y-1">
                   <p className="text-neutral-500">Pod</p>
                   <p className="font-medium text-neutral-100">
-                    {selectedLog.pod_name}
+                    {selectedLog.pod_name || 'N/A'}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-neutral-500">Status</p>
-                  <p className="font-medium capitalize text-neutral-100">
+                  <p
+                    className={`font-medium capitalize ${
+                      selectedLog.delivery_status === 'sent'
+                        ? 'text-emerald-400'
+                        : 'text-red-400'
+                    }`}
+                  >
                     {selectedLog.delivery_status}
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-neutral-500">Recipient</p>
+                  <p className="text-neutral-500">Channel</p>
                   <p className="font-medium text-neutral-100">
-                    {selectedLog.recipient_name || 'N/A'}
+                    {selectedLog.channel_name}
                   </p>
-                  <p className="text-neutral-500">
-                    {selectedLog.recipient_phone_number}
-                  </p>
+                  {selectedLog.channel_id && (
+                    <p className="text-neutral-500">{selectedLog.channel_id}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-neutral-500">Source</p>
                   <p className="font-medium text-neutral-100">
                     {formatSourceName(selectedLog.source_feature)}
                   </p>
-                  {selectedLog.twilio_message_sid && (
-                    <p className="text-neutral-500">
-                      SID: {selectedLog.twilio_message_sid}
-                    </p>
-                  )}
                 </div>
               </div>
               <div className="mt-4">

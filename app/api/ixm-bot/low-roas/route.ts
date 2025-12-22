@@ -1,3 +1,4 @@
+import { sendDiscordMessage } from '@/lib/actions/discord'
 import { sendWhatsAppMessage } from '@/lib/actions/whatsapp'
 import { createAdminClient } from '@/lib/db/admin'
 import { cookies } from 'next/headers'
@@ -35,7 +36,6 @@ export async function GET(req: NextRequest) {
   }
 
   const FACEBOOK_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN
-  const DISCORD_API_URL = 'https://ixm-bot.onrender.com/api/sendMessage'
   const fields = `cost_per_action_type,spend,purchase_roas`
 
   async function fetchInsights(accountId: string, name: string) {
@@ -80,27 +80,6 @@ export async function GET(req: NextRequest) {
       })),
     )
     return Promise.all(fetchPromises)
-  }
-
-  async function sendDiscordMessage(channelName: string, message: string) {
-    try {
-      const response = await fetch(DISCORD_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelName, message }),
-      })
-
-      if (!response.ok) {
-        console.error(
-          `Failed to send message to Discord channel "${channelName}". Status: ${response.status}`,
-        )
-      }
-    } catch (error) {
-      console.error(
-        `Error sending message to Discord channel "${channelName}":`,
-        error,
-      )
-    }
   }
 
   try {
@@ -151,7 +130,10 @@ export async function GET(req: NextRequest) {
         `\n<@${discord_id}> <@989529544702689303> <@1293941738666197064>`, // pod, ismail, zain
       ].join('\n')
 
-      await sendDiscordMessage(channel, discordMessage)
+      await sendDiscordMessage(channel, discordMessage, {
+        sourceFeature: 'daily_summary',
+        podName: pod,
+      })
 
       // WhatsApp message (plain text, no markdown)
       if (whatsapp_number) {
