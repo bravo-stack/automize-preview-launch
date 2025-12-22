@@ -69,7 +69,7 @@ export default function NavLinks({
             <ul
               className={`flex flex-col gap-1 ${expanded ? 'pl-2' : 'items-center'}`}
             >
-              {section.items.map((item, itemIndex) => (
+              {section?.items?.map((item, itemIndex) => (
                 <NavLinkItem
                   key={itemIndex}
                   item={item}
