@@ -10,7 +10,6 @@ import {
   RuleList,
 } from '@/components/watchtower'
 import DeleteAlertDialog from '@/components/watchtower/delete-alert-dialog'
-import { useWatchtowerPolling } from '@/hooks/use-watchtower-polling'
 import type {
   CompoundRuleInput,
   CreateRuleInput,
@@ -18,6 +17,7 @@ import type {
   WatchtowerRuleWithRelations,
 } from '@/types/watchtower'
 import { getTimeRangeDaysLabel } from '@/types/watchtower'
+import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle,
   Bell,
@@ -96,68 +96,28 @@ export default function WatchtowerContainer() {
   const [rulesSortBy, setRulesSortBy] = useState<string>('created_desc')
   const [alertsSortBy, setAlertsSortBy] = useState<string>('created_desc')
 
-  // ============================================================================
-  // Real-time Stats Polling
-  // ============================================================================
-  // Uses visibility-aware polling that pauses when tab is hidden.
-  // Polls every 30 seconds to keep tab counts updated and evaluate rules.
+  // Polls to keep tab counts updated and evaluate rules.
   const {
-    stats,
-    refresh: refreshStats,
-    isPolling: isPollingStats,
-    isInitialLoading: isStatsLoading,
-    lastEvaluation,
-  } = useWatchtowerPolling({
-    interval: 1_800_000, // 30 minutes
-    enabled: true,
-    onNewAlerts: (count) => {
-      // Show toast notification for new alerts
-      toast(`🚨 ${count} new alert${count > 1 ? 's' : ''} triggered!`, {
-        icon: '⚠️',
-        duration: 5000,
-        style: {
-          background: '#fef2f2',
-          border: '1px solid #fecaca',
-          color: '#991b1b',
-        },
+    data: evaluationData,
+    refetch: refreshStats,
+    isFetching: isPollingStats,
+    isLoading: isStatsLoading,
+  } = useQuery({
+    queryKey: ['watchtower', 'evaluate'],
+    queryFn: async () => {
+      const res = await fetch(`/api/watchtower/evaluate?_t=${Date.now()}`, {
+        cache: 'no-store',
       })
-      // Set flag to refresh alerts list when on alerts tab
-      setNewAlertsCreated(true)
-    },
-  })
-  const fetchRules = useCallback(
-    async (
-      page: number = 1,
-      pageSize: number = 20,
-      sortBy: string = 'created_desc',
-    ) => {
-      setIsLoading(true)
-      try {
-        const params = new URLSearchParams({
-          page: page.toString(),
-          pageSize: pageSize.toString(),
-          sortBy,
-        })
-        if (activeFilter) params.set('is_active', activeFilter)
-
-        const res = await fetch(`/api/watchtower/rules?${params}`)
-        const json = await res.json()
-
-        if (json.success) {
-          setRules(json.data)
-          setRulesPagination(json.pagination)
-        } else {
-          setError(json.error)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch rules')
-      } finally {
-        setIsLoading(false)
+      const json = await res.json()
+      if (!json.success) {
+        throw new Error(json.error || 'Failed to fetch stats')
       }
+      return json.data
     },
-    [activeFilter],
-  )
-
+    // refetchInterval: 1_800_000, // 30 minutes
+    refetchInterval: 30_000, // 30 seconds for demo purposes
+  })
+  const stats = evaluationData?.stats
   const fetchDeletedRules = useCallback(
     async (page: number = 1, pageSize: number = 20) => {
       setIsLoading(true)
@@ -232,6 +192,54 @@ export default function WatchtowerContainer() {
       console.error('Error fetching recent rules:', err)
     }
   }, [])
+  const fetchRules = useCallback(
+    async (
+      page: number = 1,
+      pageSize: number = 20,
+      sortBy: string = 'created_desc',
+    ) => {
+      setIsLoading(true)
+      try {
+        const params = new URLSearchParams({
+          page: page.toString(),
+          pageSize: pageSize.toString(),
+          sortBy,
+        })
+        if (activeFilter) params.set('is_active', activeFilter)
+
+        const res = await fetch(`/api/watchtower/rules?${params}`)
+        const json = await res.json()
+
+        if (json.success) {
+          setRules(json.data)
+          setRulesPagination(json.pagination)
+        } else {
+          setError(json.error)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch rules')
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [activeFilter],
+  )
+  useEffect(() => {
+    if (evaluationData?.alertsCreated && evaluationData.alertsCreated > 0) {
+      const count = evaluationData.alertsCreated
+      toast(`🚨 ${count} new alert${count > 1 ? 's' : ''} triggered!`, {
+        icon: '⚠️',
+        duration: 5000,
+        style: {
+          background: '#fef2f2',
+          border: '1px solid #fecaca',
+          color: '#991b1b',
+        },
+      })
+      // Set flag to refresh alerts list when on alerts tab
+      setNewAlertsCreated(true)
+    }
+  }, [evaluationData])
   useEffect(() => {
     fetchRecentRules()
   }, [fetchRecentRules])
@@ -884,7 +892,9 @@ export default function WatchtowerContainer() {
             <div className="flex justify-center">
               <Button
                 variant="outline"
-                onClick={refreshStats}
+                onClick={() => {
+                  refreshStats()
+                }}
                 disabled={isLoading || isPollingStats}
               >
                 <RefreshCw
