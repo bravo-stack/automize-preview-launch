@@ -35,7 +35,6 @@ export const revalidate = 0
 // 3. Create alerts for triggered conditions
 // This combines stats fetching with rule evaluation for efficiency.
 // ============================================================================
-
 interface EvaluationSummary {
   rulesEvaluated: number
   rulesTriggered: number
@@ -43,12 +42,12 @@ interface EvaluationSummary {
   alertsSkippedDuplicate: number
   tablesChecked: string[]
 }
+interface TableEvaluationResult {
+  alertsCreated: number
+  rulesTriggered: number
+  alertsSkippedDuplicate: number
+}
 
-/**
- * Get records from a target table for watchtower evaluation with optional time range filtering
- * @param targetTable - The table to fetch records from
- * @param timeRangeDays - Number of days to look back (null = all time, 0 = today)
- */
 async function getTargetTableRecords(
   targetTable: TargetTable,
   timeRangeDays: number | null = null,
@@ -202,10 +201,6 @@ async function getTargetTableRecords(
       return { records: [], snapshotId: null }
   }
 }
-
-/**
- * Evaluate a single rule against a record
- */
 async function evaluateRuleAgainstRecord(
   rule: WatchtowerRule,
   record: Record<string, unknown>,
@@ -264,22 +259,6 @@ async function evaluateRuleAgainstRecord(
 
   return { triggered: false }
 }
-
-/**
- * Result of evaluating rules for a target table
- */
-interface TableEvaluationResult {
-  alertsCreated: number
-  rulesTriggered: number
-  alertsSkippedDuplicate: number
-}
-
-/**
- * Evaluate all rules for a specific target table and time range combination
- * @param targetTable - The table to evaluate
- * @param timeRangeDays - Number of days to look back (null = all time, 0 = today)
- * @param rules - Rules to evaluate
- */
 async function evaluateTargetTable(
   targetTable: TargetTable,
   timeRangeDays: number | null,
