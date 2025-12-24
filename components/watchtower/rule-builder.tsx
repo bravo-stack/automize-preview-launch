@@ -23,6 +23,7 @@ import {
 } from '@/types/watchtower'
 import { AlertTriangle, Calendar, Info, Plus, Trash2, X } from 'lucide-react'
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -72,9 +73,7 @@ function getTargetTableDescription(table: string): string {
   )
 }
 
-/**
- * Check if a condition requires a threshold value input
- */
+// Check if a condition requires a threshold value input
 function conditionRequiresThreshold(condition: string): boolean {
   return !['changed', 'is_null', 'is_not_null'].includes(condition)
 }
@@ -89,6 +88,13 @@ interface Pod {
 interface ChannelIdEntry {
   channel_id: string
   label: string | null
+}
+interface ChannelIds {
+  id: string
+  rule_id: string
+  channel_id: string
+  label: string | null
+  created_at: string
 }
 
 interface RuleBuilderProps {
@@ -144,18 +150,32 @@ export default function RuleBuilder({
   useEffect(() => {
     async function fetchData() {
       try {
-        const [parentsRes, podsRes] = await Promise.all([
+        const [parentsRes, podsRes, channelIds] = await Promise.all([
           fetch(
             `/api/watchtower/rules?action=parent-rules${editRule ? `&exclude=${editRule.id}` : ''}`,
           ),
           fetch('/api/watchtower/pods'),
+          fetch(
+            '/api/watchtower/channel-ids?ruleId=' +
+              (editRule ? editRule.id : ''),
+          ),
         ])
 
         const parentsJson = await parentsRes.json()
         const podsJson = await podsRes.json()
+        const channelIdsJson = await channelIds.json()
 
         if (parentsJson.success) setAvailableParentRules(parentsJson.data)
         if (podsJson.success) setAvailablePods(podsJson.data)
+        if (channelIdsJson.success) {
+          const mappedChannelIds = (
+            (channelIdsJson.data as ChannelIds[]) ?? []
+          ).map((c: any) => ({
+            channel_id: c.channel_id,
+            label: c.label,
+          }))
+          setChannelIds(mappedChannelIds)
+        }
       } catch (error) {
         console.error('Error fetching rule builder data:', error)
       }
@@ -918,128 +938,132 @@ export default function RuleBuilder({
 
       {/* Notification Settings */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/80">
-          Notification Settings
-        </h3>
-        <p className="text-xs text-white/50">
-          Configure how you want to be notified when this rule triggers
-        </p>
-
-        {/* Notification Type Toggles */}
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm text-white/70">
-            <input
-              type="checkbox"
-              checked={notifyDiscord}
-              onChange={(e) => setNotifyDiscord(e.target.checked)}
-              className="rounded border-white/20 bg-zinc-900"
-            />
-            Discord Notifications
-          </label>
-          <label className="flex items-center gap-2 text-sm text-white/70">
-            <input
-              type="checkbox"
-              checked={notifyWhatsapp}
-              onChange={(e) => setNotifyWhatsapp(e.target.checked)}
-              className="rounded border-white/20 bg-zinc-900"
-            />
-            WhatsApp Notifications
-          </label>
-        </div>
-
-        {/* Pod Selection - Unified for both Discord and WhatsApp */}
         {(notifyDiscord || notifyWhatsapp) &&
         availablePods &&
         availablePods?.length > 0 ? (
-          <div className="space-y-4 rounded-lg border border-white/10 bg-white/5 p-4">
-            <div>
-              <label className="block text-sm font-medium text-white/80">
-                Select Pods for Notifications
+          <Fragment>
+            <h3 className="text-sm font-medium text-white/80">
+              Notification Settings
+            </h3>
+            <p className="text-xs text-white/50">
+              Configure how you want to be notified when this rule triggers
+            </p>
+
+            {/* Notification Type Toggles */}
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={notifyDiscord}
+                  onChange={(e) => setNotifyDiscord(e.target.checked)}
+                  className="rounded border-white/20 bg-zinc-900"
+                />
+                Discord Notifications
               </label>
-              <p className="mt-1 text-xs text-white/40">
-                Selected pods&apos; Discord IDs and WhatsApp numbers will
-                receive notifications
-              </p>
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={notifyWhatsapp}
+                  onChange={(e) => setNotifyWhatsapp(e.target.checked)}
+                  className="rounded border-white/20 bg-zinc-900"
+                />
+                WhatsApp Notifications
+              </label>
             </div>
 
-            {/* Pod Selection Grid */}
-            <div className="grid max-h-96 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
-              {availablePods.map((pod) => {
-                const isSelected = selectedPodIds.includes(pod.id.toString())
-                const hasDiscord = !!pod.discord_id
-                const hasWhatsapp = !!pod.whatsapp_number
-
-                return (
-                  <button
-                    key={pod.id}
-                    type="button"
-                    onClick={() => handleTogglePod(pod.id.toString())}
-                    className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
-                      isSelected
-                        ? 'border-emerald-500/50 bg-emerald-500/10'
-                        : 'border-white/10 bg-white/5 hover:border-white/20'
-                    }`}
-                  >
-                    <span className="font-medium text-white/90">
-                      {pod.name}
-                    </span>
-                    <div className="flex gap-2 text-xs">
-                      {hasDiscord ? (
-                        <span className="text-blue-400">Discord ✓</span>
-                      ) : (
-                        <span className="text-white/30">No Discord</span>
-                      )}
-                      {hasWhatsapp ? (
-                        <span className="text-green-400">WhatsApp ✓</span>
-                      ) : (
-                        <span className="text-white/30">No WhatsApp</span>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Selected Pods Summary */}
-            {selectedPodIds.length > 0 && (
-              <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-3">
-                <p className="mb-2 text-xs font-medium text-white/70">
-                  Selected: {selectedPodIds.length} pod
-                  {selectedPodIds.length > 1 ? 's' : ''}
+            {/* Pod Selection - Unified for both Discord and WhatsApp */}
+            <div className="space-y-4 rounded-lg border border-white/10 bg-white/5 p-4">
+              <div>
+                <label className="block text-sm font-medium text-white/80">
+                  Select Pods for Notifications
+                </label>
+                <p className="mt-1 text-xs text-white/40">
+                  Selected pods&apos; Discord IDs and WhatsApp numbers will
+                  receive notifications
                 </p>
-                {notifyDiscord && (
-                  <p className="text-xs text-blue-400">
-                    Discord: {selectedPodsWithDiscord.length} channel
-                    {selectedPodsWithDiscord.length !== 1 ? 's' : ''} will be
-                    notified
-                    {selectedPodsWithDiscord.length < selectedPodIds.length && (
-                      <span className="ml-1 text-yellow-400">
-                        (
-                        {selectedPodIds.length - selectedPodsWithDiscord.length}{' '}
-                        missing Discord ID)
-                      </span>
-                    )}
-                  </p>
-                )}
-                {notifyWhatsapp && (
-                  <p className="text-xs text-green-400">
-                    WhatsApp: {selectedPodsWithWhatsapp.length} number
-                    {selectedPodsWithWhatsapp.length !== 1 ? 's' : ''} will be
-                    notified
-                    {selectedPodsWithWhatsapp.length <
-                      selectedPodIds.length && (
-                      <span className="ml-1 text-yellow-400">
-                        (
-                        {selectedPodIds.length -
-                          selectedPodsWithWhatsapp.length}{' '}
-                        missing WhatsApp)
-                      </span>
-                    )}
-                  </p>
-                )}
               </div>
-            )}
-          </div>
+
+              {/* Pod Selection Grid */}
+              <div className="grid max-h-96 grid-cols-1 gap-2 overflow-y-auto pb-1 sm:grid-cols-2 lg:grid-cols-3">
+                {availablePods.map((pod) => {
+                  const isSelected = selectedPodIds.includes(pod.id.toString())
+                  const hasDiscord = !!pod.discord_id
+                  const hasWhatsapp = !!pod.whatsapp_number
+
+                  return (
+                    <button
+                      key={pod.id}
+                      type="button"
+                      onClick={() => handleTogglePod(pod.id.toString())}
+                      className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
+                        isSelected
+                          ? 'border-emerald-500/50 bg-emerald-500/10'
+                          : 'border-white/10 bg-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      <span className="font-medium text-white/90">
+                        {pod.name}
+                      </span>
+                      <div className="flex gap-2 text-xs">
+                        {hasDiscord ? (
+                          <span className="text-blue-400">Discord ✓</span>
+                        ) : (
+                          <span className="text-white/30">No Discord</span>
+                        )}
+                        {hasWhatsapp ? (
+                          <span className="text-green-400">WhatsApp ✓</span>
+                        ) : (
+                          <span className="text-white/30">No WhatsApp</span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Selected Pods Summary */}
+              {selectedPodIds.length > 0 && (
+                <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-3">
+                  <p className="mb-2 text-xs font-medium text-white/70">
+                    Selected: {selectedPodIds.length} pod
+                    {selectedPodIds.length > 1 ? 's' : ''}
+                  </p>
+                  {notifyDiscord && (
+                    <p className="text-xs text-blue-400">
+                      Discord: {selectedPodsWithDiscord.length} channel
+                      {selectedPodsWithDiscord.length !== 1 ? 's' : ''} will be
+                      notified
+                      {selectedPodsWithDiscord.length <
+                        selectedPodIds.length && (
+                        <span className="ml-1 text-yellow-400">
+                          (
+                          {selectedPodIds.length -
+                            selectedPodsWithDiscord.length}{' '}
+                          missing Discord ID)
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  {notifyWhatsapp && (
+                    <p className="text-xs text-green-400">
+                      WhatsApp: {selectedPodsWithWhatsapp.length} number
+                      {selectedPodsWithWhatsapp.length !== 1 ? 's' : ''} will be
+                      notified
+                      {selectedPodsWithWhatsapp.length <
+                        selectedPodIds.length && (
+                        <span className="ml-1 text-yellow-400">
+                          (
+                          {selectedPodIds.length -
+                            selectedPodsWithWhatsapp.length}{' '}
+                          missing WhatsApp)
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </Fragment>
         ) : null}
 
         {/* Extra Discord Channel IDs */}

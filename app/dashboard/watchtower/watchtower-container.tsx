@@ -108,7 +108,7 @@ export default function WatchtowerContainer() {
     isInitialLoading: isStatsLoading,
     lastEvaluation,
   } = useWatchtowerPolling({
-    interval: 30_000, // 30 seconds
+    interval: 1_800_000, // 30 minutes
     enabled: true,
     onNewAlerts: (count) => {
       // Show toast notification for new alerts
