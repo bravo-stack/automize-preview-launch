@@ -114,8 +114,7 @@ export default function WatchtowerContainer() {
       }
       return json.data
     },
-    // refetchInterval: 1_800_000, // 30 minutes
-    refetchInterval: 30_000, // 30 seconds for demo purposes
+    refetchInterval: 600_000, // 10 minutes
   })
   const stats = evaluationData?.stats
   const fetchDeletedRules = useCallback(
