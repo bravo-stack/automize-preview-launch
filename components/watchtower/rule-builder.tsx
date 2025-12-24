@@ -73,9 +73,7 @@ function getTargetTableDescription(table: string): string {
   )
 }
 
-/**
- * Check if a condition requires a threshold value input
- */
+// Check if a condition requires a threshold value input
 function conditionRequiresThreshold(condition: string): boolean {
   return !['changed', 'is_null', 'is_not_null'].includes(condition)
 }

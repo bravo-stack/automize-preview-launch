@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
   if (!ruleId) {
     return NextResponse.json(
-      { success: false, error: 'Missing ruleId parameter', data: [] },
+      { success: false, error: 'Missing ruleID parameter', data: [] },
       { status: 400 },
     )
   }
