@@ -1,55 +1,83 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { deleteUser } from '@/lib/actions/db'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 export default function DeleteUser({ user_id }) {
   const [isOpen, setOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
 
   const handleDelete = async () => {
     try {
+      setIsDeleting(true)
       const { error } = await deleteUser(user_id)
-      alert(error ? 'Error deleting user.' : 'Successfully deleted user.')
+      if (error) {
+        toast.error('Error deleting user')
+        setIsDeleting(false)
+        return
+      }
+      toast.success('User deleted')
       setOpen(false)
+      setIsDeleting(false)
       router.refresh()
     } catch (error) {
       console.error('Error deleting:', error)
+      toast.error('Error deleting user')
+      setIsDeleting(false)
     }
   }
 
   return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="text-xs text-red-500 hover:text-red-700"
-      >
-        Delete
-      </button>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-destructive hover:text-destructive"
+        >
+          Delete
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete pod account</DialogTitle>
+          <DialogDescription>
+            This will delete the user. This action can’t be undone.
+          </DialogDescription>
+        </DialogHeader>
 
-      {isOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 text-black">
-          <div className="rounded-lg bg-white p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-bold">Confirm Delete</h2>
-            <p className="mb-4">Are you sure you want to delete this item?</p>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={() => setOpen(false)}
-                className="rounded-md bg-black px-4 py-2 text-white shadow-sm transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="rounded-md border border-red-700 px-4 py-2 text-red-700 shadow-sm transition-colors hover:bg-red-700/20"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setOpen(false)}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting…' : 'Delete'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

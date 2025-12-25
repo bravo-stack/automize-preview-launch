@@ -110,7 +110,7 @@ export default function UpdateItem({ id, inputs, data = {} }: AddButtonProps) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-neutral-300 hover:text-neutral-500"
+        className="inline-flex h-7 items-center justify-center rounded-md px-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-white/5 hover:text-zinc-100"
       >
         Update
       </button>

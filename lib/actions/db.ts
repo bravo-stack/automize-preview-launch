@@ -96,6 +96,37 @@ export async function deleteUser(user_id: string): Promise<{ error: boolean }> {
   return { error: error ? true : false }
 }
 
+export async function setUserPassword(
+  userId: string,
+  newPassword: string,
+): Promise<{ error: boolean; message?: string }> {
+  if (!userId) return { error: true, message: 'Missing user id' }
+  if (!newPassword || newPassword.length < 8) {
+    return { error: true, message: 'Password must be at least 8 characters' }
+  }
+
+  const authDb = createClient()
+  const {
+    data: { user },
+  } = await authDb.auth.getUser()
+
+  if (!user) return { error: true, message: 'Unauthorized' }
+  const role = user.user_metadata?.role ?? 'exec'
+  if (role !== 'exec') return { error: true, message: 'Forbidden' }
+
+  const adminDb = createAdminClient()
+  const { error } = await adminDb.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  })
+
+  if (error) {
+    console.error('[setUserPassword] Failed to update password:', error)
+    return { error: true, message: 'Failed to update password' }
+  }
+
+  return { error: false }
+}
+
 export async function getPod() {
   const db = createClient()
   const {

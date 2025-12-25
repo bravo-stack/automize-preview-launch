@@ -4,6 +4,7 @@ import { createClient } from '@/lib/db/server'
 import Link from 'next/link'
 import CreateAccount from './create-user'
 import DeleteUser from './delete-user'
+import UpdatePassword from './update-password'
 import UpdateClientPod from './update-pod'
 
 export default async function ManagePodsPage({ searchParams }) {
@@ -79,22 +80,36 @@ export default async function ManagePodsPage({ searchParams }) {
           {pods?.length === 0 ? (
             <p>No existing pods. Please add your first pod.</p>
           ) : (
-            <ul className="grid grid-cols-4 gap-2.5">
+            <ul className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
               {pods?.map((p, index) => (
                 <li
                   key={index}
-                  className="flex items-center justify-between gap-0.5 rounded border border-zinc-800 bg-night-starlit p-3"
+                  className="group flex items-start justify-between gap-4 rounded-xl border border-zinc-800 bg-night-starlit p-4 transition-colors hover:bg-night-dusk"
                 >
-                  <Link href={'?pod=' + p.name}>
-                    <hgroup>
-                      <h3 className="inline-flex items-center font-semibold">
+                  <div className="min-w-0">
+                    <Link href={'?pod=' + p.name} className="block">
+                      <h3 className="truncate text-base font-semibold tracking-tight text-zinc-50">
                         {p.name}
                       </h3>
-                    </hgroup>
-                  </Link>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
+                        {/* <span>
+                          Discord:{' '}
+                          <span className="text-zinc-300">
+                            {p.discord_id || '—'}
+                          </span>
+                        </span> */}
+                        <span>
+                          Servers:{' '}
+                          <span className="text-zinc-300">
+                            {Array.isArray(p.servers) ? p.servers.length : 0}
+                          </span>
+                        </span>
+                      </div>
+                    </Link>
+                  </div>
 
-                  <div className="flex flex-col">
-                    <DeleteUser user_id={p.user_id} />
+                  <div className="flex shrink-0 items-center gap-1">
+                    <UpdatePassword userId={p.user_id} podName={p.name} />
                     <UpdateItem
                       id={p.id}
                       data={{
@@ -117,6 +132,7 @@ export default async function ManagePodsPage({ searchParams }) {
                         },
                       ]}
                     />
+                    <DeleteUser user_id={p.user_id} />
                   </div>
                 </li>
               ))}
