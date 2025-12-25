@@ -1,6 +1,7 @@
 'use server'
 
 import { getTemplateById } from '@/content/templates'
+import { diagnoseAdAccount } from '@/lib/services/facebook-diagnostics'
 import { google } from 'googleapis'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -501,6 +502,21 @@ export async function fetchFacebook(
     try {
       const response = await fetch(url)
       if (!response.ok) {
+        if (FACEBOOK_ACCESS_TOKEN) {
+          try {
+            const diagnosis = await diagnoseAdAccount({
+              adAccountId: accountId,
+              accessToken: FACEBOOK_ACCESS_TOKEN,
+            })
+            if (diagnosis.status === 'ERROR') {
+              const msg = `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`
+              return { name, pod, roas: msg, spend: msg }
+            }
+          } catch (e) {
+            console.error('Diagnosis failed:', e)
+          }
+        }
+
         // Try to get the error details from Facebook
         let errorDetails = ''
         try {
@@ -570,6 +586,21 @@ export async function fetchFacebook(
 
       // Check for Facebook API errors
       if (data.error) {
+        if (FACEBOOK_ACCESS_TOKEN) {
+          try {
+            const diagnosis = await diagnoseAdAccount({
+              adAccountId: accountId,
+              accessToken: FACEBOOK_ACCESS_TOKEN,
+            })
+            if (diagnosis.status === 'ERROR') {
+              const msg = `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`
+              return { name, pod, roas: msg, spend: msg }
+            }
+          } catch (e) {
+            console.error('Diagnosis failed:', e)
+          }
+        }
+
         return {
           name,
           pod,
@@ -579,6 +610,21 @@ export async function fetchFacebook(
       }
 
       if (!data.data || data.data.length === 0) {
+        if (FACEBOOK_ACCESS_TOKEN) {
+          try {
+            const diagnosis = await diagnoseAdAccount({
+              adAccountId: accountId,
+              accessToken: FACEBOOK_ACCESS_TOKEN,
+            })
+            if (diagnosis.status === 'ERROR') {
+              const msg = `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`
+              return { name, pod, roas: msg, spend: msg }
+            }
+          } catch (e) {
+            console.error('Diagnosis failed:', e)
+          }
+        }
+
         return {
           name,
           pod,
@@ -599,6 +645,22 @@ export async function fetchFacebook(
       }
     } catch (error) {
       console.error('Network error fetching Facebook insights:', error)
+
+      if (FACEBOOK_ACCESS_TOKEN) {
+        try {
+          const diagnosis = await diagnoseAdAccount({
+            adAccountId: accountId,
+            accessToken: FACEBOOK_ACCESS_TOKEN,
+          })
+          if (diagnosis.status === 'ERROR') {
+            const msg = `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`
+            return { name, pod, roas: msg, spend: msg }
+          }
+        } catch (e) {
+          console.error('Diagnosis failed:', e)
+        }
+      }
+
       return {
         name,
         pod,

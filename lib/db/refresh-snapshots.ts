@@ -251,13 +251,23 @@ export async function updateSnapshotStatus(
     updateData.metadata = { error: errorMessage }
   }
 
-  const { error } = await db
+  const { data, error } = await db
     .from('sheet_refresh_snapshots')
     .update(updateData)
     .eq('id', snapshotId)
+    .select('sheet_id')
+    .single()
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  // Update parent sheet last_refresh if completed
+  if (status === 'completed' && data?.sheet_id) {
+    await db
+      .from('sheets')
+      .update({ last_refresh: new Date().toISOString() })
+      .eq('id', data.sheet_id)
   }
 
   return { success: true }

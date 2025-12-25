@@ -8,6 +8,7 @@ import {
   getHookRate,
   getPercentage,
 } from '@/lib/insights'
+import { diagnoseAdAccount } from '@/lib/services/facebook-diagnostics'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const maxDuration = 60
@@ -50,6 +51,26 @@ export async function POST(request: NextRequest) {
       const response = await fetch(url)
       if (!response.ok) {
         console.error(`Status for "${name}": ${response.status}`)
+
+        if (FACEBOOK_ACCESS_TOKEN) {
+          try {
+            const diagnosis = await diagnoseAdAccount({
+              adAccountId: accountId,
+              accessToken: FACEBOOK_ACCESS_TOKEN,
+            })
+            if (diagnosis.status === 'ERROR') {
+              return {
+                name,
+                pod: `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`,
+                insights: emptyInsights,
+                isMonitored,
+              }
+            }
+          } catch (e) {
+            console.error('Diagnosis failed:', e)
+          }
+        }
+
         return {
           name,
           pod: 'Missing Permissions or Incorrect ID',
@@ -61,6 +82,26 @@ export async function POST(request: NextRequest) {
       const data = await response.json()
       if (!data.data || data.data.length === 0) {
         // console.error('No insights for ', name)
+
+        if (FACEBOOK_ACCESS_TOKEN) {
+          try {
+            const diagnosis = await diagnoseAdAccount({
+              adAccountId: accountId,
+              accessToken: FACEBOOK_ACCESS_TOKEN,
+            })
+            if (diagnosis.status === 'ERROR') {
+              return {
+                name,
+                pod: `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`,
+                insights: emptyInsights,
+                isMonitored,
+              }
+            }
+          } catch (e) {
+            console.error('Diagnosis failed:', e)
+          }
+        }
+
         return {
           name,
           pod: `No data for ${datePreset}`,
@@ -73,6 +114,26 @@ export async function POST(request: NextRequest) {
       return { name, pod, insights, isMonitored }
     } catch (error) {
       console.error('Error fetching insights:', error)
+
+      if (FACEBOOK_ACCESS_TOKEN) {
+        try {
+          const diagnosis = await diagnoseAdAccount({
+            adAccountId: accountId,
+            accessToken: FACEBOOK_ACCESS_TOKEN,
+          })
+          if (diagnosis.status === 'ERROR') {
+            return {
+              name,
+              pod: `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`,
+              insights: emptyInsights,
+              isMonitored,
+            }
+          }
+        } catch (e) {
+          console.error('Diagnosis failed:', e)
+        }
+      }
+
       return {
         name,
         pod: 'Missing Permissions',
