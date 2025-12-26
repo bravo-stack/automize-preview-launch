@@ -1,5 +1,5 @@
 import { sendDiscordMessage } from '@/lib/actions/discord'
-import { sendWhatsAppMessage } from '@/lib/actions/whatsapp'
+import { sendAndLogWhatsAppMessage } from '@/lib/actions/whatsapp'
 import { createAdminClient } from '@/lib/db/admin'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -145,7 +145,12 @@ export async function GET(req: NextRequest) {
           ),
         ].join('\n')
 
-        await sendWhatsAppMessage(whatsapp_number, whatsappMessage)
+        await sendAndLogWhatsAppMessage(
+          whatsapp_number,
+          whatsappMessage,
+          pod,
+          'daily_summary',
+        )
       }
     }
 

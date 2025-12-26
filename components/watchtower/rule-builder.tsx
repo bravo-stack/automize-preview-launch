@@ -21,7 +21,17 @@ import {
   type TargetTable,
   type WatchtowerRule,
 } from '@/types/watchtower'
-import { AlertTriangle, Calendar, Info, Plus, Trash2, X } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  AlertCircle,
+  AlertTriangle,
+  Calendar,
+  Info,
+  Loader2,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react'
 import {
   Fragment,
   useCallback,
@@ -32,7 +42,7 @@ import {
 } from 'react'
 
 // ============================================================================
-// Target Table Labels & Descriptions - Maps to Hub Data Domains
+// Types & Helpers
 // ============================================================================
 
 const TARGET_TABLE_LABELS: Record<string, string> = {
@@ -73,7 +83,6 @@ function getTargetTableDescription(table: string): string {
   )
 }
 
-// Check if a condition requires a threshold value input
 function conditionRequiresThreshold(condition: string): boolean {
   return !['changed', 'is_null', 'is_not_null'].includes(condition)
 }
@@ -104,12 +113,80 @@ interface RuleBuilderProps {
   isLoading?: boolean
 }
 
+// ============================================================================
+// Data Fetching Functions
+// ============================================================================
+
+async function fetchParentRules(excludeId?: string) {
+  const params = new URLSearchParams({ action: 'parent-rules' })
+  if (excludeId) params.append('exclude', excludeId)
+
+  const res = await fetch(`/api/watchtower/rules?${params.toString()}`)
+  const json = await res.json()
+  if (!json.success) throw new Error('Failed to fetch parent rules')
+  return (json.data as WatchtowerRule[]) || []
+}
+
+async function fetchPods() {
+  const res = await fetch('/api/watchtower/pods')
+  const json = await res.json()
+  if (!json.success) throw new Error('Failed to fetch pods')
+  return (json.data as Pod[]) || []
+}
+
+async function fetchChannelIds(ruleId?: string) {
+  if (!ruleId) return []
+  const res = await fetch(`/api/watchtower/channel-ids?ruleId=${ruleId}`)
+  const json = await res.json()
+  if (!json.success) throw new Error('Failed to fetch channel IDs')
+
+  // Transform immediately for easier consumption
+  return ((json.data as ChannelIds[]) ?? []).map((c: any) => ({
+    channel_id: c.channel_id,
+    label: c.label,
+  }))
+}
+
+// ============================================================================
+// Component
+// ============================================================================
+
 export default function RuleBuilder({
   onSave,
   onCancel,
   editRule,
   isLoading = false,
 }: RuleBuilderProps) {
+  // -- TanStack Queries --
+
+  const { data: availableParentRules = [], isLoading: isLoadingParents } =
+    useQuery({
+      queryKey: ['watchtower', 'parent-rules', editRule?.id],
+      queryFn: () => fetchParentRules(editRule?.id),
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    })
+
+  const { data: availablePods = [], isLoading: isLoadingPods } = useQuery({
+    queryKey: ['watchtower', 'pods'],
+    queryFn: fetchPods,
+    staleTime: 1000 * 60 * 5,
+  })
+
+  // We only fetch channel IDs if we are editing an existing rule
+  const { data: fetchedChannelIds = [], isLoading: isLoadingChannels } =
+    useQuery({
+      queryKey: ['watchtower', 'channel-ids', editRule?.id],
+      queryFn: () => fetchChannelIds(editRule?.id),
+      enabled: !!editRule?.id,
+      staleTime: 0, // Always fresh for edit form
+    })
+
+  // Combine loading states for initial render
+  const isFetchingInitialData =
+    isLoadingParents || isLoadingPods || isLoadingChannels
+
+  // -- Form State --
+
   const [isCompound, setIsCompound] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -123,68 +200,32 @@ export default function RuleBuilder({
   const [thresholdValue, setThresholdValue] = useState('')
   const [clauses, setClauses] = useState<RuleClause[]>([])
 
-  // SIMPLIFIED NOTIFICATION STATE - No more primary/additional distinction
   const [notifyDiscord, setNotifyDiscord] = useState(false)
   const [notifyWhatsapp, setNotifyWhatsapp] = useState(false)
 
-  // Selected pods (unified - replaces selectedPodId and selectedPodIds)
   const [selectedPodIds, setSelectedPodIds] = useState<string[]>([])
 
-  // Channel IDs (stored in separate table)
+  // Local Channel ID state (synced from fetch, then mutable)
   const [channelIds, setChannelIds] = useState<ChannelIdEntry[]>([])
   const [newChannelId, setNewChannelId] = useState('')
   const [newChannelLabel, setNewChannelLabel] = useState('')
 
-  // Dependency settings
   const [parentRuleId, setParentRuleId] = useState<string>('')
   const [dependencyCondition, setDependencyCondition] = useState<string>('')
 
-  // Available data
-  const [availableParentRules, setAvailableParentRules] = useState<
-    WatchtowerRule[]
-  >([])
+  // Derived state for available fields based on selected table
   const [availableFields, setAvailableFields] = useState<FieldDefinition[]>([])
-  const [availablePods, setAvailablePods] = useState<Pod[]>([])
 
-  // Fetch available parent rules and pods
+  // -- Effects --
+
+  // 1. Sync fetched channel IDs to local state when they load
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [parentsRes, podsRes, channelIds] = await Promise.all([
-          fetch(
-            `/api/watchtower/rules?action=parent-rules${editRule ? `&exclude=${editRule.id}` : ''}`,
-          ),
-          fetch('/api/watchtower/pods'),
-          fetch(
-            '/api/watchtower/channel-ids?ruleId=' +
-              (editRule ? editRule.id : ''),
-          ),
-        ])
-
-        const parentsJson = await parentsRes.json()
-        const podsJson = await podsRes.json()
-        const channelIdsJson = await channelIds.json()
-
-        if (parentsJson.success) setAvailableParentRules(parentsJson.data)
-        if (podsJson.success) setAvailablePods(podsJson.data)
-        if (channelIdsJson.success) {
-          const mappedChannelIds = (
-            (channelIdsJson.data as ChannelIds[]) ?? []
-          ).map((c: any) => ({
-            channel_id: c.channel_id,
-            label: c.label,
-          }))
-          setChannelIds(mappedChannelIds)
-        }
-      } catch (error) {
-        console.error('Error fetching rule builder data:', error)
-      }
+    if (fetchedChannelIds) {
+      setChannelIds(fetchedChannelIds)
     }
+  }, [fetchedChannelIds])
 
-    fetchData()
-  }, [editRule])
-
-  // Update available fields when target table changes
+  // 2. Update available fields when target table changes
   useEffect(() => {
     if (targetTable) {
       const tableConfig = TABLE_FIELDS.find((t) => t.table === targetTable)
@@ -194,7 +235,7 @@ export default function RuleBuilder({
     }
   }, [targetTable])
 
-  // Initialize form with edit data
+  // 3. Initialize form with edit data
   useEffect(() => {
     if (editRule) {
       setName(editRule.name)
@@ -212,18 +253,9 @@ export default function RuleBuilder({
       setNotifyDiscord(editRule.notify_discord)
       setNotifyWhatsapp(editRule.notify_whatsapp)
 
-      // Load pod selection (unified)
       setSelectedPodIds(editRule.pod_ids || [])
 
-      // Load channel IDs from relation (if available)
-      if ((editRule as any).channel_ids) {
-        setChannelIds(
-          (editRule as any).channel_ids.map((c: any) => ({
-            channel_id: c.channel_id,
-            label: c.label,
-          })),
-        )
-      }
+      // Note: channel_ids are handled by the specific query + effect above
 
       setParentRuleId(editRule.parent_rule_id || '')
       setDependencyCondition(editRule.dependency_condition || '')
@@ -232,10 +264,6 @@ export default function RuleBuilder({
     }
   }, [editRule])
 
-  /**
-   * Get the field type for a given field name from available fields.
-   * O(n) lookup where n = number of fields in table (typically < 20)
-   */
   const getFieldType = useCallback(
     (name: string): FieldDefinition['type'] | undefined => {
       return availableFields.find((f) => f.name === name)?.type
@@ -243,28 +271,16 @@ export default function RuleBuilder({
     [availableFields],
   )
 
-  /**
-   * Memoized domain cast to avoid recreation on each render.
-   * Uses type assertion only when value is valid.
-   */
   const currentDomain = useMemo(
     () => (targetTable as TargetTable) || undefined,
     [targetTable],
   )
 
-  /**
-   * Get available conditions for the currently selected single field.
-   * Uses domain + field type intersection for precise filtering.
-   */
   const availableConditionsForField = useMemo(() => {
     const fieldType = getFieldType(fieldName)
     return getConditionsForDomainAndFieldType(currentDomain, fieldType)
   }, [fieldName, getFieldType, currentDomain])
 
-  /**
-   * Get available conditions for a clause's selected field.
-   * Returns domain-constrained conditions based on clause field type.
-   */
   const getConditionsForClause = useCallback(
     (clauseFieldName: string): RuleCondition[] => {
       const fieldType = getFieldType(clauseFieldName)
@@ -273,9 +289,6 @@ export default function RuleBuilder({
     [getFieldType, currentDomain],
   )
 
-  /**
-   * When field changes, reset condition if invalid for new domain + field type combo.
-   */
   const handleFieldChange = useCallback(
     (newFieldName: string) => {
       setFieldName(newFieldName)
@@ -287,16 +300,13 @@ export default function RuleBuilder({
         newFieldType,
       )
       if (!validConditions.includes(condition as RuleCondition)) {
-        // Reset to first valid condition for domain + field type
         setCondition(validConditions[0] || 'equals')
       }
     },
     [availableFields, condition, currentDomain],
   )
 
-  /**
-   * When target table (domain) changes, validate current condition is still valid.
-   */
+  // Validate condition when target table changes
   useEffect(() => {
     if (!targetTable || !fieldName) return
     const fieldType = getFieldType(fieldName)
@@ -309,9 +319,6 @@ export default function RuleBuilder({
     }
   }, [targetTable, fieldName, getFieldType, currentDomain, condition])
 
-  /**
-   * When clause field changes, update condition if invalid for domain + field type.
-   */
   const handleClauseFieldChange = useCallback(
     (clauseId: string, newFieldName: string) => {
       setClauses((prev) =>
@@ -340,9 +347,7 @@ export default function RuleBuilder({
     [availableFields, currentDomain],
   )
 
-  /**
-   * When domain changes, validate all clause conditions.
-   */
+  // Validate clauses when target table changes
   useEffect(() => {
     if (!targetTable || clauses.length === 0) return
     setClauses((prev) =>
@@ -364,10 +369,9 @@ export default function RuleBuilder({
         return clause
       }),
     )
-  }, [targetTable, currentDomain, availableFields]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [targetTable, currentDomain, availableFields])
 
   const addClause = useCallback(() => {
-    // Default to first valid condition for the domain (no field type yet)
     const defaultConditions = getConditionsForDomainAndFieldType(
       currentDomain,
       undefined,
@@ -396,14 +400,12 @@ export default function RuleBuilder({
     [],
   )
 
-  // Computed: Get Discord IDs from selected pods
   const selectedPodsWithDiscord = useMemo(() => {
     return availablePods.filter(
       (pod) => selectedPodIds.includes(pod.id.toString()) && pod.discord_id,
     )
   }, [availablePods, selectedPodIds])
 
-  // Computed: Get WhatsApp numbers from selected pods
   const selectedPodsWithWhatsapp = useMemo(() => {
     return availablePods.filter(
       (pod) =>
@@ -450,9 +452,7 @@ export default function RuleBuilder({
       time_range_days: timeRangeDays,
       notify_discord: notifyDiscord,
       notify_whatsapp: notifyWhatsapp,
-      // Simplified: Just pod_ids (no more primary distinction)
       pod_ids: selectedPodIds.length > 0 ? selectedPodIds : undefined,
-      // Channel IDs to be stored in separate table
       channel_ids:
         notifyDiscord && channelIds.length > 0 ? channelIds : undefined,
       parent_rule_id: parentRuleId || undefined,
@@ -499,6 +499,21 @@ export default function RuleBuilder({
     }
   }
 
+  // ==========================================================================
+  // LOADING STATE
+  // ==========================================================================
+  if (isFetchingInitialData) {
+    return (
+      <div className="flex h-[400px] w-full flex-col items-center justify-center space-y-4">
+        <Loader2 className="h-10 w-10 animate-spin text-white/30" />
+        <p className="text-sm text-white/50">Loading rule configuration...</p>
+      </div>
+    )
+  }
+
+  // ==========================================================================
+  // MAIN FORM
+  // ==========================================================================
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
@@ -637,7 +652,7 @@ export default function RuleBuilder({
                   type="button"
                   onClick={() => {
                     setUseCustomTimeRange(true)
-                    setTimeRangeDays(14) // Default custom value
+                    setTimeRangeDays(14)
                   }}
                   className="rounded-md border border-dashed border-white/20 px-3 py-1.5 text-xs text-white/50 transition-colors hover:border-white/40 hover:text-white/70"
                 >
@@ -662,7 +677,7 @@ export default function RuleBuilder({
                   type="button"
                   onClick={() => {
                     setUseCustomTimeRange(false)
-                    setTimeRangeDays(null) // Reset to all time
+                    setTimeRangeDays(null)
                   }}
                   className="text-xs text-white/50 underline hover:text-white/70"
                 >
@@ -702,6 +717,13 @@ export default function RuleBuilder({
         <h3 className="text-sm font-medium text-white/80">
           {isCompound ? 'Rule Clauses' : 'Rule Condition'}
         </h3>
+
+        {targetTable && availableFields.length === 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3 text-sm text-yellow-500/80">
+            <AlertTriangle className="h-4 w-4" />
+            No fields defined for this data domain.
+          </div>
+        )}
 
         {isCompound ? (
           <>
@@ -945,9 +967,7 @@ export default function RuleBuilder({
           Configure how you want to be notified when this rule triggers
         </p>
 
-        {(notifyDiscord || notifyWhatsapp) &&
-        availablePods &&
-        availablePods?.length > 0 ? (
+        {availablePods && availablePods.length > 0 ? (
           <Fragment>
             {/* Notification Type Toggles */}
             <div className="flex flex-wrap gap-4">
@@ -971,161 +991,184 @@ export default function RuleBuilder({
               </label>
             </div>
 
-            {/* Pod Selection - Unified for both Discord and WhatsApp */}
-            <div className="space-y-4 rounded-lg border border-white/10 bg-white/5 p-4">
-              <div>
-                <label className="block text-sm font-medium text-white/80">
-                  Select Pods for Notifications
-                </label>
-                <p className="mt-1 text-xs text-white/40">
-                  Selected pods&apos; Discord IDs and WhatsApp numbers will
-                  receive notifications
-                </p>
-              </div>
-
-              {/* Pod Selection Grid */}
-              <div className="grid max-h-96 grid-cols-1 gap-2 overflow-y-auto pb-1 sm:grid-cols-2 lg:grid-cols-3">
-                {availablePods.map((pod) => {
-                  const isSelected = selectedPodIds.includes(pod.id.toString())
-                  const hasDiscord = !!pod.discord_id
-                  const hasWhatsapp = !!pod.whatsapp_number
-
-                  return (
-                    <button
-                      key={pod.id}
-                      type="button"
-                      onClick={() => handleTogglePod(pod.id.toString())}
-                      className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
-                        isSelected
-                          ? 'border-emerald-500/50 bg-emerald-500/10'
-                          : 'border-white/10 bg-white/5 hover:border-white/20'
-                      }`}
-                    >
-                      <span className="font-medium text-white/90">
-                        {pod.name}
-                      </span>
-                      <div className="flex gap-2 text-xs">
-                        {hasDiscord ? (
-                          <span className="text-blue-400">Discord ✓</span>
-                        ) : (
-                          <span className="text-white/30">No Discord</span>
-                        )}
-                        {hasWhatsapp ? (
-                          <span className="text-green-400">WhatsApp ✓</span>
-                        ) : (
-                          <span className="text-white/30">No WhatsApp</span>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Selected Pods Summary */}
-              {selectedPodIds.length > 0 && (
-                <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-3">
-                  <p className="mb-2 text-xs font-medium text-white/70">
-                    Selected: {selectedPodIds.length} pod
-                    {selectedPodIds.length > 1 ? 's' : ''}
-                  </p>
-                  {notifyDiscord && (
-                    <p className="text-xs text-blue-400">
-                      Discord: {selectedPodsWithDiscord.length} channel
-                      {selectedPodsWithDiscord.length !== 1 ? 's' : ''} will be
-                      notified
-                      {selectedPodsWithDiscord.length <
-                        selectedPodIds.length && (
-                        <span className="ml-1 text-yellow-400">
-                          (
-                          {selectedPodIds.length -
-                            selectedPodsWithDiscord.length}{' '}
-                          missing Discord ID)
-                        </span>
-                      )}
+            {(notifyDiscord || notifyWhatsapp) && (
+              <Fragment>
+                {/* Pod Selection - Unified for both Discord and WhatsApp */}
+                <div className="space-y-4 rounded-lg border border-white/10 bg-white/5 p-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white/80">
+                      Select Pods for Notifications
+                    </label>
+                    <p className="mt-1 text-xs text-white/40">
+                      Selected pods&apos; Discord IDs and WhatsApp numbers will
+                      receive notifications
                     </p>
-                  )}
-                  {notifyWhatsapp && (
-                    <p className="text-xs text-green-400">
-                      WhatsApp: {selectedPodsWithWhatsapp.length} number
-                      {selectedPodsWithWhatsapp.length !== 1 ? 's' : ''} will be
-                      notified
-                      {selectedPodsWithWhatsapp.length <
-                        selectedPodIds.length && (
-                        <span className="ml-1 text-yellow-400">
-                          (
-                          {selectedPodIds.length -
-                            selectedPodsWithWhatsapp.length}{' '}
-                          missing WhatsApp)
-                        </span>
+                  </div>
+
+                  {/* Pod Selection Grid */}
+                  <div className="grid max-h-96 grid-cols-1 gap-2 overflow-y-auto pb-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {availablePods.map((pod) => {
+                      const isSelected = selectedPodIds.includes(
+                        pod.id.toString(),
+                      )
+                      const hasDiscord = !!pod.discord_id
+                      const hasWhatsapp = !!pod.whatsapp_number
+
+                      return (
+                        <button
+                          key={pod.id}
+                          type="button"
+                          onClick={() => handleTogglePod(pod.id.toString())}
+                          className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
+                            isSelected
+                              ? 'border-emerald-500/50 bg-emerald-500/10'
+                              : 'border-white/10 bg-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          <span className="font-medium text-white/90">
+                            {pod.name}
+                          </span>
+                          <div className="flex gap-2 text-xs">
+                            {hasDiscord ? (
+                              <span className="text-blue-400">Discord ✓</span>
+                            ) : (
+                              <span className="text-white/30">No Discord</span>
+                            )}
+                            {hasWhatsapp ? (
+                              <span className="text-green-400">WhatsApp ✓</span>
+                            ) : (
+                              <span className="text-white/30">No WhatsApp</span>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Selected Pods Summary */}
+                  {selectedPodIds.length > 0 && (
+                    <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-3">
+                      <p className="mb-2 text-xs font-medium text-white/70">
+                        Selected: {selectedPodIds.length} pod
+                        {selectedPodIds.length > 1 ? 's' : ''}
+                      </p>
+                      {notifyDiscord && (
+                        <p className="text-xs text-blue-400">
+                          Discord: {selectedPodsWithDiscord.length} channel
+                          {selectedPodsWithDiscord.length !== 1 ? 's' : ''} will
+                          be notified
+                          {selectedPodsWithDiscord.length <
+                            selectedPodIds.length && (
+                            <span className="ml-1 text-yellow-400">
+                              (
+                              {selectedPodIds.length -
+                                selectedPodsWithDiscord.length}{' '}
+                              missing Discord ID)
+                            </span>
+                          )}
+                        </p>
                       )}
-                    </p>
+                      {notifyWhatsapp && (
+                        <p className="text-xs text-green-400">
+                          WhatsApp: {selectedPodsWithWhatsapp.length} number
+                          {selectedPodsWithWhatsapp.length !== 1
+                            ? 's'
+                            : ''}{' '}
+                          will be notified
+                          {selectedPodsWithWhatsapp.length <
+                            selectedPodIds.length && (
+                            <span className="ml-1 text-yellow-400">
+                              (
+                              {selectedPodIds.length -
+                                selectedPodsWithWhatsapp.length}{' '}
+                              missing WhatsApp)
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          </Fragment>
-        ) : null}
+              </Fragment>
+            )}
 
-        {/* Extra Discord Channel IDs */}
-        {notifyDiscord && (
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-white/80">
-                Additional Discord Channel IDs
-              </label>
-              <p className="mt-1 text-xs text-white/40">
-                Add custom channel IDs that aren&apos;t tied to any pod
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Channel ID"
-                value={newChannelId}
-                onChange={(e) => setNewChannelId(e.target.value)}
-                className="flex-1 border-white/10 bg-zinc-900"
-              />
-              <Input
-                placeholder="Label (optional)"
-                value={newChannelLabel}
-                onChange={(e) => setNewChannelLabel(e.target.value)}
-                className="w-32 border-white/10 bg-zinc-900"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddChannelId}
-                disabled={!newChannelId.trim()}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {channelIds.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {channelIds.map((channel) => (
-                  <span
-                    key={channel.channel_id}
-                    className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70"
+            {/* Extra Discord Channel IDs */}
+            {notifyDiscord && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-white/80">
+                    Additional Discord Channel IDs
+                  </label>
+                  <p className="mt-1 text-xs text-white/40">
+                    Add custom channel IDs that aren&apos;t tied to any pod
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Channel ID"
+                    value={newChannelId}
+                    onChange={(e) => setNewChannelId(e.target.value)}
+                    className="flex-1 border-white/10 bg-zinc-900"
+                  />
+                  <Input
+                    placeholder="Label (optional)"
+                    value={newChannelLabel}
+                    onChange={(e) => setNewChannelLabel(e.target.value)}
+                    className="w-32 border-white/10 bg-zinc-900"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddChannelId}
+                    disabled={!newChannelId.trim()}
                   >
-                    {channel.label && (
-                      <span className="text-white/50">{channel.label}:</span>
-                    )}
-                    <code className="font-mono text-blue-400">
-                      {channel.channel_id.length > 12
-                        ? `${channel.channel_id.slice(0, 12)}...`
-                        : channel.channel_id}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveChannelId(channel.channel_id)}
-                      className="text-red-400 hover:text-red-300"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {channelIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {channelIds.map((channel) => (
+                      <span
+                        key={channel.channel_id}
+                        className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70"
+                      >
+                        {channel.label && (
+                          <span className="text-white/50">
+                            {channel.label}:
+                          </span>
+                        )}
+                        <code className="font-mono text-blue-400">
+                          {channel.channel_id.length > 12
+                            ? `${channel.channel_id.slice(0, 12)}...`
+                            : channel.channel_id}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleRemoveChannelId(channel.channel_id)
+                          }
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
+          </Fragment>
+        ) : (
+          <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-4 text-white/60">
+            <AlertCircle className="h-5 w-5" />
+            <div>
+              <p className="text-sm font-medium">No pods available</p>
+              <p className="text-xs text-white/40">
+                You must create a pod in the system before you can assign
+                notifications.
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -1136,6 +1179,7 @@ export default function RuleBuilder({
           Cancel
         </Button>
         <Button type="submit" disabled={isLoading}>
+          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isLoading ? 'Saving...' : editRule ? 'Update Rule' : 'Create Rule'}
         </Button>
       </div>

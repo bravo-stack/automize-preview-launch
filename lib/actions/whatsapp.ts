@@ -71,8 +71,11 @@ export async function sendWhatsAppMessage(
     })
 
     return {
-      success: true,
+      success: messageResponse.errorCode ? false : true,
+      date_created: messageResponse.dateCreated,
+      delivery_status: messageResponse.status,
       messageId: messageResponse.sid,
+      error: messageResponse.errorMessage || undefined,
     }
   } catch (error) {
     console.error('Twilio WhatsApp send error:', error)
@@ -164,7 +167,7 @@ export async function sendAndLogWhatsAppMessage(
     recipient_phone_number: cleanTo,
     source_feature: sourceFeature,
     message_content: message,
-    delivery_status: result.success ? 'sent' : 'failed',
+    delivery_status: result.delivery_status,
     twilio_message_sid: result.messageId || null,
     failure_reason: result.error || null,
   })

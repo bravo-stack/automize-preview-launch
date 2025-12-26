@@ -653,14 +653,6 @@ export default function WatchtowerContainer() {
         {/* Loading State - Shows skeleton while stats are initially loading */}
         {isStatsLoading && (
           <div className="space-y-8">
-            {/* Loading Header */}
-            <div className="flex items-center justify-center gap-3 py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-white/60" />
-              <span className="text-lg text-white/60">
-                Loading Watchtower...
-              </span>
-            </div>
-
             {/* Skeleton Stats Grid */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {[...Array(5)].map((_, i) => (
@@ -671,6 +663,27 @@ export default function WatchtowerContainer() {
                   <div className="mb-2 h-4 w-24 rounded bg-white/10" />
                   <div className="h-8 w-16 rounded bg-white/10" />
                   <div className="mt-2 h-3 w-20 rounded bg-white/5" />
+                </div>
+              ))}
+            </div>
+
+            {/* Skeleton Cards */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {[...Array(2)].map((_, i) => (
+                <div
+                  key={i}
+                  className="animate-pulse rounded-lg border border-white/10 bg-white/5 p-6"
+                >
+                  <div className="mb-4 h-5 w-32 rounded bg-white/10" />
+                  <div className="space-y-3">
+                    {[...Array(4)].map((_, j) => (
+                      <div key={j} className="flex justify-between">
+                        <div className="h-4 w-24 rounded bg-white/5" />
+                        <div className="h-4 w-12 rounded bg-white/10" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 h-10 w-full rounded bg-white/10" />
                 </div>
               ))}
             </div>

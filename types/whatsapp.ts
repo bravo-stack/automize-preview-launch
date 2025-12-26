@@ -2,6 +2,8 @@
 // WhatsApp Notification Types
 // ============================================================================
 
+import { MessageInstance } from 'twilio/lib/rest/api/v2010/account/message'
+
 // Feature types matching the database enum
 // Note: 'late_alert' is handled by the Discord NodeJS service
 export type WaFeatureType = 'daily_summary' | 'ad_error'
@@ -56,6 +58,8 @@ export interface WhatsAppScheduleInput {
 // Result of sending a WhatsApp message
 export interface WhatsAppSendResult {
   success: boolean
+  date_created?: Date | string | null
+  delivery_status?: WhatsAppDeliveryStatus
   messageId?: string
   error?: string
 }
@@ -114,7 +118,7 @@ export type WhatsAppSourceFeature =
   | 'watchtower_alert'
 
 // Delivery status for WhatsApp messages
-export type WhatsAppDeliveryStatus = 'sent' | 'failed' | 'pending'
+export type WhatsAppDeliveryStatus = MessageInstance['status']
 
 // WhatsApp message log entry (matches whatsapp_message_logs table)
 export interface WhatsAppMessageLog {
@@ -137,7 +141,7 @@ export interface WhatsAppMessageLogInput {
   recipient_phone_number: string
   source_feature: WhatsAppSourceFeature
   message_content?: string | null
-  delivery_status: WhatsAppDeliveryStatus
+  delivery_status: WhatsAppDeliveryStatus | undefined
   twilio_message_sid?: string | null
   failure_reason?: string | null
 }
