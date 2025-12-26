@@ -1,11 +1,5 @@
 // lib/omnisendClient.ts
-
-const OMNISEND_API_KEY = process.env.OMNISEND_API_KEY!
 const BASE_URL = 'https://api.omnisend.com'
-
-if (!OMNISEND_API_KEY) {
-  throw new Error('Missing OMNISEND_API_KEY in environment variables')
-}
 
 export class OmnisendClient {
   static async request<T>(

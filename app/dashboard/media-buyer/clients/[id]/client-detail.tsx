@@ -266,6 +266,7 @@ export function ClientDetail({ initialData, role }: ClientDetailProps) {
   }, [data.client.id])
 
   const { client, theme, omnisend, lastUpdated } = data
+  console.log('Omnisend Data:', omnisend)
 
   return (
     <main className="min-h-screen px-6 pb-24 pt-10 lg:px-12">
