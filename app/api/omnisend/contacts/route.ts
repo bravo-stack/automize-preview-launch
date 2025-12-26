@@ -139,7 +139,7 @@ async function getOrCreateSource() {
 
 // --- Sync Logic (Per Client) ---
 
-export async function syncContacts(
+async function syncContacts(
   apiKey: string,
   clientId: number,
   brandName: string,

@@ -114,7 +114,7 @@ async function getOrCreateSource() {
 
 // --- Sync Logic (Per Client) ---
 
-export async function syncProducts(
+async function syncProducts(
   apiKey: string,
   clientId: number,
   brandName: string,

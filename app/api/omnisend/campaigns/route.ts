@@ -179,7 +179,7 @@ async function getOrCreateSource() {
 
 // --- Sync Logic (Per Client) ---
 
-export async function syncCampaigns(
+async function syncCampaigns(
   apiKey: string,
   clientId: number,
   brandName: string,

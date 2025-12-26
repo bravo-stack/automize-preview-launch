@@ -188,11 +188,7 @@ async function getOrCreateSource() {
   return source
 }
 
-export async function syncOrders(
-  apiKey: string,
-  clientId: number,
-  brandName: string,
-) {
+async function syncOrders(apiKey: string, clientId: number, brandName: string) {
   try {
     const data = await OmnisendClient.request<OmnisendOrdersResponse>(
       apiKey,
