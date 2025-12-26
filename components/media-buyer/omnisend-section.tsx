@@ -11,6 +11,8 @@ import type {
 } from '@/types/media-buyer'
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Clock,
   DollarSign,
@@ -24,7 +26,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 // ============================================================================
 // Revenue Summary Card
@@ -77,7 +79,10 @@ export function RevenueSummaryCard({
             <h3 className="text-lg font-semibold text-white">
               Revenue Summary
             </h3>
-            <p className="text-xs text-white/50">Omnisend Orders</p>
+            <p className="text-xs text-white/50">
+              Omnisend Orders • amounts stored in cents (displayed in{' '}
+              {summary.currency || 'USD'})
+            </p>
           </div>
         </div>
         {lastUpdated && (
@@ -276,8 +281,11 @@ interface OrdersListProps {
 }
 
 export function OrdersList({ orders, isLoading = false }: OrdersListProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const displayOrders = isExpanded ? orders : orders.slice(0, 5)
+  const [page, setPage] = useState(0)
+  const pageSize = 10
+  useEffect(() => setPage(0), [orders.length])
+  const totalPages = Math.max(1, Math.ceil(orders.length / pageSize))
+  const displayOrders = orders.slice(page * pageSize, (page + 1) * pageSize)
 
   if (isLoading) {
     return (
@@ -315,6 +323,9 @@ export function OrdersList({ orders, isLoading = false }: OrdersListProps) {
             <h3 className="text-lg font-semibold text-white">Recent Orders</h3>
             <p className="text-xs text-white/50">
               {orders.length} total orders
+            </p>
+            <p className="text-xs text-white/50">
+              Amounts stored in cents by Omnisend — converted for display
             </p>
           </div>
         </div>
@@ -372,23 +383,33 @@ export function OrdersList({ orders, isLoading = false }: OrdersListProps) {
             ))}
           </div>
 
-          {orders.length > 5 && (
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              {isExpanded ? (
-                <>
-                  <ChevronUp className="h-4 w-4" />
-                  Show Less
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-4 w-4" />
-                  Show All ({orders.length} orders)
-                </>
-              )}
-            </button>
+          {orders.length > pageSize && (
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-xs text-white/60">
+                Page {page + 1} of {totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-sm text-white/70 transition-colors hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Prev
+                </button>
+
+                <button
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                  disabled={page === totalPages - 1}
+                  className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-sm text-white/70 transition-colors hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           )}
         </>
       )}
@@ -411,6 +432,15 @@ export function AutomationsList({
   lastUpdated,
   isLoading = false,
 }: AutomationsListProps) {
+  const [page, setPage] = useState(0)
+  const pageSize = 10
+  useEffect(() => setPage(0), [automations.length])
+  const totalPages = Math.max(1, Math.ceil(automations.length / pageSize))
+  const displayAutomations = automations.slice(
+    page * pageSize,
+    (page + 1) * pageSize,
+  )
+
   if (isLoading) {
     return (
       <div className="rounded-lg border border-white/10 bg-white/5 p-6">
@@ -458,45 +488,76 @@ export function AutomationsList({
           <p className="mt-2 text-white/60">No automations configured</p>
         </div>
       ) : (
-        <div className="mt-4 space-y-2">
-          {automations.map((automation) => (
-            <div
-              key={automation.id}
-              className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 p-3"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`h-2 w-2 rounded-full ${
-                    automation.status === 'started'
-                      ? 'bg-green-400'
-                      : automation.status === 'paused'
-                        ? 'bg-yellow-400'
-                        : 'bg-white/40'
-                  }`}
-                />
-                <div>
-                  <p className="font-medium text-white">
-                    {automation.name || 'Unnamed Automation'}
-                  </p>
-                  <p className="text-xs text-white/50">
-                    ID: {automation.external_id}
-                  </p>
-                </div>
-              </div>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                  automation.status === 'started'
-                    ? 'bg-green-500/20 text-green-400'
-                    : automation.status === 'paused'
-                      ? 'bg-yellow-500/20 text-yellow-400'
-                      : 'bg-white/10 text-white/60'
-                }`}
+        <>
+          <div className="mt-4 space-y-2">
+            {displayAutomations.map((automation) => (
+              <div
+                key={automation.id}
+                className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 p-3"
               >
-                {automation.status || 'Unknown'}
-              </span>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`h-2 w-2 rounded-full ${
+                      automation.status === 'started'
+                        ? 'bg-green-400'
+                        : automation.status === 'paused'
+                          ? 'bg-yellow-400'
+                          : 'bg-white/40'
+                    }`}
+                  />
+                  <div>
+                    <p className="font-medium text-white">
+                      {automation.name || 'Unnamed Automation'}
+                    </p>
+                    <p className="text-xs text-white/50">
+                      ID: {automation.external_id}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                    automation.status === 'started'
+                      ? 'bg-green-500/20 text-green-400'
+                      : automation.status === 'paused'
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-white/10 text-white/60'
+                  }`}
+                >
+                  {automation.status || 'Unknown'}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {automations.length > pageSize && (
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-xs text-white/60">
+                Page {page + 1} of {totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-sm text-white/70 transition-colors hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Prev
+                </button>
+
+                <button
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                  disabled={page === totalPages - 1}
+                  className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-sm text-white/70 transition-colors hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   )
