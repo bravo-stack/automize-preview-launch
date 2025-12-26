@@ -79,7 +79,7 @@ async function getOrCreateSource() {
   return source
 }
 
-export async function syncAutomations(
+async function syncAutomations(
   apiKey: string,
   clientId: number,
   brandName: string,
