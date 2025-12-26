@@ -206,6 +206,7 @@ async function evaluateRuleAgainstRecord(
   record: Record<string, unknown>,
   snapshotId: string,
   targetTable: TargetTable,
+  previousValue?: unknown,
 ): Promise<{ triggered: boolean; alertId?: string }> {
   // Check dependency first
   const dependencySatisfied = await checkRuleDependency(rule)
@@ -222,7 +223,7 @@ async function evaluateRuleAgainstRecord(
     rule.condition as RuleCondition,
     fieldValue,
     rule.threshold_value,
-    undefined,
+    previousValue,
   )
 
   if (!triggered) {
@@ -232,7 +233,11 @@ async function evaluateRuleAgainstRecord(
   // Create alert
   // For non-api tables, don't pass record_id as it has FK constraint to api_records
   const isApiTable = targetTable === 'api_records'
-  const message = generateAlertMessage(rule, String(fieldValue))
+  const message = generateAlertMessage(
+    rule,
+    String(fieldValue),
+    previousValue !== undefined ? String(previousValue) : undefined,
+  )
   const accountInfo = record.account_name ? ` [${record.account_name}]` : ''
   const fullMessage = message + accountInfo
 
@@ -245,6 +250,8 @@ async function evaluateRuleAgainstRecord(
     {
       recordId: isApiTable ? (record.id as string | undefined) : undefined,
       skipSnapshotValidation: !isApiTable,
+      previousValue:
+        previousValue !== undefined ? String(previousValue) : undefined,
     },
   )
 
@@ -284,6 +291,34 @@ async function evaluateTargetTable(
   const triggeredRules = new Set<string>()
   const MAX_ALERTS_PER_RULE = 5
 
+  // Group records by entity for historical comparison
+  const entityHistory = new Map<string, Record<string, unknown>[]>()
+  const isHistorySupported = [
+    'facebook_metrics',
+    'finance_metrics',
+    'communication_reports',
+  ].includes(targetTable)
+
+  if (isHistorySupported) {
+    for (const record of records) {
+      // Determine entity key
+      let key = ''
+      if (
+        targetTable === 'facebook_metrics' ||
+        targetTable === 'finance_metrics'
+      ) {
+        key = String(record.name)
+      } else if (targetTable === 'communication_reports') {
+        key = `${record.channel_name}:${record.guild_name}`
+      }
+
+      if (key) {
+        if (!entityHistory.has(key)) entityHistory.set(key, [])
+        entityHistory.get(key)!.push(record)
+      }
+    }
+  }
+
   // Evaluate each rule against each record
   for (const record of records) {
     for (const rule of rules) {
@@ -297,11 +332,52 @@ async function evaluateTargetTable(
         continue
       }
 
+      // Determine previous value if needed
+      let previousValue: unknown = undefined
+      const changeConditions = [
+        'changed',
+        'changed_by_percent',
+        'increased_by_value',
+        'decreased_by_value',
+        'increased_by_percent',
+        'decreased_by_percent',
+      ]
+      const needsHistory = changeConditions.includes(rule.condition)
+
+      if (needsHistory && isHistorySupported) {
+        // Identify entity key for this record
+        let key = ''
+        if (
+          targetTable === 'facebook_metrics' ||
+          targetTable === 'finance_metrics'
+        ) {
+          key = String(record.name)
+        } else if (targetTable === 'communication_reports') {
+          key = `${record.channel_name}:${record.guild_name}`
+        }
+
+        const history = entityHistory.get(key)
+        if (history && history.length > 0) {
+          // For "Change" rules, we MUST ensure we are evaluating the LATEST record.
+          // Check if this record is the latest in history (index 0)
+          if (record !== history[0]) {
+            continue
+          }
+
+          // Previous value comes from the oldest record in the range (last index)
+          const oldestRecord = history[history.length - 1]
+          if (oldestRecord && oldestRecord !== record) {
+            previousValue = oldestRecord[rule.field_name]
+          }
+        }
+      }
+
       const { triggered, alertId } = await evaluateRuleAgainstRecord(
         rule,
         record,
         snapshotId,
         targetTable,
+        previousValue,
       )
 
       if (triggered) {

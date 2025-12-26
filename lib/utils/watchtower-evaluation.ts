@@ -74,6 +74,46 @@ export function evaluateCondition(
       if (isNaN(prev) || isNaN(current) || prev === 0) return false
       const changePercent = Math.abs(((current - prev) / prev) * 100)
       return changePercent >= threshold
+    case 'increased_by_value': {
+      if (previousValue === undefined) return false
+      const prev =
+        typeof previousValue === 'number'
+          ? previousValue
+          : parseFloat(String(previousValue))
+      if (isNaN(prev) || isNaN(current)) return false
+      const increase = current - prev
+      return increase >= threshold
+    }
+    case 'decreased_by_value': {
+      if (previousValue === undefined) return false
+      const prev =
+        typeof previousValue === 'number'
+          ? previousValue
+          : parseFloat(String(previousValue))
+      if (isNaN(prev) || isNaN(current)) return false
+      const decrease = prev - current
+      return decrease >= threshold
+    }
+    case 'increased_by_percent': {
+      if (previousValue === undefined || previousValue === 0) return false
+      const prev =
+        typeof previousValue === 'number'
+          ? previousValue
+          : parseFloat(String(previousValue))
+      if (isNaN(prev) || isNaN(current) || prev === 0) return false
+      const percentDiff = ((current - prev) / prev) * 100
+      return percentDiff >= threshold
+    }
+    case 'decreased_by_percent': {
+      if (previousValue === undefined || previousValue === 0) return false
+      const prev =
+        typeof previousValue === 'number'
+          ? previousValue
+          : parseFloat(String(previousValue))
+      if (isNaN(prev) || isNaN(current) || prev === 0) return false
+      const percentDiff = ((prev - current) / prev) * 100
+      return percentDiff >= threshold
+    }
     case 'contains':
       return thresholdValue
         ? String(currentValue).includes(thresholdValue)
@@ -106,7 +146,12 @@ export function generateAlertMessage(
 
   message += ` (current: ${currentValue})`
 
-  if (previousValue && rule.condition.includes('changed')) {
+  if (
+    previousValue &&
+    (rule.condition.includes('changed') ||
+      rule.condition.includes('increased') ||
+      rule.condition.includes('decreased'))
+  ) {
     message += ` (previous: ${previousValue})`
   }
 
@@ -126,6 +171,10 @@ export function getConditionText(condition: string): string {
     less_than_or_equal: 'is at most',
     changed: 'has changed',
     changed_by_percent: 'changed by more than',
+    increased_by_value: 'increased by at least',
+    decreased_by_value: 'decreased by at least',
+    increased_by_percent: 'increased by at least %',
+    decreased_by_percent: 'decreased by at least %',
     contains: 'contains',
     not_contains: 'does not contain',
     is_null: 'is empty',
