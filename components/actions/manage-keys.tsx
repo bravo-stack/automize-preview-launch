@@ -8,6 +8,7 @@ export default function ManageKeys({ client }) {
   const [fb_key, setKeyF] = useState('')
   const [shopify_key, setKeyS] = useState('')
   const [store_id, setStoreID] = useState('')
+  const [omni_keys, setOmniKeys] = useState('')
   const [showModal, setShowModal] = useState(false)
   const router = useRouter()
 
@@ -19,11 +20,13 @@ export default function ManageKeys({ client }) {
       fb_key?: string
       shopify_key?: string
       store_id?: string
+      omni_keys?: string
     } = { id: client.id }
 
     if (fb_key) payload.fb_key = fb_key
     if (shopify_key) payload.shopify_key = shopify_key
     if (store_id) payload.store_id = store_id
+    if (omni_keys) payload.omni_keys = omni_keys
 
     if (Object.keys(payload).length <= 1) {
       alert('No changes to save.')
@@ -62,6 +65,7 @@ export default function ManageKeys({ client }) {
                 Shopify Key: {client.shopify_key ?? 'N/A'}
               </p>
               <p>Store ID: {client.store_id ?? 'N/A'}</p>
+              <p className="truncate">Omni Keys: {client.omni_keys ?? 'N/A'}</p>
             </div>
 
             <h2 className="mb-4 text-xl font-bold">Edit Keys</h2>
@@ -107,6 +111,23 @@ export default function ManageKeys({ client }) {
                   Note: This is a secret token that grants access to the
                   store&apos;s data, be careful in handling it. Automize will
                   safely encrypt the keys upon processing.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">Omni Keys</label>
+                <input
+                  type="text"
+                  value={omni_keys}
+                  onChange={(e) => setOmniKeys(e.target.value)}
+                  required
+                  placeholder="E.g. 1234567890..."
+                  className="w-full rounded border px-3 py-2"
+                />
+                <p className="mt-1 text-xs text-gray-600">
+                  Note: This is a secret token that grants access to the Omni
+                  services, be careful in handling it. Automize will safely
+                  encrypt the keys upon processing.
                 </p>
               </div>
 

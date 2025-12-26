@@ -8,13 +8,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 type SyncStatus = 'idle' | 'loading' | 'success' | 'error'
 
 interface SyncResult {
   status: SyncStatus
   message?: string
+  processedClients?: number
+  successCount?: number
+  failCount?: number
   total?: number
   saved?: number
   snapshotId?: string
@@ -71,37 +74,49 @@ export default function ServicesPage() {
     }))
 
     try {
-      const res = await fetch(`/api/omnisend/${endpoint}`, { method: 'POST' })
+      // 1. No payload needed anymore - Server handles key fetching
+      const res = await fetch(`/api/omnisend/${endpoint}`, {
+        method: 'POST',
+      })
       const data = await res.json()
 
-      if (!data.success) {
+      // 2. Handle generic error
+      if (!res.ok || data.error) {
+        console.error('Sync error:', data)
         setSyncState((prev) => ({
           ...prev,
-          [endpoint]: { status: 'error', message: data.error },
+          [endpoint]: {
+            status: 'error',
+            message: data.details || data.error || 'Batch sync failed',
+          },
         }))
         return
       }
 
-      const totalKey = Object.keys(data).find((k) => k.startsWith('total'))
-      const total = totalKey ? data[totalKey] : 0
-
-      setSyncState((prev) => ({
-        ...prev,
-        [endpoint]: {
-          status: 'success',
-          message: `Synced ${data.savedRecords} of ${total} records`,
-          total,
-          saved: data.savedRecords,
-          snapshotId: data.snapshotId,
-          details: {
-            totalContacts: data.totalContacts,
-            totalProducts: data.totalProducts,
-            totalOrders: data.totalOrders,
-            totalAutomations: data.totalAutomations,
-            totalCampaigns: data.totalCampaigns,
+      // 3. Handle Batch Response Structure
+      // Expected structure: { summary: { totalProcessed, successCount, failCount }, failures: [] }
+      if (data.summary) {
+        setSyncState((prev) => ({
+          ...prev,
+          [endpoint]: {
+            status: 'success',
+            message: `Processed ${data.summary.totalProcessed} Clients`,
+            processedClients: data.summary.totalProcessed,
+            successCount: data.summary.successCount,
+            failCount: data.summary.failCount,
           },
-        },
-      }))
+        }))
+      } else {
+        // Fallback for non-batch responses (if any endpoints haven't been updated yet)
+        setSyncState((prev) => ({
+          ...prev,
+          [endpoint]: {
+            status: 'success',
+            message: 'Sync completed',
+            saved: data.savedRecords || 0,
+          },
+        }))
+      }
     } catch (err) {
       setSyncState((prev) => ({
         ...prev,
@@ -112,6 +127,58 @@ export default function ServicesPage() {
       }))
     }
   }
+  // async function syncEndpoint(endpoint: OmnisendEndpoint) {
+  //   setSyncState((prev) => ({
+  //     ...prev,
+  //     [endpoint]: { status: 'loading' },
+  //   }))
+
+  //   try {
+  //     const res = await fetch(`/api/omnisend/${endpoint}`, {
+  //       method: 'POST',
+  //       body: JSON.stringify({ encryptedKey: '' }),
+  //     })
+  //     const data = await res.json()
+
+  //     if (!data.success) {
+  //       console.log('Sync error:', data)
+  //       setSyncState((prev) => ({
+  //         ...prev,
+  //         [endpoint]: { status: 'error', message: data.error },
+  //       }))
+  //       return
+  //     }
+
+  //     const totalKey = Object.keys(data).find((k) => k.startsWith('total'))
+  //     const total = totalKey ? data[totalKey] : 0
+
+  //     setSyncState((prev) => ({
+  //       ...prev,
+  //       [endpoint]: {
+  //         status: 'success',
+  //         message: `Synced ${data.savedRecords} of ${total} records`,
+  //         total,
+  //         saved: data.savedRecords,
+  //         snapshotId: data.snapshotId,
+  //         details: {
+  //           totalContacts: data.totalContacts,
+  //           totalProducts: data.totalProducts,
+  //           totalOrders: data.totalOrders,
+  //           totalAutomations: data.totalAutomations,
+  //           totalCampaigns: data.totalCampaigns,
+  //         },
+  //       },
+  //     }))
+  //   } catch (err) {
+  //     setSyncState((prev) => ({
+  //       ...prev,
+  //       [endpoint]: {
+  //         status: 'error',
+  //         message: err instanceof Error ? err.message : 'Unknown error',
+  //       },
+  //     }))
+  //   }
+  // }
   async function syncShopifyThemes() {
     setShopifyThemesState({
       status: 'loading',
@@ -242,10 +309,33 @@ export default function ServicesPage() {
 
                     {state.status === 'success' && (
                       <div className="space-y-1 text-xs">
-                        <p className="text-green-500">✓ Sync completed</p>
-                        <p className="text-white/60">
-                          {state.saved} of {state.total} records saved
-                        </p>
+                        <p className="text-green-500">✓ {state.message}</p>
+
+                        {/* --- START CHANGES: Display Batch Stats --- */}
+                        {state.processedClients !== undefined ? (
+                          <div className="flex gap-2 text-white/60">
+                            <span className="text-green-400">
+                              {state.successCount} Success
+                            </span>
+                            <span>•</span>
+                            <span
+                              className={
+                                state.failCount && state.failCount > 0
+                                  ? 'text-red-400'
+                                  : ''
+                              }
+                            >
+                              {state.failCount} Failed
+                            </span>
+                          </div>
+                        ) : (
+                          /* Fallback for legacy display */
+                          <p className="text-white/60">
+                            {state.saved} records saved
+                          </p>
+                        )}
+                        {/* --- END CHANGES --- */}
+
                         {state.snapshotId && (
                           <p
                             className="truncate text-white/40"

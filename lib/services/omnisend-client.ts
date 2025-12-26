@@ -9,9 +9,14 @@ if (!OMNISEND_API_KEY) {
 
 export class OmnisendClient {
   static async request<T>(
+    apiKey: string,
     endpoint: string,
     options: RequestInit = {},
   ): Promise<T> {
+    if (!apiKey) {
+      throw new Error('Omnisend API key is required')
+    }
+
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 15000) // 15s
 
@@ -20,7 +25,7 @@ export class OmnisendClient {
         ...options,
         headers: {
           'Content-Type': 'application/json',
-          'X-API-KEY': OMNISEND_API_KEY,
+          'X-API-KEY': apiKey,
           ...(options.headers || {}),
         },
         signal: controller.signal,

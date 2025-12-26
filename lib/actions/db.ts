@@ -24,6 +24,7 @@ export async function updateKeys(data) {
     ...(data.fb_key && { fb_key: `act_${data.fb_key}` }),
     ...(data.shopify_key && { shopify_key: encrypt(data.shopify_key) }), // Encrypt here
     ...(data.store_id && { store_id: data.store_id }),
+    ...(data.omni_keys && { omni_keys: encrypt(data.omni_keys) }),
   }
 
   const { error } = await db.from('clients').update(payload).eq('id', data.id)
