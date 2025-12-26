@@ -5,9 +5,14 @@ import {
   saveRecordsWithMetrics,
   updateSnapshotStatus,
 } from '@/lib/actions/api-storage'
+import { decrypt } from '@/lib/crypto'
+import { createAdminClient } from '@/lib/db/admin'
 import { OmnisendClient } from '@/lib/services/omnisend-client'
 import type { RecordWithMetricsInput } from '@/types/api-storage'
 import { NextResponse } from 'next/server'
+import pLimit from 'p-limit'
+
+// --- Interfaces ---
 
 interface OmnisendProduct {
   productID: string
@@ -50,6 +55,25 @@ interface OmnisendProductsResponse {
   }
 }
 
+interface ClientWithKey {
+  id: number
+  brand: string
+  omni_keys: string
+}
+
+// --- Helpers ---
+
+// Database fetch helper
+async function getClientsWithKeys(): Promise<ClientWithKey[]> {
+  const supabase = await createAdminClient()
+  const { data } = await supabase
+    .from('clients')
+    .select('id, brand, omni_keys')
+    .not('omni_keys', 'is', null)
+    .eq('status', 'active')
+  return data || []
+}
+
 function mapProductToRecord(product: OmnisendProduct): RecordWithMetricsInput {
   return {
     external_id: product.productID,
@@ -88,48 +112,121 @@ async function getOrCreateSource() {
   return source
 }
 
-export async function POST() {
+// --- Sync Logic (Per Client) ---
+
+export async function syncProducts(
+  apiKey: string,
+  clientId: number,
+  brandName: string,
+) {
   try {
-    const data =
-      await OmnisendClient.request<OmnisendProductsResponse>('/v3/products')
+    const data = await OmnisendClient.request<OmnisendProductsResponse>(
+      apiKey,
+      '/v3/products',
+    )
 
     const source = await getOrCreateSource()
     if (!source) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to get or create source' },
-        { status: 500 },
-      )
+      return { success: false, error: 'Failed to get or create source' }
     }
 
-    const snapshot = await createSnapshot(source.id, 'manual')
+    const snapshot = await createSnapshot(source.id, 'manual', clientId)
     if (!snapshot) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to create snapshot' },
-        { status: 500 },
-      )
+      return { success: false, error: 'Failed to create snapshot' }
     }
 
     await updateSnapshotStatus(snapshot.id, 'processing')
 
     const records = data.products.map(mapProductToRecord)
-    const result = await saveRecordsWithMetrics(snapshot.id, records)
+    const result = await saveRecordsWithMetrics(snapshot.id, records, clientId)
 
     if (result.error) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to save records' },
-        { status: 500 },
-      )
+      return { success: false, error: 'Failed to save records' }
     }
 
-    return NextResponse.json({
+    return {
       success: true,
+      clientId,
+      brand: brandName,
       snapshotId: snapshot.id,
       totalProducts: data.products.length,
       savedRecords: result.saved,
+    }
+  } catch (error: any) {
+    console.error(
+      `Sync failed for ${brandName} (ID: ${clientId}):`,
+      error.message,
+    )
+    return { success: false, clientId, brand: brandName, error: error.message }
+  }
+}
+
+// --- Batch Route Handler ---
+
+export async function POST(req: Request) {
+  try {
+    // 1. Fetch all active clients with keys from DB
+    const clients = await getClientsWithKeys()
+
+    if (!clients.length) {
+      return NextResponse.json({
+        message: 'No active clients with Omnisend keys found.',
+      })
+    }
+
+    // 2. Set Concurrency Limit
+    const limit = pLimit(5)
+
+    // 3. Map clients to rate-limited promises
+    const tasks = clients.map((client) =>
+      limit(async () => {
+        try {
+          // Decrypt ON SERVER side
+          const apiKey = decrypt(client.omni_keys)
+
+          // Execute sync
+          return await syncProducts(apiKey, client.id, client.brand)
+        } catch (err) {
+          return {
+            success: false,
+            clientId: client.id,
+            brand: client.brand,
+            error: 'Decryption failed',
+          }
+        }
+      }),
+    )
+
+    // 4. Wait for all to finish
+    const results = await Promise.allSettled(tasks)
+
+    // 5. Aggregate Results
+    const successful = results
+      .filter((r) => r.status === 'fulfilled' && r.value.success)
+      .map((r) => (r as PromiseFulfilledResult<any>).value)
+
+    const failed = results
+      .filter(
+        (r) =>
+          r.status === 'rejected' ||
+          (r.status === 'fulfilled' && !r.value.success),
+      )
+      .map((r) => {
+        if (r.status === 'rejected') return { error: r.reason }
+        return (r as PromiseFulfilledResult<any>).value
+      })
+
+    return NextResponse.json({
+      summary: {
+        totalProcessed: clients.length,
+        successCount: successful.length,
+        failCount: failed.length,
+      },
+      failures: failed,
     })
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: error.message },
+      { error: 'Internal Batch Error', details: error.message },
       { status: 500 },
     )
   }

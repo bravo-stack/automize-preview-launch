@@ -56,11 +56,13 @@ export function RevenueSummaryCard({
   }
 
   const formatCurrency = (value: number) => {
+    // Convert cents to dollars
+    const dollars = value / 100
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: summary.currency || 'USD',
       minimumFractionDigits: 2,
-    }).format(value)
+    }).format(dollars)
   }
 
   return (
@@ -293,10 +295,12 @@ export function OrdersList({ orders, isLoading = false }: OrdersListProps) {
 
   const formatCurrency = (value: number | null) => {
     if (value === null) return '-'
+    // Convert cents to dollars
+    const dollars = value / 100
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-    }).format(value)
+    }).format(dollars)
   }
 
   return (
