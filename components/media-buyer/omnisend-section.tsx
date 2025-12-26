@@ -79,10 +79,7 @@ export function RevenueSummaryCard({
             <h3 className="text-lg font-semibold text-white">
               Revenue Summary
             </h3>
-            <p className="text-xs text-white/50">
-              Omnisend Orders • amounts stored in cents (displayed in{' '}
-              {summary.currency || 'USD'})
-            </p>
+            <p className="text-xs text-white/50">Omnisend Orders</p>
           </div>
         </div>
         {lastUpdated && (

@@ -1,5 +1,4 @@
-import type { RuleCondition } from '@/types/api-storage'
-import type { WatchtowerRule } from '@/types/watchtower'
+import type { RuleCondition, WatchtowerRule } from '@/types/watchtower'
 
 // ============================================================================
 // Pure Evaluation Utilities (no server actions)

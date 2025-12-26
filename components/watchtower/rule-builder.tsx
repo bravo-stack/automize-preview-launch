@@ -938,17 +938,17 @@ export default function RuleBuilder({
 
       {/* Notification Settings */}
       <div className="space-y-4">
+        <h3 className="text-sm font-medium text-white/80">
+          Notification Settings
+        </h3>
+        <p className="text-xs text-white/50">
+          Configure how you want to be notified when this rule triggers
+        </p>
+
         {(notifyDiscord || notifyWhatsapp) &&
         availablePods &&
         availablePods?.length > 0 ? (
           <Fragment>
-            <h3 className="text-sm font-medium text-white/80">
-              Notification Settings
-            </h3>
-            <p className="text-xs text-white/50">
-              Configure how you want to be notified when this rule triggers
-            </p>
-
             {/* Notification Type Toggles */}
             <div className="flex flex-wrap gap-4">
               <label className="flex items-center gap-2 text-sm text-white/70">

@@ -7,7 +7,6 @@ import {
 } from '@/lib/utils/watchtower-evaluation'
 import type { TargetTable, WatchtowerAlert } from '@/types/api-storage'
 import type {
-  RuleCondition,
   RuleEvaluationContext,
   RuleEvaluationResult,
 } from '@/types/watchtower'
@@ -51,7 +50,7 @@ export async function evaluateRule(
 
   // Evaluate the condition
   const triggered = evaluateCondition(
-    rule.condition as RuleCondition,
+    rule.condition,
     currentValue,
     rule.threshold_value,
     previousValue,
@@ -113,7 +112,7 @@ export async function evaluateCompoundRule(
     if (currentValue === undefined) continue
 
     const triggered = evaluateCondition(
-      rule.condition as RuleCondition,
+      rule.condition,
       currentValue,
       rule.threshold_value,
       previousValue,

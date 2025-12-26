@@ -24,7 +24,6 @@ import {
   generateAlertMessage,
 } from '@/lib/utils/watchtower-evaluation'
 import type {
-  RuleCondition,
   TargetTable,
   WatchtowerAlert as WatchtowerAlertType,
   WatchtowerRule,
@@ -167,7 +166,7 @@ async function evaluateRuleAgainstRecord(
   }
 
   const triggered = evaluateCondition(
-    rule.condition as RuleCondition,
+    rule.condition,
     fieldValue,
     rule.threshold_value,
     undefined,
