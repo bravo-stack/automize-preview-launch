@@ -1,8 +1,28 @@
 'use client'
 
-import { Activity, Eye, Search, Store, Users, X } from 'lucide-react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Activity,
+  ChevronRight,
+  Database,
+  Eye,
+  Globe,
+  Mail,
+  Palette,
+  Search,
+  Store,
+  Users,
+  X,
+} from 'lucide-react'
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { ClientCard } from './client-card'
 import { StatCard } from './stat-card'
 import type { ClientDataAvailability, HubClient, HubStats } from './types'
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './types'
@@ -133,7 +153,7 @@ export function ClientsHub({
         </div>
       </div>
 
-      {/* Client Grid */}
+      {/* Client List */}
       {paginatedClients.length === 0 ? (
         <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.02] py-16">
           <div className="rounded-full bg-white/5 p-5">
@@ -155,14 +175,121 @@ export function ClientsHub({
           )}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {paginatedClients.map((client) => (
-            <ClientCard
-              key={client.id}
-              client={client}
-              dataAvailability={dataAvailabilityMap[client.id]}
-            />
-          ))}
+        <div className="rounded-xl border border-white/10 bg-white/[0.02]">
+          <Table>
+            <TableHeader className="border-white/5 bg-white/5">
+              <TableRow className="border-white/5 hover:bg-transparent">
+                <TableHead className="text-white/40">Client</TableHead>
+                <TableHead className="text-white/40">Status</TableHead>
+                <TableHead className="text-white/40">Integrations</TableHead>
+                <TableHead className="text-right text-white/40">
+                  Records
+                </TableHead>
+                <TableHead className="text-right text-white/40"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedClients.map((client) => {
+                const dataAvailability = dataAvailabilityMap[client.id]
+                const isActive = client.status === 'active'
+                const hasData =
+                  dataAvailability && dataAvailability.totalRecords > 0
+                const hasThemes = dataAvailability?.hasThemes
+                const hasOmnisend = dataAvailability?.hasOmnisend
+
+                return (
+                  <TableRow
+                    key={client.id}
+                    className="border-white/5 hover:bg-white/[0.04]"
+                  >
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <Link
+                          href={`/dashboard/media-buyer/clients/${client.id}`}
+                          className="font-medium text-white hover:text-blue-400"
+                        >
+                          {client.brand}
+                        </Link>
+                        {client.website ? (
+                          <div className="flex items-center gap-1.5 text-xs text-white/40">
+                            <Globe className="h-3 w-3" />
+                            <span className="max-w-[20ch] truncate">
+                              {client.website.replace(/^https?:\/\//, '')}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-xs text-white/20">
+                            <Globe className="h-3 w-3" />
+                            <span>No website</span>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isActive ? 'bg-emerald-400' : 'bg-amber-400'
+                            }`}
+                          />
+                          <span className="text-white/60">
+                            {isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        {client.is_monitored && (
+                          <div
+                            className="flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400"
+                            title="Monitored"
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span className="hidden lg:inline">Monitored</span>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {hasThemes ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-500/10 px-2 py-1 text-xs font-medium text-purple-400 ring-1 ring-inset ring-purple-500/20">
+                            <Palette className="h-3 w-3" />
+                            Shopify
+                          </span>
+                        ) : (
+                          <span className="text-xs text-white/10">-</span>
+                        )}
+                        {hasOmnisend && (
+                          <span className="inline-flex items-center gap-1.5 rounded-md bg-orange-500/10 px-2 py-1 text-xs font-medium text-orange-400 ring-1 ring-inset ring-orange-500/20">
+                            <Mail className="h-3 w-3" />
+                            Omnisend
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {hasData ? (
+                        <div className="inline-flex items-center gap-1.5 text-white/60">
+                          <Database className="h-3.5 w-3.5 text-white/30" />
+                          <span>{dataAvailability.totalRecords}</span>
+                        </div>
+                      ) : (
+                        <span className="text-white/20">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link
+                        href={`/dashboard/media-buyer/clients/${client.id}`}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+                        title="View Details"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
 
