@@ -1,17 +1,7 @@
 'use client'
 
 import type { ThemeData } from '@/types/media-buyer'
-import {
-  Calendar,
-  Check,
-  Clock,
-  Code,
-  Eye,
-  Loader2,
-  Palette,
-  Settings,
-  X,
-} from 'lucide-react'
+import { Clock, Code, Loader2, Palette } from 'lucide-react'
 
 interface ThemeDetailsCardProps {
   theme: ThemeData | null
@@ -119,106 +109,17 @@ export default function ThemeDetailsCard({
           </div>
         </div>
 
-        {/* External ID */}
-        <div className="mt-4 flex items-center gap-2 rounded border border-white/5 bg-white/5 px-3 py-2">
-          <Code className="h-4 w-4 text-white/40" />
-          <span className="text-xs text-white/50">Theme ID:</span>
-          <code className="font-mono text-sm text-white/70">
-            {theme.external_id}
-          </code>
-        </div>
+        {/* Store URL */}
+        {theme?.extra?.store_id ? (
+          <div className="mt-4 flex items-center gap-2 rounded border border-white/5 bg-white/5 px-3 py-2">
+            <Code className="h-4 w-4 text-white/40" />
+            <span className="text-xs text-white/50">Store:</span>
+            <code className="font-mono text-sm text-white/70">
+              {theme?.extra?.store_id}.myshopify.com
+            </code>
+          </div>
+        ) : null}
       </div>
-
-      {/* Theme Properties Grid */}
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {/* Previewable */}
-        <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-          <div className="flex items-center gap-2">
-            <Eye className="h-4 w-4 text-white/40" />
-            <span className="text-xs text-white/50">Previewable</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5">
-            {previewable ? (
-              <>
-                <Check className="h-4 w-4 text-green-400" />
-                <span className="text-sm font-medium text-green-400">Yes</span>
-              </>
-            ) : (
-              <>
-                <X className="h-4 w-4 text-red-400" />
-                <span className="text-sm font-medium text-red-400">No</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Processing */}
-        <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-          <div className="flex items-center gap-2">
-            <Settings className="h-4 w-4 text-white/40" />
-            <span className="text-xs text-white/50">Processing</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5">
-            {processing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
-                <span className="text-sm font-medium text-yellow-400">Yes</span>
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4 text-green-400" />
-                <span className="text-sm font-medium text-green-400">No</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Theme Store ID */}
-        <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-          <div className="flex items-center gap-2">
-            <Palette className="h-4 w-4 text-white/40" />
-            <span className="text-xs text-white/50">Store Theme</span>
-          </div>
-          <div className="mt-2">
-            {themeStoreId ? (
-              <span className="text-sm font-medium text-white/80">
-                #{String(themeStoreId)}
-              </span>
-            ) : (
-              <span className="text-sm text-white/40">Custom</span>
-            )}
-          </div>
-        </div>
-
-        {/* Last Modified */}
-        <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-white/40" />
-            <span className="text-xs text-white/50">Modified</span>
-          </div>
-          <div className="mt-2">
-            {updatedAt ? (
-              <span className="text-sm font-medium text-white/80">
-                {new Date(updatedAt).toLocaleDateString()}
-              </span>
-            ) : (
-              <span className="text-sm text-white/40">Unknown</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Store Information */}
-      {theme.extra?.store_id && (
-        <div className="mt-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-3">
-          <div className="flex items-center gap-2">
-            <Settings className="h-4 w-4 text-blue-400" />
-            <span className="text-sm font-medium text-blue-400">
-              Store: {theme.extra.store_id}.myshopify.com
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

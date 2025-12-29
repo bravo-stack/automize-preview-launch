@@ -16,12 +16,8 @@ import {
   Building2,
   Clock,
   ExternalLink,
-  Globe,
-  Mail,
-  Phone,
   RefreshCw,
   Store,
-  User,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
@@ -95,11 +91,13 @@ function ClientHeader({
 
       {/* Contact Info */}
       {role === 'exec' ? (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {client.full_name && (
             <div className="flex items-center gap-2 text-sm">
-              <User className="h-4 w-4 text-white/40" />
-              <span className="text-white/70">{client.full_name}</span>
+              Name:{' '}
+              <span className="max-w-[50ch] truncate text-white/70">
+                {client.full_name}
+              </span>
             </div>
           )}
           {client.email && (
@@ -107,8 +105,8 @@ function ClientHeader({
               href={`mailto:${client.email}`}
               className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
             >
-              <Mail className="h-4 w-4 text-white/40" />
-              <span className="truncate">{client.email}</span>
+              Email:{' '}
+              <span className="max-w-[50ch] truncate">{client.email}</span>
             </a>
           )}
           {client.phone_number && (
@@ -116,8 +114,10 @@ function ClientHeader({
               href={`tel:${client.phone_number}`}
               className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
             >
-              <Phone className="h-4 w-4 text-white/40" />
-              <span>{client.phone_number}</span>
+              Phone:{' '}
+              <span className="max-w-[50ch] truncate">
+                {client.phone_number}
+              </span>
             </a>
           )}
           {client.website && (
@@ -127,8 +127,8 @@ function ClientHeader({
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
             >
-              <Globe className="h-4 w-4 text-white/40" />
-              <span className="truncate">{client.website}</span>
+              Website:{' '}
+              <span className="max-w-[50ch] truncate">{client.website}</span>
               <ExternalLink className="h-3 w-3" />
             </a>
           )}
@@ -139,17 +139,53 @@ function ClientHeader({
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
             >
-              <Store className="h-4 w-4 text-white/40" />
-              <span>{client.store_id}.myshopify.com</span>
+              Shopify Store:{' '}
+              <span className="max-w-[25ch] truncate">
+                {client.store_id}.myshopify.com
+              </span>
               <ExternalLink className="h-3 w-3" />
             </a>
+          )}
+          {client.instagram && (
+            <a
+              href={`https://instagram.com/${client.instagram}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
+            >
+              Instagram:{' '}
+              <span className="max-w-[23ch] truncate">{client.instagram}</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+          {client.drive && (
+            <a
+              href={`https://drive.google.com/${client.drive}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
+            >
+              Drive:{' '}
+              <span className="max-w-[20ch] truncate">{client.drive}</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+          {client.rebill_date && (
+            <div className="flex items-center gap-2 text-sm">
+              Rebill Date:{' '}
+              <span className="text-white/70">
+                {client?.rebill_date
+                  ? new Date(client.rebill_date).toDateString()
+                  : 'N/A'}
+              </span>
+            </div>
           )}
         </div>
       ) : (
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {client?.full_name && (
             <div className="flex items-center gap-2 text-sm">
-              <User className="h-4 w-4 text-white/40" />
+              Name:{' '}
               <span className="text-white/70">
                 {client?.full_name?.split(' ')[0] || client?.full_name || 'N/A'}
               </span>
@@ -162,23 +198,10 @@ function ClientHeader({
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
             >
-              <Globe className="h-4 w-4 text-white/40" />
-              <span className="truncate">{client.website}</span>
+              Website: <span className="truncate">{client.website}</span>
               <ExternalLink className="h-3 w-3" />
             </a>
           )}
-          {/* {client?.store_id && (
-          <a
-            href={`https://${client.store_id}.myshopify.com/admin`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
-          >
-            <Store className="h-4 w-4 text-white/40" />
-            <span>{client.store_id}.myshopify.com</span>
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        )} */}
         </div>
       )}
     </div>

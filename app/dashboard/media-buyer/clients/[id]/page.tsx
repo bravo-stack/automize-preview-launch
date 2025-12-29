@@ -25,7 +25,7 @@ async function getClientData(clientId: number): Promise<ClientDataResponse> {
   const { data: client, error: clientError } = await db
     .from('clients')
     .select(
-      'id, brand, pod, full_name, email, phone_number, website, status, store_id, is_monitored',
+      'id, brand, pod, full_name, email, phone_number, website, status, store_id, is_monitored, instagram, rebill_date, drive',
     )
     .eq('id', clientId)
     .single()

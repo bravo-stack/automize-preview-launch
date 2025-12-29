@@ -19,6 +19,9 @@ export interface MediaBuyerClient {
   status: string | null
   store_id: string | null
   is_monitored: boolean
+  instagram: string | null
+  rebill_date: string | null
+  drive: string | null
 }
 
 // ============================================================================

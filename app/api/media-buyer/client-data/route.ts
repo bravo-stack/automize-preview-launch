@@ -12,10 +12,8 @@ import type {
 } from '@/types/media-buyer'
 import { NextResponse } from 'next/server'
 
-// ============================================================================
-// GET /api/media-buyer/client-data?clientId=123
-// Fetch all API data for a specific client (themes, Omnisend, etc.)
-// ============================================================================
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -43,7 +41,7 @@ export async function GET(request: Request) {
     const { data: client, error: clientError } = await db
       .from('clients')
       .select(
-        'id, brand, pod, full_name, email, phone_number, website, status, store_id, is_monitored',
+        'id, brand, pod, full_name, email, phone_number, website, status, store_id, is_monitored, instagram, rebill_date, drive',
       )
       .eq('id', clientId)
       .single()
