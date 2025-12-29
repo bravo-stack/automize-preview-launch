@@ -2,12 +2,10 @@
 
 import { createAdminClient } from '@/lib/db/admin'
 import {
-  sendDiscordMessage as sendRawDiscordMessage,
   DiscordMessagePayload,
+  sendDiscordMessage as sendRawDiscordMessage,
 } from '@/lib/discord'
 import { DiscordMessageLogInput, DiscordSourceFeature } from '@/types/discord'
-
-const DISCORD_API_URL = 'https://ixm-bot.onrender.com/api/sendMessage'
 
 interface SendDiscordOptions {
   sourceFeature?: DiscordSourceFeature
@@ -15,9 +13,11 @@ interface SendDiscordOptions {
   podName?: string
 }
 
+type ExtendedPayload = DiscordMessagePayload & { channelName?: string }
+
 // Overload signatures
 export async function sendDiscordMessage(
-  payload: DiscordMessagePayload,
+  payload: ExtendedPayload,
 ): Promise<{ success: boolean; error?: string }>
 
 export async function sendDiscordMessage(
@@ -34,9 +34,13 @@ export async function sendDiscordMessage(
 ): Promise<{ success: boolean; error?: string }> {
   // 1. Handle New Payload Style
   if (typeof arg1 === 'object') {
-    const payload = arg1
+    const payload = arg1 as DiscordMessagePayload & { channelName?: string }
+
     const channelId = payload.channelId
     // Extract a summary for logging
+
+    const nameForLog = payload.channelName || `ID: ${channelId}`
+
     const messageContent =
       payload.content ||
       (payload.embeds ? JSON.stringify(payload.embeds) : 'Empty Message')
@@ -47,7 +51,7 @@ export async function sendDiscordMessage(
 
       // Log success
       await logDiscordMessage({
-        channel_name: 'ID: ' + channelId, // We might not have a name for ID-based calls
+        channel_name: nameForLog, // We might not have a name for ID-based calls
         channel_id: channelId,
         source_feature: 'other', // We could add a way to pass this in payload if needed
         message_content: messageContent,
@@ -57,7 +61,10 @@ export async function sendDiscordMessage(
       return { success: true }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      console.error(`Error sending Discord notification (ID: ${channelId}):`, error)
+      console.error(
+        `Error sending Discord notification (ID: ${channelId}):`,
+        error,
+      )
 
       // Log failure
       await logDiscordMessage({
@@ -88,7 +95,8 @@ export async function sendDiscordMessage(
   // If channelName LOOKS like an ID (snowflake), use it as channelId.
   // Otherwise, we might be in trouble if the new API strictly requires IDs.
   // We'll attempt to use channelName as channelId if no explicit ID is provided.
-  const effectiveChannelId = channelId || (isSnowflake(channelName) ? channelName : channelName)
+  const effectiveChannelId =
+    channelId || (isSnowflake(channelName) ? channelName : channelName)
 
   try {
     // Construct payload for the new API

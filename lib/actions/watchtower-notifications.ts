@@ -75,12 +75,12 @@ export async function sendDiscordNotification(
     if (rule.pod_ids?.length) {
       const { data: pods } = await db
         .from('pod')
-        .select('discord_id')
+        .select('discord_id, name')
         .in('id', rule.pod_ids)
 
       if (pods) {
         const podChannels = pods
-          .map((p) => p.discord_id)
+          .map((p) => `${p.name}-to-do-list`)
           .filter((id): id is string => !!id)
         channelsToNotify.push(...podChannels)
       }
