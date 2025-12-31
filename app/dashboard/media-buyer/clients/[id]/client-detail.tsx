@@ -171,7 +171,7 @@ function ClientHeader({
             </a>
           )}
           {client.rebill_date && (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-sm text-white/70 hover:text-white">
               Rebill Date:{' '}
               <span className="text-white/70">
                 {client?.rebill_date
@@ -182,7 +182,7 @@ function ClientHeader({
           )}
         </div>
       ) : (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {client?.full_name && (
             <div className="flex items-center gap-2 text-sm">
               Name:{' '}
@@ -201,6 +201,40 @@ function ClientHeader({
               Website: <span className="truncate">{client.website}</span>
               <ExternalLink className="h-3 w-3" />
             </a>
+          )}
+          {client.instagram && (
+            <a
+              href={`https://instagram.com/${client.instagram}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
+            >
+              Instagram:{' '}
+              <span className="max-w-[23ch] truncate">{client.instagram}</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+          {client.drive && (
+            <a
+              href={`https://drive.google.com/${client.drive}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-white/70 hover:text-white"
+            >
+              Drive:{' '}
+              <span className="max-w-[20ch] truncate">{client.drive}</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+          {client.rebill_date && (
+            <div className="flex items-center gap-2 text-sm text-white/70 hover:text-white">
+              Rebill Date:{' '}
+              <span className="text-white/70">
+                {client?.rebill_date
+                  ? new Date(client.rebill_date).toDateString()
+                  : 'N/A'}
+              </span>
+            </div>
           )}
         </div>
       )}
