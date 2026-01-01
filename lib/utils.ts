@@ -126,3 +126,166 @@ export async function safeCompare(a: string, b: string) {
   }
   return match === 1
 }
+
+// ============================================================================
+// Business-Friendly Error Messages
+// ============================================================================
+
+/**
+ * Maps technical error messages to business-friendly versions.
+ * These messages are designed to be clear and actionable for non-technical users.
+ */
+export function formatBusinessError(
+  errorType: string,
+  context?: { layer?: string; details?: string },
+): string {
+  // Error type mappings for common scenarios
+  const errorMappings: Record<string, string> = {
+    // Network & Connection Errors
+    'Network Connection Error': 'Unable to connect - please try again later',
+    'Network Error': 'Connection issue - please try again',
+    fetch_failed: 'Unable to connect - please try again later',
+
+    // Facebook Ad Account Errors
+    'Account Disabled': 'Ad account paused - contact support',
+    'Account Permanently Closed': 'Ad account closed',
+    'Pending Risk Review': 'Ad account under review',
+    'Access Forbidden': 'Missing ad account access',
+    'Invalid Access Token': 'Login expired - reconnect account',
+    'Account Not Found': 'Ad account not found',
+    'Rate Limit Exceeded': 'Too many requests - try again later',
+
+    // Permission Errors
+    ads_management: 'Missing ads permission',
+    ads_read: 'Missing ads read permission',
+    permission: 'Missing required permission',
+
+    // Billing Errors
+    'Unsettled Payment': 'Payment issue on account',
+    'Account in Grace Period': 'Payment pending on account',
+    'Funding Source Issue': 'Payment method issue',
+    FAILED: 'Payment method failed',
+    EXPIRED: 'Payment method expired',
+    DISABLED: 'Payment method disabled',
+
+    // Business Manager Errors
+    'Business Manager Disabled': 'Business account paused',
+
+    // Delivery Errors
+    'Ad Set Disapproved': 'Ads need review',
+    'Delivery Issue': 'Ads delivery paused',
+    DISAPPROVED: 'Ads need review',
+
+    // Shopify Errors
+    'Shopify API Error': 'Shopify connection issue',
+    'Invalid Shopify Response': 'Shopify data unavailable',
+    'Missing Store Credentials': 'Store not connected',
+
+    // Generic Errors
+    'Bad Request': 'Request failed - contact support',
+    'Processing Error': 'Processing issue - try again',
+    'Could Not Retrieve': 'Data unavailable',
+    'No Data Available': 'No data for this period',
+    'Unknown API Error': 'Service temporarily unavailable',
+  }
+
+  // Check for direct match first
+  if (errorMappings[errorType]) {
+    return errorMappings[errorType]
+  }
+
+  // Check for partial matches in error message
+  const lowerError = errorType.toLowerCase()
+
+  // Permission-related errors
+  if (
+    lowerError.includes('permission') ||
+    lowerError.includes('ads_management') ||
+    lowerError.includes('ads_read')
+  ) {
+    return 'Missing ads permission'
+  }
+
+  // Network errors
+  if (
+    lowerError.includes('network') ||
+    lowerError.includes('fetch failed') ||
+    lowerError.includes('connection')
+  ) {
+    return 'Unable to connect - please try again later'
+  }
+
+  // Access token errors
+  if (
+    lowerError.includes('access token') ||
+    lowerError.includes('log in') ||
+    lowerError.includes('expired')
+  ) {
+    return 'Login expired - reconnect account'
+  }
+
+  // Disabled/closed accounts
+  if (lowerError.includes('disabled') || lowerError.includes('closed')) {
+    return 'Account paused - contact support'
+  }
+
+  // Payment/billing errors
+  if (
+    lowerError.includes('payment') ||
+    lowerError.includes('billing') ||
+    lowerError.includes('funding')
+  ) {
+    return 'Payment issue on account'
+  }
+
+  // Unknown path components (Facebook API errors)
+  if (lowerError.includes('unknown path')) {
+    return 'Account configuration issue'
+  }
+
+  // Rate limiting
+  if (lowerError.includes('rate limit') || lowerError.includes('too many')) {
+    return 'Too many requests - try again later'
+  }
+
+  // HTTP errors
+  if (lowerError.includes('http error')) {
+    return 'Service temporarily unavailable'
+  }
+
+  // Default fallback - keep it simple
+  return 'Data unavailable'
+}
+
+/**
+ * Formats Facebook diagnosis result into a business-friendly message
+ */
+export function formatFacebookDiagnosisError(
+  blockingLayer: string,
+  errorReason: string,
+): string {
+  const layerMessages: Record<string, string> = {
+    business: 'Business account issue',
+    ad_account: 'Ad account issue',
+    billing: 'Payment issue',
+    delivery: 'Ads delivery issue',
+  }
+
+  const baseMessage = layerMessages[blockingLayer] || 'Account issue'
+
+  // Extract key details from error reason
+  const reason = errorReason.toLowerCase()
+
+  if (reason.includes('disabled')) return 'Account paused - contact support'
+  if (reason.includes('closed')) return 'Account closed'
+  if (reason.includes('payment') || reason.includes('unsettled'))
+    return 'Payment required'
+  if (reason.includes('grace period')) return 'Payment pending'
+  if (reason.includes('risk review')) return 'Account under review'
+  if (reason.includes('funding') || reason.includes('expired'))
+    return 'Update payment method'
+  if (reason.includes('disapproved')) return 'Ads need review'
+  if (reason.includes('permission')) return 'Missing permission'
+
+  return baseMessage
+}

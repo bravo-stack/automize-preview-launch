@@ -15,7 +15,11 @@ import { decrypt, encrypt } from './crypto'
 import { createAdminClient } from './db/admin'
 import { createClient } from './db/server'
 import { authorizeDrive, authorizeSheets } from './google'
-import { toNumber } from './utils'
+import {
+  formatBusinessError,
+  formatFacebookDiagnosisError,
+  toNumber,
+} from './utils'
 
 interface RevenueData {
   name: string
@@ -392,8 +396,8 @@ export async function fetchShopify(
           if (!store_id || !shopify_key) {
             return {
               name: brand || 'Unknown Store',
-              revenue: 'Missing Store Credentials',
-              orders: 'Missing Store Credentials',
+              revenue: 'Store not connected',
+              orders: 'Store not connected',
               lastRebill: store.rebill_date,
             }
           }
@@ -407,26 +411,13 @@ export async function fetchShopify(
             res = await fetchOrders(store_id, decryptedKey)
           }
 
-          // Handle specific error types
+          // Handle specific error types with business-friendly messages
           if (res.error) {
+            const friendlyMessage = formatBusinessError(res.error)
             return {
               name: brand,
-              revenue:
-                res.error === 'API Error'
-                  ? 'Shopify API Error'
-                  : res.error === 'Invalid Response'
-                    ? 'Invalid Shopify Response'
-                    : res.error === 'Network Error'
-                      ? 'Network Connection Error'
-                      : 'Could Not Retrieve',
-              orders:
-                res.error === 'API Error'
-                  ? 'Shopify API Error'
-                  : res.error === 'Invalid Response'
-                    ? 'Invalid Shopify Response'
-                    : res.error === 'Network Error'
-                      ? 'Network Connection Error'
-                      : 'Could Not Retrieve',
+              revenue: friendlyMessage,
+              orders: friendlyMessage,
               lastRebill: store.rebill_date,
             }
           }
@@ -461,8 +452,8 @@ export async function fetchShopify(
           )
           return {
             name: store.brand,
-            revenue: 'Processing Error',
-            orders: 'Processing Error',
+            revenue: 'Data unavailable',
+            orders: 'Data unavailable',
             lastRebill: store.rebill_date,
           }
         }
@@ -509,7 +500,10 @@ export async function fetchFacebook(
               accessToken: FACEBOOK_ACCESS_TOKEN,
             })
             if (diagnosis.status === 'ERROR') {
-              const msg = `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`
+              const msg = formatFacebookDiagnosisError(
+                diagnosis.blocking_layer || 'ad_account',
+                diagnosis.error_reason || 'Unknown issue',
+              )
               return { name, pod, roas: msg, spend: msg }
             }
           } catch (e) {
@@ -522,7 +516,7 @@ export async function fetchFacebook(
         try {
           const errorData = await response.json()
           if (errorData.error) {
-            errorDetails = `: ${errorData.error.message}`
+            errorDetails = errorData.error.message
             console.error(
               `FB API Error for ${name} (${accountId}):`,
               errorData.error,
@@ -532,52 +526,55 @@ export async function fetchFacebook(
           // Unable to parse error response
         }
 
-        // More specific error messages based on status codes
+        // Business-friendly error messages based on status codes
         if (response.status === 400) {
           console.error(`Bad Request for account ${accountId} (${name})`, {
             url,
             dateParam,
           })
+          const friendlyMsg = errorDetails
+            ? formatBusinessError(errorDetails)
+            : 'Request failed - contact support'
           return {
             name,
             pod,
-            roas: `Bad Request${errorDetails}`,
-            spend: `Bad Request${errorDetails}`,
+            roas: friendlyMsg,
+            spend: friendlyMsg,
           }
         } else if (response.status === 401) {
           return {
             name,
             pod,
-            roas: 'Invalid Access Token',
-            spend: 'Invalid Access Token',
+            roas: 'Login expired - reconnect account',
+            spend: 'Login expired - reconnect account',
           }
         } else if (response.status === 403) {
           return {
             name,
             pod,
-            roas: 'Access Forbidden',
-            spend: 'Access Forbidden',
+            roas: 'Missing ads permission',
+            spend: 'Missing ads permission',
           }
         } else if (response.status === 404) {
           return {
             name,
             pod,
-            roas: 'Account Not Found',
-            spend: 'Account Not Found',
+            roas: 'Ad account not found',
+            spend: 'Ad account not found',
           }
         } else if (response.status === 429) {
           return {
             name,
             pod,
-            roas: 'Rate Limit Exceeded',
-            spend: 'Rate Limit Exceeded',
+            roas: 'Too many requests - try again later',
+            spend: 'Too many requests - try again later',
           }
         } else {
           return {
             name,
             pod,
-            roas: `HTTP Error ${response.status}`,
-            spend: `HTTP Error ${response.status}`,
+            roas: 'Service temporarily unavailable',
+            spend: 'Service temporarily unavailable',
           }
         }
       }
@@ -593,7 +590,10 @@ export async function fetchFacebook(
               accessToken: FACEBOOK_ACCESS_TOKEN,
             })
             if (diagnosis.status === 'ERROR') {
-              const msg = `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`
+              const msg = formatFacebookDiagnosisError(
+                diagnosis.blocking_layer || 'ad_account',
+                diagnosis.error_reason || 'Unknown issue',
+              )
               return { name, pod, roas: msg, spend: msg }
             }
           } catch (e) {
@@ -601,11 +601,12 @@ export async function fetchFacebook(
           }
         }
 
+        const friendlyMsg = formatBusinessError(data.error.message)
         return {
           name,
           pod,
-          roas: `FB API Error: ${data.error.message}`,
-          spend: `FB API Error: ${data.error.message}`,
+          roas: friendlyMsg,
+          spend: friendlyMsg,
         }
       }
 
@@ -617,7 +618,10 @@ export async function fetchFacebook(
               accessToken: FACEBOOK_ACCESS_TOKEN,
             })
             if (diagnosis.status === 'ERROR') {
-              const msg = `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`
+              const msg = formatFacebookDiagnosisError(
+                diagnosis.blocking_layer || 'ad_account',
+                diagnosis.error_reason || 'Unknown issue',
+              )
               return { name, pod, roas: msg, spend: msg }
             }
           } catch (e) {
@@ -628,8 +632,8 @@ export async function fetchFacebook(
         return {
           name,
           pod,
-          roas: 'No Data Available',
-          spend: 'No Data Available',
+          roas: 'No data for this period',
+          spend: 'No data for this period',
         }
       }
 
@@ -640,8 +644,8 @@ export async function fetchFacebook(
         pod,
         roas:
           (insights.purchase_roas && insights.purchase_roas[0].value) ||
-          'No ROAS Data',
-        spend: insights.spend || 'No Spend Data',
+          'No ROAS data',
+        spend: insights.spend || 'No spend data',
       }
     } catch (error) {
       console.error('Network error fetching Facebook insights:', error)
@@ -653,7 +657,10 @@ export async function fetchFacebook(
             accessToken: FACEBOOK_ACCESS_TOKEN,
           })
           if (diagnosis.status === 'ERROR') {
-            const msg = `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`
+            const msg = formatFacebookDiagnosisError(
+              diagnosis.blocking_layer || 'ad_account',
+              diagnosis.error_reason || 'Unknown issue',
+            )
             return { name, pod, roas: msg, spend: msg }
           }
         } catch (e) {
@@ -664,8 +671,8 @@ export async function fetchFacebook(
       return {
         name,
         pod,
-        roas: 'Network Connection Error',
-        spend: 'Network Connection Error',
+        roas: 'Unable to connect - please try again later',
+        spend: 'Unable to connect - please try again later',
       }
     }
   }
@@ -1175,7 +1182,7 @@ export async function adminChangePassword(userId: string) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
   const randomBytes = crypto.getRandomValues(new Uint8Array(12))
   const newPassword = Array.from(randomBytes)
-    .map(byte => chars[byte % chars.length])
+    .map((byte) => chars[byte % chars.length])
     .join('')
 
   await db.auth.admin.updateUserById(userId, {

@@ -9,6 +9,7 @@ import {
   getPercentage,
 } from '@/lib/insights'
 import { diagnoseAdAccount } from '@/lib/services/facebook-diagnostics'
+import { formatFacebookDiagnosisError } from '@/lib/utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const maxDuration = 60
@@ -61,7 +62,10 @@ export async function POST(request: NextRequest) {
             if (diagnosis.status === 'ERROR') {
               return {
                 name,
-                pod: `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`,
+                pod: formatFacebookDiagnosisError(
+                  diagnosis.blocking_layer ?? 'unknown',
+                  diagnosis.error_reason ?? 'Unknown error',
+                ),
                 insights: emptyInsights,
                 isMonitored,
               }
@@ -73,7 +77,7 @@ export async function POST(request: NextRequest) {
 
         return {
           name,
-          pod: 'Missing Permissions or Incorrect ID',
+          pod: 'Missing permission or incorrect ID',
           insights: emptyInsights,
           isMonitored,
         }
@@ -92,7 +96,10 @@ export async function POST(request: NextRequest) {
             if (diagnosis.status === 'ERROR') {
               return {
                 name,
-                pod: `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`,
+                pod: formatFacebookDiagnosisError(
+                  diagnosis.blocking_layer ?? 'unknown',
+                  diagnosis.error_reason ?? 'Unknown error',
+                ),
                 insights: emptyInsights,
                 isMonitored,
               }
@@ -104,7 +111,7 @@ export async function POST(request: NextRequest) {
 
         return {
           name,
-          pod: `No data for ${datePreset}`,
+          pod: `No data for selected period`,
           insights: emptyInsights,
           isMonitored,
         }
@@ -124,7 +131,10 @@ export async function POST(request: NextRequest) {
           if (diagnosis.status === 'ERROR') {
             return {
               name,
-              pod: `Error: [${diagnosis.blocking_layer}] ${diagnosis.error_reason}`,
+              pod: formatFacebookDiagnosisError(
+                diagnosis.blocking_layer ?? 'unknown',
+                diagnosis.error_reason ?? 'Unknown error',
+              ),
               insights: emptyInsights,
               isMonitored,
             }
@@ -136,7 +146,7 @@ export async function POST(request: NextRequest) {
 
       return {
         name,
-        pod: 'Missing Permissions',
+        pod: 'Unable to connect - try again later',
         insights: emptyInsights,
         isMonitored,
       }

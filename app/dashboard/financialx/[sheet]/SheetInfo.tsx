@@ -239,7 +239,7 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
         const metricsToSave = allRows
           .filter((row) => row[1] !== 'TOTAL/AVG')
           .map((row) => {
-            // Helper to extract numeric value and detect errors
+            // Helper to extract numeric value and detect non-numeric status messages
             const extractNumeric = (
               val: any,
               fieldName: string,
@@ -251,19 +251,19 @@ export default function SheetInfo({ links, data }: SheetInfoProps) {
             ): number | undefined => {
               if (typeof val === 'number') return val
               if (typeof val === 'string') {
-                // Check if it's an error message (contains common error patterns)
-                const isError =
-                  /log in|access token|error|invalid|expired|could not|bad request|forbidden|not found|rate limit|network|no data|missing/i.test(
-                    val,
-                  )
-                if (isError) {
-                  errors.push({
-                    field: fieldName,
-                    message: val,
-                    raw_value: val,
-                  })
-                  return undefined
-                }
+                // Try to parse as number first (handles formatted numbers like "1,234.56")
+                const cleanedVal = val.replace(/,/g, '')
+                const parsed = parseFloat(cleanedVal)
+                if (!isNaN(parsed)) return parsed
+
+                // If not a number, it's a status/error message - record it
+                // These are business-friendly messages like "Missing ads permission", "Payment required", etc.
+                errors.push({
+                  field: fieldName,
+                  message: val,
+                  raw_value: val,
+                })
+                return undefined
               }
               return undefined
             }
