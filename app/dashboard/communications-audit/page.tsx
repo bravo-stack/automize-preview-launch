@@ -60,52 +60,120 @@ export default async function CommunicationsAudit() {
   let initialReports: CommunicationReport[] = []
   let previousDayReports: CommunicationReport[] = []
 
-  if (latestDate) {
-    let reportsQuery = db
-      .from('communication_reports')
-      .select('*')
-      .eq('report_date', latestDate)
-      .order('channel_name')
+  // if (latestDate) {
+  //   let reportsQuery = db
+  //     .from('communication_reports')
+  //     .select('*')
+  //     .eq('report_date', latestDate)
+  //     .order('channel_name')
 
-    // Filter reports by pod for non-exec users
-    // Include reports where: (guild_id IN pod.servers) OR (pod = pod.name)
-    if (role !== 'exec' && pod?.servers && pod?.name) {
-      const guildIdsFilter = pod.servers
-        .map((id: string) => `guild_id.eq.${id}`)
-        .join(',')
-      const podNameFilter = `pod.eq.${pod.name}`
-      reportsQuery = reportsQuery.or(`${guildIdsFilter},${podNameFilter}`)
+  //   // Filter reports by pod for non-exec users
+  //   // Include reports where: (guild_id IN pod.servers) OR (pod = pod.name)
+  //   if ((role !== 'exec' && pod?.servers) || (role !== 'exec' && pod?.name)) {
+  //     const guildIdsFilter = (pod?.servers ?? [])
+  //       .map((id: string) => `guild_id.eq.${id}`)
+  //       .join(',')
+  //     const podNameFilter = `pod.eq.${pod.name?.trim()}`
+  //     reportsQuery = reportsQuery.or(`${guildIdsFilter},${podNameFilter}`)
+  //   }
+
+  //   const { data: reports } = await reportsQuery
+
+  //   initialReports = (reports as CommunicationReport[]) || []
+
+  //   // Fetch previous day's data for high-priority detection
+  //   const currentDate = new Date(latestDate)
+  //   currentDate.setDate(currentDate.getDate() - 1)
+  //   const previousDate = currentDate.toISOString().split('T')[0]
+
+  //   let prevReportsQuery = db
+  //     .from('communication_reports')
+  //     .select('*')
+  //     .eq('report_date', previousDate)
+  //     .order('channel_name')
+
+  //   // Filter previous day reports by pod for non-exec users
+  //   // Include reports where: (guild_id IN pod.servers) OR (pod = pod.name)
+  //   if ((role !== 'exec' && pod?.servers) || (role !== 'exec' && pod?.name)) {
+  //     const guildIdsFilter = (pod?.servers ?? [])
+  //       .map((id: string) => `guild_id.eq.${id}`)
+  //       .join(',')
+  //     const podNameFilter = `pod.eq.${pod.name}`
+  //     prevReportsQuery = prevReportsQuery.or(
+  //       `${guildIdsFilter},${podNameFilter}`,
+  //     )
+  //   }
+
+  //   const { data: prevReports } = await prevReportsQuery
+  //   previousDayReports = (prevReports as CommunicationReport[]) || []
+  // }
+
+  if (latestDate) {
+    // 1. Helper: Determine which filter strategy to use
+    // This avoids using .or() unless we absolutely have two conflicting conditions
+    const applyPodFilter = (query: any) => {
+      if (role === 'exec') return query
+
+      const hasName = !!pod?.name
+      const hasServers = pod?.servers && pod.servers.length > 0
+
+      // CASE 1: Both filters exist -> Use OR
+      // We strictly format the string for PostgREST
+      if (hasName && hasServers) {
+        const safeName = pod.name.trim()
+        // Note: We use .map to wrap IDs in quotes for safety
+        const serverList = pod.servers.map((id: string) => `"${id}"`).join(',')
+
+        return query.or(`pod.eq."${safeName}",guild_id.in.(${serverList})`)
+      }
+
+      // CASE 2: Only Pod Name exists -> Use direct EQ (Fixes your issue)
+      // Supabase handles the quoting/escaping automatically here
+      else if (hasName) {
+        return query.eq('pod', pod.name.trim())
+      }
+
+      // CASE 3: Only Servers exist -> Use direct IN
+      else if (hasServers) {
+        return query.in('guild_id', pod.servers)
+      }
+
+      return query
     }
 
-    const { data: reports } = await reportsQuery
+    // 2. Fetch Function
+    const fetchReports = async (date: string) => {
+      let query = db
+        .from('communication_reports')
+        .select('*')
+        .eq('report_date', date)
+        .order('channel_name')
 
-    initialReports = (reports as CommunicationReport[]) || []
+      // Apply the smart filter logic
+      query = applyPodFilter(query)
 
-    // Fetch previous day's data for high-priority detection
+      const { data, error } = await query
+
+      if (error) {
+        console.error(`Error fetching reports for ${date}:`, error)
+        return []
+      }
+
+      return (data as CommunicationReport[]) || []
+    }
+
+    // 3. Execution
     const currentDate = new Date(latestDate)
     currentDate.setDate(currentDate.getDate() - 1)
     const previousDate = currentDate.toISOString().split('T')[0]
 
-    let prevReportsQuery = db
-      .from('communication_reports')
-      .select('*')
-      .eq('report_date', previousDate)
-      .order('channel_name')
+    const [reports, prevReports] = await Promise.all([
+      fetchReports(latestDate),
+      fetchReports(previousDate),
+    ])
 
-    // Filter previous day reports by pod for non-exec users
-    // Include reports where: (guild_id IN pod.servers) OR (pod = pod.name)
-    if (role !== 'exec' && pod?.servers && pod?.name) {
-      const guildIdsFilter = pod.servers
-        .map((id: string) => `guild_id.eq.${id}`)
-        .join(',')
-      const podNameFilter = `pod.eq.${pod.name}`
-      prevReportsQuery = prevReportsQuery.or(
-        `${guildIdsFilter},${podNameFilter}`,
-      )
-    }
-
-    const { data: prevReports } = await prevReportsQuery
-    previousDayReports = (prevReports as CommunicationReport[]) || []
+    initialReports = reports
+    previousDayReports = prevReports
   }
 
   const auditData: CommunicationsAuditData = {
