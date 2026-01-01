@@ -164,10 +164,27 @@ export async function sendDiscordNotification(
       ),
     )
 
-    const successCount = results.filter((r) => r.status === 'fulfilled').length
-    const channelNames = uniqueChannels.map((c) => c.channelName).join(', ')
+    // Extract resolved channel names from successful results for logging
+    const successfulResults = results
+      .filter(
+        (
+          r,
+        ): r is PromiseFulfilledResult<{
+          success: boolean
+          channelName?: string
+        }> => r.status === 'fulfilled' && r.value.success,
+      )
+      .map((r) => r.value.channelName)
+      .filter(Boolean)
+
+    const successCount = successfulResults.length
+    const resolvedChannelNames =
+      successfulResults.length > 0
+        ? successfulResults.join(', ')
+        : uniqueChannels.map((c) => c.channelName).join(', ')
+
     console.log(
-      `[Discord] Notification sent for alert ${alert.id} to ${successCount}/${uniqueChannels.length} channels: [${channelNames}]`,
+      `[Discord] Notification sent for alert ${alert.id} to ${successCount}/${uniqueChannels.length} channels: [${resolvedChannelNames}]`,
     )
 
     return successCount > 0

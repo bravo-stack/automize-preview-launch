@@ -13,34 +13,37 @@ interface SendDiscordOptions {
   podName?: string
 }
 
+interface SendDiscordResult {
+  success: boolean
+  error?: string
+  channelName?: string
+  channelId?: string
+}
+
 type ExtendedPayload = DiscordMessagePayload & { channelName?: string }
 
 // Overload signatures
 export async function sendDiscordMessage(
   payload: ExtendedPayload,
-): Promise<{ success: boolean; error?: string }>
+): Promise<SendDiscordResult>
 
 export async function sendDiscordMessage(
   channelName: string,
   message: string,
   options?: SendDiscordOptions,
-): Promise<{ success: boolean; error?: string }>
+): Promise<SendDiscordResult>
 
 // Implementation
 export async function sendDiscordMessage(
   arg1: string | DiscordMessagePayload,
   arg2?: string,
   arg3?: SendDiscordOptions,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<SendDiscordResult> {
   // 1. Handle New Payload Style
   if (typeof arg1 === 'object') {
     const payload = arg1 as DiscordMessagePayload & { channelName?: string }
 
     const channelId = payload.channelId
-    // Extract a summary for logging
-
-    const nameForLog = payload.channelName || `ID: ${channelId}`
-
     const messageContent =
       payload.content ||
       (payload.embeds ? JSON.stringify(payload.embeds) : 'Empty Message')
@@ -49,16 +52,24 @@ export async function sendDiscordMessage(
       // Use the official raw sender
       const result = await sendRawDiscordMessage(payload)
 
-      // Log success
+      // Use the channel name from API response for accurate logging
+      const resolvedChannelName = result.channel.name
+      const resolvedChannelId = result.channel.id
+
+      // Log success with actual channel name from API
       await logDiscordMessage({
-        channel_name: nameForLog, // We might not have a name for ID-based calls
-        channel_id: channelId,
-        source_feature: 'other', // We could add a way to pass this in payload if needed
+        channel_name: resolvedChannelName,
+        channel_id: resolvedChannelId,
+        source_feature: 'other',
         message_content: messageContent,
         delivery_status: 'sent',
       })
 
-      return { success: true }
+      return {
+        success: true,
+        channelName: resolvedChannelName,
+        channelId: resolvedChannelId,
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
       console.error(
@@ -68,7 +79,7 @@ export async function sendDiscordMessage(
 
       // Log failure
       await logDiscordMessage({
-        channel_name: 'ID: ' + channelId,
+        channel_name: payload.channelName || `ID: ${channelId}`,
         channel_id: channelId,
         source_feature: 'other',
         message_content: messageContent,
@@ -86,15 +97,10 @@ export async function sendDiscordMessage(
   const options = arg3
 
   const sourceFeature = options?.sourceFeature || 'other'
-  const channelId = options?.channelId || null // Legacy options might provide an ID
+  const channelId = options?.channelId || null
   const podName = options?.podName || null
 
-  // If we have a channelId in options, use it.
-  // If not, we have to rely on the channelName.
-  // The new API REQUIRES a channelId.
-  // If channelName LOOKS like an ID (snowflake), use it as channelId.
-  // Otherwise, we might be in trouble if the new API strictly requires IDs.
-  // We'll attempt to use channelName as channelId if no explicit ID is provided.
+  // Use channelName as channelId (API resolves channel by name or ID)
   const effectiveChannelId =
     channelId || (isSnowflake(channelName) ? channelName : channelName)
 
@@ -107,16 +113,24 @@ export async function sendDiscordMessage(
 
     const result = await sendRawDiscordMessage(payload)
 
+    // Use the channel name from API response for accurate logging
+    const resolvedChannelName = result.channel.name
+    const resolvedChannelId = result.channel.id
+
     await logDiscordMessage({
-      channel_name: channelName,
-      channel_id: effectiveChannelId,
+      channel_name: resolvedChannelName,
+      channel_id: resolvedChannelId,
       pod_name: podName,
       source_feature: sourceFeature,
       message_content: message,
       delivery_status: 'sent',
     })
 
-    return { success: true }
+    return {
+      success: true,
+      channelName: resolvedChannelName,
+      channelId: resolvedChannelId,
+    }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error'
     console.error(

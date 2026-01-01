@@ -4,10 +4,22 @@ export interface DiscordMessagePayload {
   embeds?: Array<any>
 }
 
-export async function sendDiscordMessage(payload: DiscordMessagePayload) {
+export interface DiscordMessageResponse {
+  success: boolean
+  message: string
+  channel: {
+    id: string
+    name: string
+  }
+  timestamp: string
+}
+
+export async function sendDiscordMessage(
+  payload: DiscordMessagePayload,
+): Promise<DiscordMessageResponse> {
   if (!process.env.IXM_BOT_API_URL || !process.env.IXM_BOT_API_KEY) {
     console.error('Missing Discord Bot configuration')
-    return null
+    throw new Error('Missing Discord Bot configuration')
   }
 
   try {
@@ -25,7 +37,7 @@ export async function sendDiscordMessage(payload: DiscordMessagePayload) {
       throw new Error(errorData.message || 'Failed to send Discord message')
     }
 
-    return await response.json()
+    return (await response.json()) as DiscordMessageResponse
   } catch (error) {
     console.error('Error sending Discord notification:', error)
     throw error
