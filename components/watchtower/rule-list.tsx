@@ -143,6 +143,16 @@ export default function RuleList({
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
+      case 'urgent':
+        return (
+          <Badge
+            variant="outline"
+            className="border-purple-500/30 bg-purple-500/20 text-purple-400"
+          >
+            <AlertTriangle className="mr-1 h-3 w-3" />
+            Urgent
+          </Badge>
+        )
       case 'critical':
         return (
           <Badge

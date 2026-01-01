@@ -448,7 +448,7 @@ export default function RuleBuilder({
     const baseData = {
       name,
       description: description || undefined,
-      severity: severity as 'info' | 'warning' | 'critical',
+      severity: severity as 'info' | 'warning' | 'critical' | 'urgent',
       time_range_days: timeRangeDays,
       notify_discord: notifyDiscord,
       notify_whatsapp: notifyWhatsapp,
@@ -490,6 +490,8 @@ export default function RuleBuilder({
 
   const getSeverityIcon = (sev: string) => {
     switch (sev) {
+      case 'urgent':
+        return <AlertCircle className="h-4 w-4 text-purple-400" />
       case 'critical':
         return <AlertTriangle className="h-4 w-4 text-red-400" />
       case 'warning':

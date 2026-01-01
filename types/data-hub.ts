@@ -265,7 +265,7 @@ export interface WatchtowerRule {
   dependency_condition: string | null
   logic_operator: 'AND' | 'OR'
   group_id: string | null
-  severity: 'info' | 'warning' | 'critical'
+  severity: 'info' | 'warning' | 'critical' | 'urgent'
   is_active: boolean
   notify_immediately: boolean
   notify_schedule: string | null
@@ -291,7 +291,7 @@ export interface WatchtowerAlert {
   record_id: string | null
   client_id: number | null
   message: string
-  severity: 'info' | 'warning' | 'critical'
+  severity: 'info' | 'warning' | 'critical' | 'urgent'
   current_value: string | null
   previous_value: string | null
   is_acknowledged: boolean

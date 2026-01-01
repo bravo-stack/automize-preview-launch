@@ -21,6 +21,7 @@ interface WatchtowerStats {
   inactiveRules: number
   totalAlerts: number
   unacknowledgedAlerts: number
+  urgentAlerts: number
   criticalAlerts: number
   warningAlerts: number
   infoAlerts: number

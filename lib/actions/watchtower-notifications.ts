@@ -3,6 +3,10 @@
 /**
  * Watchtower Notification System
  * Handles immediate Discord and WhatsApp notifications for monitoring alerts
+ *
+ * Work Hours Policy:
+ * - 'info', 'warning', 'critical' severities: Send only during work hours (9am-5pm user's local time)
+ * - 'urgent' severity: Send regardless of time (bypasses work hours restriction)
  */
 
 import { createAdminClient } from '@/lib/db/admin'
@@ -13,6 +17,42 @@ import type {
 } from '@/types/watchtower'
 import { sendDiscordMessage } from './discord'
 import { sendAndLogWhatsAppMessage } from './whatsapp'
+
+// ============================================================================
+// Work Hours Configuration
+// ============================================================================
+
+const WORK_HOURS = {
+  start: 9, // 9 AM
+  end: 17, // 5 PM (17:00)
+} as const
+
+/**
+ * Check if the current time is within work hours (9am - 5pm)
+ * This is timezone agnostic - it uses the server's local time
+ * which represents the operational timezone of the system
+ *
+ * @returns true if current hour is between 9 (inclusive) and 17 (exclusive)
+ */
+function isWithinWorkHours(): boolean {
+  const now = new Date()
+  const currentHour = now.getHours()
+  return currentHour >= WORK_HOURS.start && currentHour < WORK_HOURS.end
+}
+
+/**
+ * Determines if a notification should be sent based on severity and work hours
+ * - 'urgent' severity always sends (bypasses work hours)
+ * - All other severities only send during work hours
+ */
+function shouldSendNotification(severity: Severity): boolean {
+  // Urgent alerts bypass work hours restriction
+  if (severity === 'urgent') {
+    return true
+  }
+  // All other severities respect work hours
+  return isWithinWorkHours()
+}
 
 // ============================================================================
 // Discord Notification System
@@ -26,6 +66,7 @@ const DISCORD_CHANNELS: Record<Severity, string> = {
   critical: 'watchtower-critical',
   warning: 'watchtower-alerts',
   info: 'watchtower-info',
+  urgent: 'watchtower-urgent',
 }
 
 /**
@@ -39,6 +80,7 @@ function formatDiscordAlert(
     critical: '🚨',
     warning: '⚠️',
     info: 'ℹ️',
+    urgent: '🆘',
   }
 
   const emoji = severityEmoji[alert.severity] || '📢'
@@ -61,6 +103,7 @@ function formatDiscordAlert(
 /**
  * Send Discord notification for an alert
  * Supports primary channel, extra channel IDs, and multiple pod Discord channels
+ * Channels are sent to [pod-name]-to-do-list format for pod-based notifications
  */
 export async function sendDiscordNotification(
   alert: WatchtowerAlert,
@@ -68,10 +111,10 @@ export async function sendDiscordNotification(
 ): Promise<boolean> {
   try {
     const message = formatDiscordAlert(alert, rule)
-    const channelsToNotify: string[] = []
+    const channelsToNotify: { channelName: string; podName?: string }[] = []
     const db = createAdminClient()
 
-    // Add Discord channels from selected pods
+    // Add Discord channels from selected pods using [pod-name]-to-do-list format
     if (rule.pod_ids?.length) {
       const { data: pods } = await db
         .from('pod')
@@ -79,43 +122,52 @@ export async function sendDiscordNotification(
         .in('id', rule.pod_ids)
 
       if (pods) {
-        const podChannels = pods
-          .map((p) => `${p.name}-to-do-list`)
-          .filter((id): id is string => !!id)
-        channelsToNotify.push(...podChannels)
+        for (const pod of pods) {
+          if (pod.name) {
+            const channelName = `${pod.name}-to-do-list`
+            channelsToNotify.push({ channelName, podName: pod.name })
+          }
+        }
       }
     }
 
     // Add custom channel IDs from watchtower_channel_ids table
     const { data: customChannels } = await db
       .from('watchtower_channel_ids')
-      .select('channel_id')
+      .select('channel_id, label')
       .eq('rule_id', rule.id)
 
     if (customChannels) {
-      channelsToNotify.push(...customChannels.map((c) => c.channel_id))
+      for (const c of customChannels) {
+        channelsToNotify.push({ channelName: c.channel_id })
+      }
     }
 
     // Fallback to severity-based channel if no channels configured
     if (channelsToNotify.length === 0) {
-      channelsToNotify.push(DISCORD_CHANNELS[rule.severity])
+      channelsToNotify.push({ channelName: DISCORD_CHANNELS[rule.severity] })
     }
 
-    // Deduplicate channels
-    const uniqueChannels = Array.from(new Set(channelsToNotify))
+    // Deduplicate channels by channelName
+    const uniqueChannels = channelsToNotify.filter(
+      (channel, index, self) =>
+        index === self.findIndex((c) => c.channelName === channel.channelName),
+    )
 
-    // Send to all channels
+    // Send to all channels with proper logging
     const results = await Promise.allSettled(
       uniqueChannels.map((channel) =>
-        sendDiscordMessage(channel, message, {
+        sendDiscordMessage(channel.channelName, message, {
           sourceFeature: 'watchtower_alert',
+          podName: channel.podName,
         }),
       ),
     )
 
     const successCount = results.filter((r) => r.status === 'fulfilled').length
+    const channelNames = uniqueChannels.map((c) => c.channelName).join(', ')
     console.log(
-      `[Discord] Notification sent for alert ${alert.id} to ${successCount}/${uniqueChannels.length} channels`,
+      `[Discord] Notification sent for alert ${alert.id} to ${successCount}/${uniqueChannels.length} channels: [${channelNames}]`,
     )
 
     return successCount > 0
@@ -140,6 +192,7 @@ function formatWhatsAppAlert(
     critical: '🚨',
     warning: '⚠️',
     info: 'ℹ️',
+    urgent: '🆘',
   }
 
   const emoji = severityEmoji[alert.severity] || '📢'
@@ -281,12 +334,33 @@ export async function sendWhatsAppNotification(
 /**
  * Send all configured notifications for an alert (Discord and WhatsApp)
  * Called immediately when a rule triggers
+ *
+ * Work Hours Policy:
+ * - 'info', 'warning', 'critical' severities: Send only during work hours (9am-5pm)
+ * - 'urgent' severity: Send regardless of time (bypasses work hours restriction)
  */
 export async function sendAlertNotifications(
   alert: WatchtowerAlert,
   rule: WatchtowerRule,
-): Promise<{ discord: boolean; whatsapp: boolean }> {
-  const results = { discord: false, whatsapp: false }
+): Promise<{
+  discord: boolean
+  whatsapp: boolean
+  skippedDueToWorkHours: boolean
+}> {
+  const results = {
+    discord: false,
+    whatsapp: false,
+    skippedDueToWorkHours: false,
+  }
+
+  // Check if notification should be sent based on severity and work hours
+  if (!shouldSendNotification(alert.severity)) {
+    console.log(
+      `[Notifications] Alert ${alert.id} (${alert.severity}) skipped - outside work hours (9am-5pm)`,
+    )
+    results.skippedDueToWorkHours = true
+    return results
+  }
 
   // Send Discord notification if enabled
   if (rule.notify_discord) {

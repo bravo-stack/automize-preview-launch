@@ -17,7 +17,7 @@ export type RuleCondition =
   | 'not_contains'
   | 'is_null'
   | 'is_not_null'
-export type Severity = 'info' | 'warning' | 'critical'
+export type Severity = 'info' | 'warning' | 'critical' | 'urgent'
 export type MetricUnit = 'percent' | 'currency' | 'count'
 
 // ============================================================================

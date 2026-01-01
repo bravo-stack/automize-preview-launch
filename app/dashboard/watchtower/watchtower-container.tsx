@@ -761,6 +761,12 @@ export default function WatchtowerContainer() {
                 </h3>
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between">
+                    <span className="text-white/60">Urgent</span>
+                    <span className="font-mono text-purple-400">
+                      {stats?.urgentAlerts || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
                     <span className="text-white/60">Critical</span>
                     <span className="font-mono text-red-400">
                       {stats?.criticalAlerts || 0}
@@ -1228,6 +1234,7 @@ export default function WatchtowerContainer() {
                 className="w-40"
               >
                 <option value="">All Severities</option>
+                <option value="urgent">Urgent</option>
                 <option value="critical">Critical</option>
                 <option value="warning">Warning</option>
                 <option value="info">Info</option>

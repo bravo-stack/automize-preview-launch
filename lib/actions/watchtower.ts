@@ -444,7 +444,7 @@ export async function getAlertStats(
   if (error || !data) {
     return {
       total: 0,
-      by_severity: { info: 0, warning: 0, critical: 0 },
+      by_severity: { info: 0, warning: 0, critical: 0, urgent: 0 },
       acknowledged: 0,
     }
   }
@@ -455,6 +455,7 @@ export async function getAlertStats(
       info: data.filter((a) => a.severity === 'info').length,
       warning: data.filter((a) => a.severity === 'warning').length,
       critical: data.filter((a) => a.severity === 'critical').length,
+      urgent: data.filter((a) => a.severity === 'urgent').length,
     },
     acknowledged: data.filter((a) => a.is_acknowledged).length,
   }
@@ -1175,6 +1176,7 @@ export async function getWatchtowerStats(): Promise<WatchtowerStats> {
     inactiveRules: inactiveUniqueRules,
     totalAlerts: alerts.length,
     unacknowledgedAlerts: alerts.filter((a) => !a.is_acknowledged).length,
+    urgentAlerts: alerts.filter((a) => a.severity === 'urgent').length,
     criticalAlerts: alerts.filter((a) => a.severity === 'critical').length,
     warningAlerts: alerts.filter((a) => a.severity === 'warning').length,
     infoAlerts: alerts.filter((a) => a.severity === 'info').length,

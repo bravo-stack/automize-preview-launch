@@ -27,7 +27,19 @@ export const RULE_CONDITIONS = [
 
 export type RuleCondition = (typeof RULE_CONDITIONS)[number]
 
-export const SEVERITY_LEVELS = ['info', 'warning', 'critical'] as const
+/**
+ * Severity levels for watchtower alerts:
+ * - info: Low priority informational alerts (work hours only)
+ * - warning: Medium priority alerts (work hours only)
+ * - critical: High priority alerts (work hours only)
+ * - urgent: Highest priority alerts that bypass work hours restrictions
+ */
+export const SEVERITY_LEVELS = [
+  'info',
+  'warning',
+  'critical',
+  'urgent',
+] as const
 
 /**
  * Target tables mapped to Hub data domains:
@@ -1108,6 +1120,7 @@ export interface WatchtowerStats {
   inactiveRules: number
   totalAlerts: number
   unacknowledgedAlerts: number
+  urgentAlerts: number
   criticalAlerts: number
   warningAlerts: number
   infoAlerts: number
