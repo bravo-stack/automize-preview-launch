@@ -321,13 +321,25 @@ export default async function ClientDetailPage({ params }: PageProps) {
 
   const role = user.user_metadata.role ?? 'exec'
 
+  // Fetch pod to check if user is Muhammad (pod id: 34)
+  const adminDb = createAdminClient()
+  const { data: pod } = await adminDb
+    .from('pod')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  // Muhammad (pod id: 34) gets exec-level access
+  const isMuhammad = pod?.id === 34
+  const isExec = role === 'exec' || isMuhammad
+
   if (isNaN(clientId)) {
     notFound()
   }
 
   try {
     const data = await getClientData(clientId)
-    return <ClientDetail role={role} initialData={data} />
+    return <ClientDetail isExec={isExec} initialData={data} />
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to load client data'

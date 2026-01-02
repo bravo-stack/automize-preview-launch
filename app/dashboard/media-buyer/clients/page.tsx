@@ -31,7 +31,6 @@ export default async function MediaBuyerClientsPage() {
 
   const db = await createAdminClient()
   const role = user.user_metadata?.role ?? 'exec'
-  const isExec = role === 'exec'
 
   // Get the user's pod (for non-exec users)
   const { data: pod, error: podError } = await db
@@ -39,6 +38,10 @@ export default async function MediaBuyerClientsPage() {
     .select('id, name')
     .eq('user_id', user.id)
     .single()
+
+  // Muhammad (pod id: 34) gets exec-level access to see all clients
+  const isMuhammad = pod?.id === 34
+  const isExec = role === 'exec' || isMuhammad
 
   // For non-exec users without a pod, show empty state
   if (!isExec && (podError || !pod)) {

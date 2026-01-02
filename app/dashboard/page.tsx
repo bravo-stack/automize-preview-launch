@@ -184,7 +184,10 @@ const execQuickActions: QuickAction[] = [
 
 // Pod Dashboard Configuration
 function getPodSections(userId: string, podId: number): QuickLinkSection[] {
-  return [
+  // Muhammad (pod id: 34) gets additional management sections
+  const isMuhammad = podId === 34
+
+  const baseSections: QuickLinkSection[] = [
     {
       title: 'Facebook Sheets',
       description: 'Your ad metrics, spend tracking, and performance data',
@@ -229,10 +232,28 @@ function getPodSections(userId: string, podId: number): QuickLinkSection[] {
       ],
     },
   ]
+
+  // Additional sections only for Muhammad (pod id: 34)
+  const muhammadSections: QuickLinkSection[] = isMuhammad
+    ? [
+        {
+          title: 'Manage Accounts',
+          description: 'Setup and configure client accounts across the system',
+          href: '/dashboard/autometric/manage-accounts',
+          icon: <Settings className="size-6" />,
+          gradient: 'from-amber-500/20 to-orange-500/20',
+        },
+      ]
+    : []
+
+  return [...baseSections, ...muhammadSections]
 }
 
 function getPodQuickActions(userId: string, podId: number): QuickAction[] {
-  return [
+  // Muhammad (pod id: 34) gets additional quick actions
+  const isMuhammad = podId === 34
+
+  const baseActions: QuickAction[] = [
     {
       label: 'View Accounts',
       href: `/dashboard/media-buyer/${userId}/accounts`,
@@ -254,6 +275,19 @@ function getPodQuickActions(userId: string, podId: number): QuickAction[] {
       icon: <Layers className="size-4" />,
     },
   ]
+
+  // Additional quick actions only for Muhammad (pod id: 34)
+  const muhammadActions: QuickAction[] = isMuhammad
+    ? [
+        {
+          label: 'Manage Accounts',
+          href: '/dashboard/autometric/manage-accounts',
+          icon: <Settings className="size-4" />,
+        },
+      ]
+    : []
+
+  return [...baseActions, ...muhammadActions]
 }
 
 // Onboarder Dashboard Configuration

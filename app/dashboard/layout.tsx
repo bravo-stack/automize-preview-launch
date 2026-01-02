@@ -43,6 +43,9 @@ export default async function DashboardLayout({ children }) {
     }
   }
 
+  // Check if the current pod user is Muhammad (id: 34)
+  const isMuhammad = podData?.id === 34
+
   let links: NavSection[]
   switch (role) {
     case 'exec':
@@ -192,6 +195,21 @@ export default async function DashboardLayout({ children }) {
                     url: `https://docs.google.com/spreadsheets/d/${sheetId}`,
                     target: '_blank',
                     svg: icons.podSheets,
+                  },
+                ],
+              },
+            ]
+          : []),
+        // Additional nav items only for Muhammad (pod id: 34)
+        ...(isMuhammad
+          ? [
+              {
+                label: 'Management',
+                items: [
+                  {
+                    text: 'Manage Accounts',
+                    url: 'autometric/manage-accounts',
+                    svg: icons.manageAccounts,
                   },
                 ],
               },

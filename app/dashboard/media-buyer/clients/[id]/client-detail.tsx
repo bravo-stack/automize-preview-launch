@@ -30,13 +30,13 @@ interface ClientHeaderProps {
   client: MediaBuyerClient
   onRefresh: () => void
   isRefreshing: boolean
-  role: string
+  isExec: boolean
 }
 
 function ClientHeader({
   client,
   onRefresh,
-  role,
+  isExec,
   isRefreshing,
 }: ClientHeaderProps) {
   return (
@@ -90,7 +90,7 @@ function ClientHeader({
       </div>
 
       {/* Contact Info */}
-      {role === 'exec' ? (
+      {isExec ? (
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {client.full_name && (
             <div className="flex items-center gap-2 text-sm">
@@ -296,10 +296,10 @@ function DataSyncStatus({ lastUpdated }: DataSyncStatusProps) {
 
 interface ClientDetailProps {
   initialData: ClientDataResponse
-  role: string
+  isExec: boolean
 }
 
-export function ClientDetail({ initialData, role }: ClientDetailProps) {
+export function ClientDetail({ initialData, isExec }: ClientDetailProps) {
   const [data, setData] = useState<ClientDataResponse>(initialData)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -338,7 +338,7 @@ export function ClientDetail({ initialData, role }: ClientDetailProps) {
 
         {/* Client Header */}
         <ClientHeader
-          role={role}
+          isExec={isExec}
           client={client}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}

@@ -32,9 +32,12 @@ export default async function CommunicationsAudit() {
 
   const { data: pod } = await db
     .from('pod')
-    .select('name, servers')
+    .select('id, name, servers')
     .eq('user_id', user.id)
     .single()
+
+  // Muhammad (pod id: 34) should have exec-level access to all data
+  const isMuhammad = pod?.id === 34
 
   const role = user?.user_metadata?.role ?? 'exec'
 
@@ -112,7 +115,8 @@ export default async function CommunicationsAudit() {
     // 1. Helper: Determine which filter strategy to use
     // This avoids using .or() unless we absolutely have two conflicting conditions
     const applyPodFilter = (query: any) => {
-      if (role === 'exec') return query
+      // Muhammad (pod id: 34) gets exec-level unfiltered access
+      if (role === 'exec' || isMuhammad) return query
 
       const hasName = !!pod?.name
       const hasServers = pod?.servers && pod.servers.length > 0
