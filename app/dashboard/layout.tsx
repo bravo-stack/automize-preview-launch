@@ -211,6 +211,16 @@ export default async function DashboardLayout({ children }) {
                     url: 'autometric/manage-accounts',
                     svg: icons.manageAccounts,
                   },
+                  {
+                    text: 'Full Client Hub',
+                    url: 'media-buyer/clients?view=full',
+                    svg: icons.hub,
+                  },
+                  {
+                    text: 'IT Audit',
+                    url: 'communications-audit?view=full',
+                    svg: icons.communicationsAudit,
+                  },
                 ],
               },
             ]

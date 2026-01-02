@@ -16,11 +16,13 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'default-no-store'
 
-export default async function CommunicationsAudit() {
+export default async function CommunicationsAudit({ searchParams }) {
   const authDb = createClient()
   const db = await createAdminClient()
 
   unstable_noStore()
+
+  const { view } = await searchParams
 
   const {
     data: { user },
@@ -35,9 +37,6 @@ export default async function CommunicationsAudit() {
     .select('id, name, servers')
     .eq('user_id', user.id)
     .single()
-
-  // Muhammad (pod id: 34) should have exec-level access to all data
-  const isMuhammad = pod?.id === 34
 
   const role = user?.user_metadata?.role ?? 'exec'
 
@@ -112,11 +111,13 @@ export default async function CommunicationsAudit() {
   // }
 
   if (latestDate) {
+    // Muhammad (pod id: 34) with view=full gets exec-level unfiltered access
+    const isMuhammadFullView = pod?.id === 34 && view === 'full'
+
     // 1. Helper: Determine which filter strategy to use
     // This avoids using .or() unless we absolutely have two conflicting conditions
     const applyPodFilter = (query: any) => {
-      // Muhammad (pod id: 34) gets exec-level unfiltered access
-      if (role === 'exec' || isMuhammad) return query
+      if (role === 'exec' || isMuhammadFullView) return query
 
       const hasName = !!pod?.name
       const hasServers = pod?.servers && pod.servers.length > 0

@@ -8,8 +8,16 @@ import { createClient } from '@/lib/db/server'
 import { Users } from 'lucide-react'
 import { unstable_noStore } from 'next/cache'
 
-export default async function MediaBuyerClientsPage() {
+interface PageProps {
+  searchParams: Promise<{ view?: string }>
+}
+
+export default async function MediaBuyerClientsPage({
+  searchParams,
+}: PageProps) {
   unstable_noStore()
+
+  const { view } = await searchParams
 
   // Get current user and their pod
   const authDb = createClient()
@@ -39,9 +47,9 @@ export default async function MediaBuyerClientsPage() {
     .eq('user_id', user.id)
     .single()
 
-  // Muhammad (pod id: 34) gets exec-level access to see all clients
-  const isMuhammad = pod?.id === 34
-  const isExec = role === 'exec' || isMuhammad
+  // Muhammad (pod id: 34) with view=full gets exec-level access
+  const isMuhammadFullView = pod?.id === 34 && view === 'full'
+  const isExec = role === 'exec' || isMuhammadFullView
 
   // For non-exec users without a pod, show empty state
   if (!isExec && (podError || !pod)) {
