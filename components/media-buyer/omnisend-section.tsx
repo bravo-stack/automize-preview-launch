@@ -767,12 +767,18 @@ interface CampaignsListProps {
   isLoading?: boolean
 }
 
+const CAMPAIGNS_PER_PAGE = 10
+
 export function CampaignsList({
   campaigns,
   isLoading = false,
 }: CampaignsListProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const displayCampaigns = isExpanded ? campaigns : campaigns.slice(0, 5)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const totalPages = Math.ceil(campaigns.length / CAMPAIGNS_PER_PAGE)
+  const startIndex = (currentPage - 1) * CAMPAIGNS_PER_PAGE
+  const endIndex = startIndex + CAMPAIGNS_PER_PAGE
+  const displayCampaigns = campaigns.slice(startIndex, endIndex)
 
   if (isLoading) {
     return (
@@ -794,6 +800,14 @@ export function CampaignsList({
   ): number => {
     const metric = campaign.metrics.find((m) => m.metric_name === metricName)
     return metric ? Number(metric.metric_value) : 0
+  }
+
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1))
+  }
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
   }
 
   return (
@@ -869,23 +883,35 @@ export function CampaignsList({
             })}
           </div>
 
-          {campaigns.length > 5 && (
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              {isExpanded ? (
-                <>
-                  <ChevronUp className="h-4 w-4" />
-                  Show Less
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-4 w-4" />
-                  Show All ({campaigns.length} campaigns)
-                </>
-              )}
-            </button>
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+              <p className="text-sm text-white/50">
+                Showing {startIndex + 1}-{Math.min(endIndex, campaigns.length)}{' '}
+                of {campaigns.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/5"
+                >
+                  <ChevronUp className="h-4 w-4 -rotate-90" />
+                  Prev
+                </button>
+                <span className="px-2 text-sm text-white/70">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/5"
+                >
+                  Next
+                  <ChevronDown className="h-4 w-4 -rotate-90" />
+                </button>
+              </div>
+            </div>
           )}
         </>
       )}
