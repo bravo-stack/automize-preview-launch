@@ -16,7 +16,10 @@ import type {
   WatchtowerRule,
 } from '@/types/watchtower'
 import { sendDiscordMessage } from './discord'
-import { sendAndLogWhatsAppMessage } from './whatsapp'
+import {
+  sendAndLogWhatsAppMessage,
+  validateAndCleanPhoneNumber,
+} from './whatsapp'
 
 // ============================================================================
 // Work Hours Configuration
@@ -295,11 +298,18 @@ export async function sendWhatsAppNotification(
 
     if (pods) {
       for (const pod of pods) {
-        if (pod.whatsapp_number) {
+        // Validate phone number before adding to list
+        const cleanNumber = validateAndCleanPhoneNumber(pod.whatsapp_number)
+        if (cleanNumber) {
           numbersToNotify.push({
             name: pod.name,
-            whatsapp_number: pod.whatsapp_number,
+            whatsapp_number: cleanNumber,
           })
+        } else if (pod.whatsapp_number) {
+          // Log invalid numbers for debugging
+          console.warn(
+            `[WhatsApp] Invalid phone number for pod ${pod.name}: ${pod.whatsapp_number}`,
+          )
         }
       }
     }
