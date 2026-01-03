@@ -1,5 +1,3 @@
-'use server'
-
 // WhatsApp Helper Utilities
 
 // Delay utility for rate limiting
