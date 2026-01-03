@@ -10,16 +10,15 @@
  */
 
 import { createAdminClient } from '@/lib/db/admin'
+import { buildToDoListChannelName } from '@/lib/utils/pod-helpers'
+import { validateAndCleanPhoneNumber } from '@/lib/utils/whatsapp-helpers'
 import type {
   Severity,
   WatchtowerAlert,
   WatchtowerRule,
 } from '@/types/watchtower'
 import { sendDiscordMessage } from './discord'
-import {
-  sendAndLogWhatsAppMessage,
-  validateAndCleanPhoneNumber,
-} from './whatsapp'
+import { sendAndLogWhatsAppMessage } from './whatsapp'
 
 // ============================================================================
 // Work Hours Configuration
@@ -30,24 +29,14 @@ const WORK_HOURS = {
   end: 17, // 5 PM (17:00)
 } as const
 
-/**
- * Check if the current time is within work hours (9am - 5pm)
- * This is timezone agnostic - it uses the server's local time
- * which represents the operational timezone of the system
- *
- * @returns true if current hour is between 9 (inclusive) and 17 (exclusive)
- */
+// Check if the current time is within work hours (9am - 5pm)
 function isWithinWorkHours(): boolean {
   const now = new Date()
   const currentHour = now.getHours()
   return currentHour >= WORK_HOURS.start && currentHour < WORK_HOURS.end
 }
 
-/**
- * Determines if a notification should be sent based on severity and work hours
- * - 'urgent' severity always sends (bypasses work hours)
- * - All other severities only send during work hours
- */
+// Determines if a notification should be sent based on severity and work hours
 function shouldSendNotification(severity: Severity): boolean {
   // Urgent alerts bypass work hours restriction
   if (severity === 'urgent') {
@@ -127,7 +116,7 @@ export async function sendDiscordNotification(
       if (pods) {
         for (const pod of pods) {
           if (pod.name) {
-            const channelName = `${pod.name}-to-do-list`
+            const channelName = buildToDoListChannelName(pod.name)
             channelsToNotify.push({ channelName, podName: pod.name })
           }
         }
@@ -354,18 +343,14 @@ export async function sendWhatsAppNotification(
   return successCount > 0
 }
 
-// ============================================================================
 // Combined Notification Dispatcher
-// ============================================================================
 
-/**
- * Send all configured notifications for an alert (Discord and WhatsApp)
- * Called immediately when a rule triggers
- *
- * Work Hours Policy:
- * - 'info', 'warning', 'critical' severities: Send only during work hours (9am-5pm)
- * - 'urgent' severity: Send regardless of time (bypasses work hours restriction)
- */
+// Send all configured notifications for an alert (Discord and WhatsApp)
+// Called immediately when a rule triggers
+//
+// Work Hours Policy:
+// - 'info', 'warning', 'critical' severities: Send only during work hours (9am-5pm)
+// - 'urgent' severity: Send regardless of time (bypasses work hours restriction)
 export async function sendAlertNotifications(
   alert: WatchtowerAlert,
   rule: WatchtowerRule,

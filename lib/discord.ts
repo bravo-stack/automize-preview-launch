@@ -1,5 +1,6 @@
 export interface DiscordMessagePayload {
-  channelId: string
+  channelId?: string
+  channelName?: string
   content?: string
   embeds?: Array<any>
 }

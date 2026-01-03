@@ -105,11 +105,11 @@ export async function sendDiscordMessage(
     channelId || (isSnowflake(channelName) ? channelName : null)
 
   try {
-    // Construct payload for the new API (API resolves channel by name or ID)
-    const payload: DiscordMessagePayload = {
-      channelId: effectiveChannelId || channelName,
-      content: message,
-    }
+    // Construct payload for the new API
+    // Use channelId if we have a valid snowflake, otherwise use channelName
+    const payload: DiscordMessagePayload = effectiveChannelId
+      ? { channelId: effectiveChannelId, content: message }
+      : { channelName: channelName, content: message }
 
     const result = await sendRawDiscordMessage(payload)
 
