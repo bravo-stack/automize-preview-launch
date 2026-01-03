@@ -100,14 +100,14 @@ export async function sendDiscordMessage(
   const channelId = options?.channelId || null
   const podName = options?.podName || null
 
-  // Use channelName as channelId (API resolves channel by name or ID)
+  // Only use channelName as channelId if it's a valid snowflake ID
   const effectiveChannelId =
-    channelId || (isSnowflake(channelName) ? channelName : channelName)
+    channelId || (isSnowflake(channelName) ? channelName : null)
 
   try {
-    // Construct payload for the new API
+    // Construct payload for the new API (API resolves channel by name or ID)
     const payload: DiscordMessagePayload = {
-      channelId: effectiveChannelId,
+      channelId: effectiveChannelId || channelName,
       content: message,
     }
 
@@ -140,7 +140,7 @@ export async function sendDiscordMessage(
 
     await logDiscordMessage({
       channel_name: channelName,
-      channel_id: effectiveChannelId,
+      channel_id: effectiveChannelId, // null if channelName wasn't a snowflake
       pod_name: podName,
       source_feature: sourceFeature,
       message_content: message,
