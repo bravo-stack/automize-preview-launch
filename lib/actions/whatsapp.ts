@@ -442,9 +442,3 @@ export async function getDeliveryStats(
     deliveryRate: total > 0 ? Math.round((delivered / total) * 100) : 0,
   }
 }
-
-// Re-export helpers for use elsewhere
-export {
-  isValidPhoneNumberFormat,
-  validateAndCleanPhoneNumber,
-} from '@/lib/utils/whatsapp-helpers'
