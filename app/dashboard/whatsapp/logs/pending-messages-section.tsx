@@ -7,6 +7,7 @@ import {
   syncSingleMessageStatus,
 } from '@/lib/actions/whatsapp'
 import { useCallback, useEffect, useState, useTransition } from 'react'
+import { usePagination } from './pagination'
 
 interface PendingMessagesSectionProps {
   onSyncComplete?: () => void
@@ -113,6 +114,16 @@ export default function PendingMessagesSection({
     }
   }
 
+  // Pagination - use smaller page size for this compact section
+  const {
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    paginatedItems: paginatedMessages,
+    handlePageChange,
+  } = usePagination(messages, 10)
+
   // Don't render if no pending messages and not loading
   if (!loading && messages.length === 0) {
     return null
@@ -218,9 +229,9 @@ export default function PendingMessagesSection({
           {error}
         </div>
       ) : (
-        <div className="max-h-64 overflow-y-auto">
+        <div>
           <table className="w-full">
-            <thead className="sticky top-0 border-b border-amber-900/40 bg-amber-950/40">
+            <thead className="border-b border-amber-900/40 bg-amber-950/40">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-amber-400/70">
                   Pod
@@ -240,7 +251,7 @@ export default function PendingMessagesSection({
               </tr>
             </thead>
             <tbody className="divide-y divide-amber-900/30">
-              {messages.map((msg) => (
+              {paginatedMessages.map((msg) => (
                 <tr
                   key={msg.twilio_message_sid}
                   className="transition-colors hover:bg-amber-900/20"
@@ -317,6 +328,64 @@ export default function PendingMessagesSection({
               ))}
             </tbody>
           </table>
+
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-amber-900/40 px-3 py-2">
+              <span className="text-xs text-amber-400/60">
+                Showing {(currentPage - 1) * itemsPerPage + 1}–
+                {Math.min(currentPage * itemsPerPage, totalItems)} of{' '}
+                {totalItems}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-amber-800/50 bg-amber-900/30 text-amber-300 transition-colors hover:bg-amber-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Previous page"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.75 19.5 8.25 12l7.5-7.5"
+                    />
+                  </svg>
+                </button>
+                <span className="px-2 text-xs text-amber-300">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-amber-800/50 bg-amber-900/30 text-amber-300 transition-colors hover:bg-amber-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Next page"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
