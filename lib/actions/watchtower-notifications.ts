@@ -18,7 +18,7 @@ import type {
   WatchtowerRule,
 } from '@/types/watchtower'
 import { sendDiscordMessage } from './discord'
-import { sendAndLogWhatsAppMessage } from './whatsapp'
+import { sendAndLogWhatsAppMessage, WHATSAPP_TEMPLATES } from './whatsapp'
 
 // ============================================================================
 // Work Hours Configuration
@@ -318,7 +318,7 @@ export async function sendWhatsAppNotification(
     return false
   }
 
-  // Send to all unique WhatsApp numbers
+  // Send to all unique WhatsApp numbers using approved template
   const results = await Promise.allSettled(
     uniqueNumbers.map(async (recipient) => {
       const result = await sendAndLogWhatsAppMessage(
@@ -327,6 +327,11 @@ export async function sendWhatsAppNotification(
         recipient.name,
         'watchtower_alert',
         recipient.name,
+        {
+          trackDelivery: true,
+          useTemplate: true,
+          contentSid: WHATSAPP_TEMPLATES.ACCOUNT_ALERT,
+        },
       )
       return { name: recipient.name, success: result.success }
     }),

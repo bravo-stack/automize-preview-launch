@@ -29,7 +29,17 @@ export interface SendWhatsAppOptions {
   trackDelivery?: boolean
   /** Skip validation (use with caution) */
   skipValidation?: boolean
+  /** Use a pre-approved template instead of free-form message */
+  useTemplate?: boolean
+  /** Content SID for the template (required if useTemplate is true) */
+  contentSid?: string
 }
+
+// Pre-approved WhatsApp Template Content SIDs
+export const WHATSAPP_TEMPLATES = {
+  /** Generic alert template - single variable for alert content */
+  ACCOUNT_ALERT: 'HX5ca49cb559c5a6d40bc2664aa3ac1a5b',
+} as const
 
 export async function sendWhatsAppMessage(
   to: string,
@@ -84,22 +94,33 @@ export async function sendWhatsAppMessage(
     from: twilioFormattedFrom,
     to: twilioFormattedTo,
     messagePreview: message.substring(0, 50) + '...',
+    useTemplate: options.useTemplate ?? false,
   })
 
   try {
     // Initialize Twilio client
     const client = twilio(accountSid, authToken)
 
-    // Build message options
-    const messageOptions: {
-      body: string
-      from: string
-      to: string
-      statusCallback?: string
-    } = {
-      body: message,
-      from: twilioFormattedFrom,
-      to: twilioFormattedTo,
+    // Build message options based on whether using template or free-form
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let messageOptions: any
+
+    if (options.useTemplate && options.contentSid) {
+      // Template-based message (business-initiated, outside 24hr window)
+      // Uses contentSid and contentVariables instead of body
+      messageOptions = {
+        from: twilioFormattedFrom,
+        to: twilioFormattedTo,
+        contentSid: options.contentSid,
+        contentVariables: JSON.stringify({ '1': message }),
+      }
+    } else {
+      // Free-form message (only works within 24hr session window)
+      messageOptions = {
+        body: message,
+        from: twilioFormattedFrom,
+        to: twilioFormattedTo,
+      }
     }
 
     // Add status callback URL for delivery tracking
