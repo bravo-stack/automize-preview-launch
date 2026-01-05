@@ -7,8 +7,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import type { WhatsAppMessageLog } from '@/types/whatsapp'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import DiscordLogsContainer from './discord-logs-container'
+import Pagination, { usePagination } from './pagination'
 import PendingMessagesSection from './pending-messages-section'
 
 export default function UnifiedLogsContainer() {
@@ -97,18 +98,32 @@ function WhatsAppLogsView() {
     fetchLogs()
   }, [fetchLogs])
 
-  const filteredLogs = logs.filter((log) => {
-    const matchesPod =
-      !podFilter || log.pod_name.toLowerCase().includes(podFilter.toLowerCase())
-    const matchesSource = !sourceFilter || log.source_feature === sourceFilter
-    const matchesSearch =
-      !searchTerm ||
-      log.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.recipient_phone_number.includes(searchTerm) ||
-      log.message_content?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      const matchesPod =
+        !podFilter ||
+        log.pod_name.toLowerCase().includes(podFilter.toLowerCase())
+      const matchesSource = !sourceFilter || log.source_feature === sourceFilter
+      const matchesSearch =
+        !searchTerm ||
+        log.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.recipient_phone_number.includes(searchTerm) ||
+        log.message_content?.toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchesPod && matchesSource && matchesSearch
-  })
+      return matchesPod && matchesSource && matchesSearch
+    })
+  }, [logs, podFilter, sourceFilter, searchTerm])
+
+  // Pagination
+  const {
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    paginatedItems: paginatedLogs,
+    handlePageChange,
+    handleItemsPerPageChange,
+  } = usePagination(filteredLogs, 25)
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -214,10 +229,10 @@ function WhatsAppLogsView() {
             </div>
             <div className="flex flex-col justify-end gap-2 text-sm text-neutral-500">
               <p>
-                Showing{' '}
-                <span className="text-neutral-200">{filteredLogs.length}</span>{' '}
-                of <span className="text-neutral-200">{logs.length}</span>{' '}
-                messages
+                <span className="text-neutral-200">{totalItems}</span> messages
+                {totalItems !== logs.length && (
+                  <> (filtered from {logs.length})</>
+                )}
               </p>
               <button
                 type="button"
@@ -328,7 +343,7 @@ function WhatsAppLogsView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-900 bg-neutral-950">
-                  {filteredLogs.map((log) => (
+                  {paginatedLogs.map((log) => (
                     <tr
                       key={log.id}
                       className="transition-colors hover:bg-neutral-900/80"
@@ -388,6 +403,17 @@ function WhatsAppLogsView() {
                 </tbody>
               </table>
             </div>
+          )}
+          {/* Pagination */}
+          {!loading && !error && filteredLogs.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
           )}
         </div>
       </div>
