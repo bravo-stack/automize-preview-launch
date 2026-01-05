@@ -158,11 +158,11 @@ export default async function DashboardLayout({ children }) {
             //     </svg>
             //   ),
             // },
-            {
-              text: 'WhatsApp Logs',
-              url: 'whatsapp/logs',
-              svg: icons.logs,
-            },
+            // {
+            //   text: 'WhatsApp Logs',
+            //   url: 'whatsapp/logs',
+            //   svg: icons.logs,
+            // },
             {
               text: 'Client Hub',
               url: 'media-buyer/clients',

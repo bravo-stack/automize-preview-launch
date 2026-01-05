@@ -8,6 +8,7 @@ const EXEC_ONLY_ROUTES = [
   '/dashboard/watchtower',
   '/dashboard/services',
   '/dashboard/media-buyer', // Main WhatsApp page (not /dashboard/media-buyer/[id]/...)
+  '/dashboard/whatsapp/logs',
 ]
 
 function isExecOnlyRoute(pathname: string): boolean {
