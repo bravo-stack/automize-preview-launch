@@ -35,12 +35,6 @@ export interface SendWhatsAppOptions {
   contentSid?: string
 }
 
-// Pre-approved WhatsApp Template Content SIDs
-export const WHATSAPP_TEMPLATES = {
-  /** Generic alert template - single variable for alert content */
-  ACCOUNT_ALERT: 'HX5ca49cb559c5a6d40bc2664aa3ac1a5b',
-} as const
-
 export async function sendWhatsAppMessage(
   to: string,
   message: string,

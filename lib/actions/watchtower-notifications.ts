@@ -9,6 +9,7 @@
  * - 'urgent' severity: Send regardless of time (bypasses work hours restriction)
  */
 
+import { WHATSAPP_TEMPLATES } from '@/lib/constants/whatsapp'
 import { createAdminClient } from '@/lib/db/admin'
 import { buildToDoListChannelName } from '@/lib/utils/pod-helpers'
 import { validateAndCleanPhoneNumber } from '@/lib/utils/whatsapp-helpers'
@@ -18,7 +19,7 @@ import type {
   WatchtowerRule,
 } from '@/types/watchtower'
 import { sendDiscordMessage } from './discord'
-import { sendAndLogWhatsAppMessage, WHATSAPP_TEMPLATES } from './whatsapp'
+import { sendAndLogWhatsAppMessage } from './whatsapp'
 
 // ============================================================================
 // Work Hours Configuration
