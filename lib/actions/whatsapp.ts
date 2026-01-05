@@ -102,34 +102,25 @@ export async function sendWhatsAppMessage(
     const client = twilio(accountSid, authToken)
 
     // Build message options based on whether using template or free-form
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let messageOptions: any
-
-    if (options.useTemplate && options.contentSid) {
-      // Template-based message (business-initiated, outside 24hr window)
-      // Uses contentSid and contentVariables instead of body
-      messageOptions = {
-        from: twilioFormattedFrom,
-        to: twilioFormattedTo,
-        contentSid: options.contentSid,
-        contentVariables: JSON.stringify({ '1': message }),
-      }
-    } else {
-      // Free-form message (only works within 24hr session window)
-      messageOptions = {
-        body: message,
-        from: twilioFormattedFrom,
-        to: twilioFormattedTo,
-      }
+    const baseOptions = {
+      from: twilioFormattedFrom,
+      to: twilioFormattedTo,
+      ...(options.trackDelivery && getStatusCallbackUrl()
+        ? { statusCallback: getStatusCallbackUrl() }
+        : {}),
     }
 
-    // Add status callback URL for delivery tracking
-    if (options.trackDelivery) {
-      const statusCallbackUrl = getStatusCallbackUrl()
-      if (statusCallbackUrl) {
-        messageOptions.statusCallback = statusCallbackUrl
-      }
-    }
+    const messageOptions =
+      options.useTemplate && options.contentSid
+        ? {
+            ...baseOptions,
+            contentSid: options.contentSid,
+            contentVariables: JSON.stringify({ '1': message }),
+          }
+        : {
+            ...baseOptions,
+            body: message,
+          }
 
     // Send WhatsApp message via Twilio
     const messageResponse = await client.messages.create(messageOptions)
