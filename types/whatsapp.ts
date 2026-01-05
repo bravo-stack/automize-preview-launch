@@ -145,3 +145,97 @@ export interface WhatsAppMessageLogInput {
   twilio_message_sid?: string | null
   failure_reason?: string | null
 }
+
+// ============================================================================
+// Status Tracking & History Types
+// ============================================================================
+
+/**
+ * Twilio WhatsApp-specific status callback payload
+ * Reference: https://www.twilio.com/docs/messaging/api/message-resource#message-status-values
+ */
+export interface TwilioWhatsAppStatusPayload {
+  MessageSid: string
+  MessageStatus: string
+  To: string
+  From: string
+  AccountSid: string
+  ApiVersion?: string
+  // Error fields (present when status is 'failed' or 'undelivered')
+  ErrorCode?: string
+  ErrorMessage?: string
+  // WhatsApp-specific fields
+  ChannelPrefix?: 'whatsapp'
+  ChannelInstallSid?: string
+  ChannelStatusMessage?: string
+  EventType?: 'READ' | string // 'READ' when message is read by recipient
+}
+
+/**
+ * Status history entry for audit trail
+ * Tracks each status change for a message
+ */
+export interface WhatsAppStatusHistoryEntry {
+  id: number
+  message_log_id: number
+  twilio_message_sid: string
+  previous_status: WhatsAppDeliveryStatus | null
+  new_status: WhatsAppDeliveryStatus
+  changed_at: string
+  error_code?: string | null
+  error_message?: string | null
+  event_type?: string | null // e.g., 'READ' for read receipts
+}
+
+/**
+ * Input for creating a status history entry
+ */
+export interface WhatsAppStatusHistoryInput {
+  message_log_id: number
+  twilio_message_sid: string
+  previous_status: WhatsAppDeliveryStatus | null
+  new_status: WhatsAppDeliveryStatus
+  error_code?: string | null
+  error_message?: string | null
+  event_type?: string | null
+}
+
+/**
+ * Extended message log with read receipt tracking
+ */
+export interface WhatsAppMessageLogExtended extends WhatsAppMessageLog {
+  is_read: boolean
+  read_at: string | null
+  status_updated_at: string | null
+  twilio_error_code: string | null
+}
+
+/**
+ * Result from background sync job
+ */
+export interface WhatsAppSyncJobResult {
+  processed: number
+  updated: number
+  failed: number
+  errors: Array<{ messageSid: string; error: string }>
+}
+
+/**
+ * Terminal statuses that don't need further tracking
+ */
+export const TERMINAL_STATUSES: WhatsAppDeliveryStatus[] = [
+  'delivered',
+  'read',
+  'failed',
+  'undelivered',
+]
+
+/**
+ * Pending statuses that may need sync
+ */
+export const PENDING_STATUSES: WhatsAppDeliveryStatus[] = [
+  'queued',
+  'accepted',
+  'sending',
+  'sent',
+]

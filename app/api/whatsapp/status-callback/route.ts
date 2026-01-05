@@ -1,4 +1,8 @@
-import { createAdminClient } from '@/lib/db/admin'
+import { updateMessageStatusWithHistory } from '@/lib/actions/whatsapp'
+import type {
+  TwilioWhatsAppStatusPayload,
+  WhatsAppDeliveryStatus,
+} from '@/types/whatsapp'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
@@ -6,30 +10,13 @@ import twilio from 'twilio'
 // ============================================================================
 // WhatsApp Status Callback Webhook
 // Receives delivery status updates from Twilio for WhatsApp messages
+// Reference: https://www.twilio.com/docs/messaging/guides/track-outbound-message-status
 // ============================================================================
-
-/**
- * Twilio status callback payload for WhatsApp messages
- */
-interface TwilioStatusCallback {
-  MessageSid: string
-  MessageStatus: string
-  To: string
-  From: string
-  AccountSid: string
-  ApiVersion?: string
-  ErrorCode?: string
-  ErrorMessage?: string
-  // WhatsApp-specific fields
-  ChannelPrefix?: string
-  ChannelInstallSid?: string
-  ChannelStatusMessage?: string
-  EventType?: string // 'READ' when message is read
-}
 
 /**
  * Validate Twilio webhook signature
  * Ensures the request is actually from Twilio
+ * Reference: https://www.twilio.com/docs/usage/webhooks/webhooks-security
  */
 function validateTwilioSignature(
   request: NextRequest,
@@ -48,8 +35,15 @@ function validateTwilioSignature(
     return false
   }
 
-  // Get the full URL that Twilio used to make the request
-  const url = request.url
+  // CRITICAL: Reconstruct URL exactly as Twilio sees it
+  // On Vercel/proxies, request.url may resolve to http:// internally,
+  // but Twilio sent the request to https://, causing signature mismatch
+  const protocol = request.headers.get('x-forwarded-proto') || 'https'
+  const host = request.headers.get('host')
+  const parsedUrl = new URL(request.url)
+  const path = parsedUrl.pathname
+  const search = parsedUrl.search
+  const url = `${protocol}://${host}${path}${search}`
 
   // Parse the body as form data for validation
   const params: Record<string, string> = {}
@@ -68,12 +62,39 @@ function validateTwilioSignature(
 }
 
 /**
+ * Parse Twilio form-urlencoded body into typed payload
+ */
+function parseTwilioPayload(body: string): TwilioWhatsAppStatusPayload {
+  const formData = new URLSearchParams(body)
+
+  return {
+    MessageSid: formData.get('MessageSid') || '',
+    MessageStatus: formData.get('MessageStatus') || '',
+    To: formData.get('To') || '',
+    From: formData.get('From') || '',
+    AccountSid: formData.get('AccountSid') || '',
+    ApiVersion: formData.get('ApiVersion') || undefined,
+    ErrorCode: formData.get('ErrorCode') || undefined,
+    ErrorMessage: formData.get('ErrorMessage') || undefined,
+    ChannelPrefix: (formData.get('ChannelPrefix') as 'whatsapp') || undefined,
+    ChannelInstallSid: formData.get('ChannelInstallSid') || undefined,
+    ChannelStatusMessage: formData.get('ChannelStatusMessage') || undefined,
+    EventType: formData.get('EventType') || undefined,
+  }
+}
+
+/**
  * POST /api/whatsapp/status-callback
  * Receives status updates from Twilio when message delivery status changes
  *
  * Status flow for WhatsApp:
  * queued → sending → sent → delivered → read (if read receipts enabled)
  * queued → failed (if delivery fails)
+ *
+ * Important notes from Twilio docs:
+ * - Status callbacks may arrive out of order due to network latency
+ * - Always return HTTP 200 within 15 seconds
+ * - Payload fields may change without notice
  */
 export async function POST(request: NextRequest) {
   try {
@@ -82,8 +103,12 @@ export async function POST(request: NextRequest) {
     const headersList = await headers()
     const twilioSignature = headersList.get('x-twilio-signature')
 
-    // Validate signature in production
-    if (process.env.NODE_ENV === 'production') {
+    // Validate signature in production and staging
+    const shouldValidate =
+      process.env.NODE_ENV === 'production' ||
+      process.env.VERCEL_ENV === 'preview'
+
+    if (shouldValidate) {
       const isValid = validateTwilioSignature(request, body, twilioSignature)
       if (!isValid) {
         console.error('[WhatsApp Callback] Invalid Twilio signature')
@@ -91,22 +116,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Parse form-urlencoded body
-    const formData = new URLSearchParams(body)
-    const payload: TwilioStatusCallback = {
-      MessageSid: formData.get('MessageSid') || '',
-      MessageStatus: formData.get('MessageStatus') || '',
-      To: formData.get('To') || '',
-      From: formData.get('From') || '',
-      AccountSid: formData.get('AccountSid') || '',
-      ApiVersion: formData.get('ApiVersion') || undefined,
-      ErrorCode: formData.get('ErrorCode') || undefined,
-      ErrorMessage: formData.get('ErrorMessage') || undefined,
-      ChannelPrefix: formData.get('ChannelPrefix') || undefined,
-      ChannelInstallSid: formData.get('ChannelInstallSid') || undefined,
-      ChannelStatusMessage: formData.get('ChannelStatusMessage') || undefined,
-      EventType: formData.get('EventType') || undefined,
-    }
+    // Parse form-urlencoded body into typed payload
+    const payload = parseTwilioPayload(body)
 
     // Validate required fields
     if (!payload.MessageSid || !payload.MessageStatus) {
@@ -117,56 +128,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const newStatus = payload.MessageStatus as WhatsAppDeliveryStatus
+
     console.log('[WhatsApp Callback] Received status update:', {
       messageSid: payload.MessageSid,
-      status: payload.MessageStatus,
+      status: newStatus,
       to: payload.To,
       errorCode: payload.ErrorCode,
       eventType: payload.EventType,
     })
 
-    // Update the message log in database
-    const db = createAdminClient()
+    // Determine error message for failed deliveries
+    const errorMessage =
+      payload.ChannelStatusMessage || payload.ErrorMessage || undefined
 
-    // Determine failure reason if applicable
-    let failureReason: string | null = null
-    if (
-      payload.MessageStatus === 'failed' ||
-      payload.MessageStatus === 'undelivered'
-    ) {
-      failureReason =
-        payload.ChannelStatusMessage ||
-        payload.ErrorMessage ||
-        `Delivery failed with status: ${payload.MessageStatus}${payload.ErrorCode ? ` (Error ${payload.ErrorCode})` : ''}`
-    }
+    // Use the new atomic update function with history tracking
+    const updateResult = await updateMessageStatusWithHistory(
+      payload.MessageSid,
+      newStatus,
+      {
+        errorCode: payload.ErrorCode,
+        errorMessage: errorMessage,
+        eventType: payload.EventType, // 'READ' for read receipts
+      },
+    )
 
-    // Update the log entry with the new status
-    const { error: updateError, count } = await db
-      .from('whatsapp_message_logs')
-      .update({
-        delivery_status: payload.MessageStatus,
-        failure_reason: failureReason,
-      })
-      .eq('twilio_message_sid', payload.MessageSid)
-
-    if (updateError) {
-      console.error(
-        '[WhatsApp Callback] Failed to update message log:',
-        updateError,
-      )
-      // Don't return error to Twilio - we still received the callback
-    } else {
+    if (updateResult.success) {
       console.log(
-        `[WhatsApp Callback] Updated message ${payload.MessageSid} to status: ${payload.MessageStatus}`,
-        count !== null ? `(${count} rows affected)` : '',
+        `[WhatsApp Callback] Processed ${payload.MessageSid} → ${newStatus}`,
+      )
+    } else if (updateResult.error === 'Message not found') {
+      // Message not in our logs - could be from a different source
+      console.warn(
+        `[WhatsApp Callback] Message ${payload.MessageSid} not found in logs`,
+      )
+    } else {
+      console.error(
+        `[WhatsApp Callback] Failed to update ${payload.MessageSid}:`,
+        updateResult.error,
       )
     }
 
-    // Log specific error codes for monitoring
+    // Log specific error codes for monitoring/alerting
     if (payload.ErrorCode) {
       console.warn(`[WhatsApp Callback] Error code ${payload.ErrorCode}:`, {
         messageSid: payload.MessageSid,
-        errorMessage: payload.ErrorMessage || payload.ChannelStatusMessage,
+        errorMessage: errorMessage,
         to: payload.To,
       })
     }

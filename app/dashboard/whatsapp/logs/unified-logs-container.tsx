@@ -7,8 +7,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import type { WhatsAppMessageLog } from '@/types/whatsapp'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import DiscordLogsContainer from './discord-logs-container'
+import PendingMessagesSection from './pending-messages-section'
 
 export default function UnifiedLogsContainer() {
   const [activeTab, setActiveTab] = useState<'whatsapp' | 'discord'>('whatsapp')
@@ -68,11 +69,7 @@ function WhatsAppLogsView() {
   const [sourceFilter, setSourceFilter] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
 
-  useEffect(() => {
-    fetchLogs()
-  }, [])
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -94,7 +91,11 @@ function WhatsAppLogsView() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchLogs()
+  }, [fetchLogs])
 
   const filteredLogs = logs.filter((log) => {
     const matchesPod =
@@ -157,6 +158,9 @@ function WhatsAppLogsView() {
             A chronological record of every WhatsApp message sent.
           </p>
         </div>
+
+        {/* Pending Messages Section - shows stale messages that need sync */}
+        <PendingMessagesSection onSyncComplete={fetchLogs} />
 
         {/* Filters */}
         <div className="mb-6 rounded-xl border border-neutral-800 bg-neutral-950 p-5">

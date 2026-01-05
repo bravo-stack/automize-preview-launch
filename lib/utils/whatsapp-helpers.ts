@@ -99,3 +99,79 @@ export function getSimplifiedStatus(
       return 'pending'
   }
 }
+
+// ============================================================================
+// Status History & Tracking Utilities
+// ============================================================================
+
+/**
+ * Checks if a status is terminal (no further updates expected)
+ */
+export function isTerminalStatus(status: string | undefined): boolean {
+  if (!status) return false
+  const terminal = ['delivered', 'read', 'failed', 'undelivered']
+  return terminal.includes(status.toLowerCase())
+}
+
+/**
+ * Checks if a status is pending (may need sync/tracking)
+ */
+export function isPendingStatus(status: string | undefined): boolean {
+  if (!status) return true
+  const pending = ['queued', 'accepted', 'sending', 'sent']
+  return pending.includes(status.toLowerCase())
+}
+
+/**
+ * Determines if a status transition is valid (for idempotency checks)
+ * Prevents downgrade of status (e.g., delivered → sent)
+ */
+export function isValidStatusTransition(
+  currentStatus: string | undefined,
+  newStatus: string,
+): boolean {
+  const statusOrder: Record<string, number> = {
+    queued: 1,
+    accepted: 2,
+    sending: 3,
+    sent: 4,
+    delivered: 5,
+    read: 6,
+    failed: 0, // Failed can happen at any point
+    undelivered: 0, // Undelivered can happen at any point
+  }
+
+  const current = currentStatus?.toLowerCase() || ''
+  const next = newStatus.toLowerCase()
+
+  // Allow transitions to failed/undelivered from any state
+  if (next === 'failed' || next === 'undelivered') {
+    return true
+  }
+
+  // Allow if new status is higher in the order
+  const currentOrder = statusOrder[current] ?? 0
+  const nextOrder = statusOrder[next] ?? 0
+
+  return nextOrder >= currentOrder
+}
+
+/**
+ * Calculate age of a message in minutes
+ */
+export function getMessageAgeMinutes(sentAt: string | Date): number {
+  const sentDate = typeof sentAt === 'string' ? new Date(sentAt) : sentAt
+  const now = new Date()
+  return Math.floor((now.getTime() - sentDate.getTime()) / (1000 * 60))
+}
+
+/**
+ * Default threshold for considering a pending message "stale"
+ * Messages pending longer than this should be synced with Twilio
+ */
+export const STALE_MESSAGE_THRESHOLD_MINUTES = 30
+
+/**
+ * Default batch size for sync operations
+ */
+export const SYNC_BATCH_SIZE = 50
