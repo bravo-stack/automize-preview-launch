@@ -135,6 +135,7 @@ export async function sendWhatsAppMessage(
     return {
       success: false,
       error: errorMessage,
+      delivery_status: 'failed',
     }
   }
 }
@@ -268,7 +269,7 @@ export async function sendAndLogWhatsAppMessage(
     recipient_phone_number: cleanTo,
     source_feature: sourceFeature,
     message_content: message,
-    delivery_status: result.delivery_status,
+    delivery_status: result.delivery_status ?? 'failed', // Fallback to 'failed' if undefined
     twilio_message_sid: result.messageId || null,
     failure_reason: result.error || null,
   })
