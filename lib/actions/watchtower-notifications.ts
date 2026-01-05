@@ -192,34 +192,40 @@ export async function sendDiscordNotification(
 // ============================================================================
 
 /**
- * Format alert for WhatsApp message (plain text, no markdown)
+ * Format alert for WhatsApp message
+ * IMPORTANT: Twilio content variables do NOT support special characters like:
+ * - Asterisks (*) for bold formatting
+ * - Bullet points (•)
+ * - Emojis (in some cases)
+ * Keep the message plain text only.
  */
 function formatWhatsAppAlert(
   alert: WatchtowerAlert,
   rule: WatchtowerRule,
 ): string {
-  const severityEmoji: Record<Severity, string> = {
-    critical: '🚨',
-    warning: '⚠️',
-    info: 'ℹ️',
-    urgent: '🆘',
+  const severityLabel: Record<Severity, string> = {
+    critical: 'CRITICAL',
+    warning: 'WARNING',
+    info: 'INFO',
+    urgent: 'URGENT',
   }
 
-  const emoji = severityEmoji[alert.severity] || '📢'
+  const severity = severityLabel[alert.severity] || 'ALERT'
   const timestamp = new Date(alert.created_at).toLocaleString()
 
-  return `${emoji} *${rule.name}* [${alert.severity.toUpperCase()}]
+  // Plain text format - no asterisks, no bullets, no emojis
+  return `${rule.name} [${severity}]
 
-*Message:* ${alert.message}
+Message: ${alert.message}
 
-*Details:*
-• Current Value: ${alert.current_value || 'N/A'}
-• Previous Value: ${alert.previous_value || 'N/A'}
-• Field: ${rule.field_name}
-• Condition: ${rule.condition} ${rule.threshold_value || ''}
+Details:
+- Current Value: ${alert.current_value || 'N/A'}
+- Previous Value: ${alert.previous_value || 'N/A'}
+- Field: ${rule.field_name}
+- Condition: ${rule.condition} ${rule.threshold_value || ''}
 
-*Timestamp:* ${timestamp}
-*Alert ID:* ${alert.id.slice(0, 8)}...`
+Timestamp: ${timestamp}
+Alert ID: ${alert.id.slice(0, 8)}...`
 }
 
 /**
