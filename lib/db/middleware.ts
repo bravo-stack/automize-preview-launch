@@ -116,6 +116,20 @@ export async function updateSession(request: NextRequest) {
     url.pathname = '/login'
     return NextResponse.redirect(url)
   } else if (request.nextUrl.pathname.startsWith('/api')) {
+    // Exclude webhook routes that have their own authentication
+    const webhookRoutes = [
+      '/api/whatsapp/status-callback', // Twilio signature validation
+    ]
+
+    const isWebhookRoute = webhookRoutes.some((route) =>
+      request.nextUrl.pathname.startsWith(route),
+    )
+
+    // Webhooks handle their own auth (e.g., Twilio signature validation)
+    if (isWebhookRoute) {
+      return supabaseResponse
+    }
+
     const apiKey = request.headers.get('x-api-key')
 
     // If no key provided, block
