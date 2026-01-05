@@ -11,6 +11,12 @@ const EXEC_ONLY_ROUTES = [
   '/dashboard/whatsapp/logs',
 ]
 
+// Routes that require exec role OR Muhammad (pod id: 34)
+const EXEC_OR_MUHAMMAD_ROUTES = ['/dashboard/autometric/manage-accounts']
+
+// Muhammad's pod ID
+const MUHAMMAD_POD_ID = 34
+
 function isExecOnlyRoute(pathname: string): boolean {
   // Check if it's the main media-buyer page (not a sub-route like /media-buyer/[id]/whatsapp)
   if (pathname === '/dashboard/media-buyer') {
@@ -21,6 +27,10 @@ function isExecOnlyRoute(pathname: string): boolean {
   return EXEC_ONLY_ROUTES.some(
     (route) => route !== '/dashboard/media-buyer' && pathname.startsWith(route),
   )
+}
+
+function isExecOrMuhammadRoute(pathname: string): boolean {
+  return EXEC_OR_MUHAMMAD_ROUTES.some((route) => pathname.startsWith(route))
 }
 
 export async function updateSession(request: NextRequest) {
@@ -75,6 +85,31 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
+    }
+
+    // Check exec-or-muhammad routes (requires role === 'exec' OR pod id === 34)
+    if (isExecOrMuhammadRoute(request.nextUrl.pathname)) {
+      if (role === 'exec') {
+        // Exec users can access
+      } else if (role === 'pod') {
+        // Pod users need to be Muhammad (pod id: 34)
+        const { data: podData } = await supabase
+          .from('pod')
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+
+        if (podData?.id !== MUHAMMAD_POD_ID) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/dashboard'
+          return NextResponse.redirect(url)
+        }
+      } else {
+        // Other roles cannot access
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
     }
   } else if (request.nextUrl.pathname.startsWith('/dashboard')) {
     const url = request.nextUrl.clone()
