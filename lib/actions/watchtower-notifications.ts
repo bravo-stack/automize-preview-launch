@@ -193,11 +193,12 @@ export async function sendDiscordNotification(
 
 /**
  * Format alert for WhatsApp message
- * IMPORTANT: Twilio content variables do NOT support special characters like:
+ * CRITICAL: Twilio content variables do NOT support:
+ * - Newline characters (\n)
  * - Asterisks (*) for bold formatting
  * - Bullet points (•)
- * - Emojis (in some cases)
- * Keep the message plain text only.
+ * - Emojis
+ * Must be a single-line plain text string.
  */
 function formatWhatsAppAlert(
   alert: WatchtowerAlert,
@@ -211,21 +212,13 @@ function formatWhatsAppAlert(
   }
 
   const severity = severityLabel[alert.severity] || 'ALERT'
-  const timestamp = new Date(alert.created_at).toLocaleString()
 
-  // Plain text format - no asterisks, no bullets, no emojis
-  return `${rule.name} [${severity}]
+  // Single-line format - NO newlines, NO special characters
+  // Format: [SEVERITY] Rule Name - Message (Current: X, Field: Y)
+  const currentValue = alert.current_value || 'N/A'
+  const fieldName = rule.field_name
 
-Message: ${alert.message}
-
-Details:
-- Current Value: ${alert.current_value || 'N/A'}
-- Previous Value: ${alert.previous_value || 'N/A'}
-- Field: ${rule.field_name}
-- Condition: ${rule.condition} ${rule.threshold_value || ''}
-
-Timestamp: ${timestamp}
-Alert ID: ${alert.id.slice(0, 8)}...`
+  return `[${severity}] ${rule.name} - ${alert.message} (Current: ${currentValue}, Field: ${fieldName})`
 }
 
 /**
