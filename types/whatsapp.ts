@@ -150,10 +150,7 @@ export interface WhatsAppMessageLogInput {
 // Status Tracking & History Types
 // ============================================================================
 
-/**
- * Twilio WhatsApp-specific status callback payload
- * Reference: https://www.twilio.com/docs/messaging/api/message-resource#message-status-values
- */
+// Twilio WhatsApp-specific status callback payload
 export interface TwilioWhatsAppStatusPayload {
   MessageSid: string
   MessageStatus: string

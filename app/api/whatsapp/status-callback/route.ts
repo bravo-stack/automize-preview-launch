@@ -10,13 +10,11 @@ import twilio from 'twilio'
 // ============================================================================
 // WhatsApp Status Callback Webhook
 // Receives delivery status updates from Twilio for WhatsApp messages
-// Reference: https://www.twilio.com/docs/messaging/guides/track-outbound-message-status
 // ============================================================================
 
 /**
  * Validate Twilio webhook signature
  * Ensures the request is actually from Twilio
- * Reference: https://www.twilio.com/docs/usage/webhooks/webhooks-security
  */
 function validateTwilioSignature(
   request: NextRequest,
