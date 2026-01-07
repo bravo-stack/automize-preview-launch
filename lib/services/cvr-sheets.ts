@@ -493,6 +493,14 @@ export async function saveCVRMetrics(
         ? (results[1] as Awaited<ReturnType<typeof saveCVRToGoogleSheets>>)
         : null
 
+    // Save to client_cvr_logs (Parallel, non-blocking for failure but logged)
+    try {
+      await saveCVRToLogs(metrics)
+    } catch (logError) {
+      console.error('Failed to save to client_cvr_logs:', logError)
+      // We don't fail the whole operation if this fails, as it's a secondary log
+    }
+
     // Database save is critical, Sheets is optional
     if (!dbResult.success) {
       return {
@@ -516,5 +524,47 @@ export async function saveCVRMetrics(
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     }
+  }
+}
+
+/**
+ * Saves CVR metrics to client_cvr_logs table
+ */
+export async function saveCVRToLogs(
+  metrics: CVRMetricsComparison[],
+): Promise<void> {
+  const db = createAdminClient()
+  
+  // Get all clients to map account names to client IDs
+  const { data: clients } = await db
+    .from('clients')
+    .select('id, store_id, brand')
+  
+  const clientMap = new Map<string, { id: number, storeId: string | null }>()
+  
+  if (clients) {
+    clients.forEach(client => {
+      if (client.store_id) clientMap.set(client.store_id.toLowerCase(), { id: client.id, storeId: client.store_id })
+      if (client.brand) clientMap.set(client.brand.toLowerCase(), { id: client.id, storeId: client.store_id })
+    })
+  }
+
+  const logs = metrics.map(metric => {
+    const key = metric.accountName.toLowerCase()
+    const clientInfo = clientMap.get(key)
+    
+    return {
+      client_id: clientInfo?.id || null,
+      store_id: clientInfo?.storeId || metric.accountName, // Fallback to accountName if not found
+      cvr_value: metric.overallCVR,
+      status: 'active',
+      created_at: new Date().toISOString()
+    }
+  })
+
+  const { error } = await db.from('client_cvr_logs').insert(logs)
+
+  if (error) {
+    throw new Error(`Error inserting into client_cvr_logs: ${error.message}`)
   }
 }

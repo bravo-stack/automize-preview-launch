@@ -55,7 +55,7 @@ const tabs: TabItem[] = [
     label: 'CVR Metrics',
     icon: TrendingUp,
     description: 'Conversion rate metrics',
-    badge: 'Coming Soon',
+    // badge: 'Coming Soon',
   },
 ]
 

@@ -16,10 +16,14 @@ import {
   Globe,
   Info,
   Server,
-  TrendingUp,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 
+import {
+  AggregateSummary,
+  CVRMetricsTable,
+  PeriodSelector,
+} from '@/components/cvr-hub'
 import {
   ApiDataView,
   FacebookView,
@@ -29,37 +33,68 @@ import {
   StatCard,
   TabNavigation,
 } from '@/components/data-hub'
+import type {
+  CVRHubResponse,
+  ComparisonMode,
+  PeriodPreset,
+} from '@/types/cvr-hub'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { HubInfoTrig } from './hub-info-trig'
 
 export default function HubPageContainer() {
   const [activeTab, setActiveTab] = useState<HubCategory>('overview')
-  const [overview, setOverview] = useState<DataHubOverview | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [cvrPeriod, setCvrPeriod] = useState<{
+    preset: PeriodPreset
+    comparisonMode: ComparisonMode
+  }>({ preset: 'last_7_days', comparisonMode: 'previous_period' })
 
-  const fetchOverview = useCallback(async () => {
-    setIsLoading(true)
-    try {
+  // Overview Query
+  const { data: overviewData, isLoading: isOverviewLoading } = useQuery({
+    queryKey: ['hub-overview'],
+    queryFn: async () => {
       const res = await fetch('/api/data-hub/overview')
       const json = await res.json()
-      if (json.success) {
-        setOverview(json.data)
-      }
-    } catch (err) {
-      console.error('Error fetching overview:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+      if (!json.success) throw new Error(json.error || 'Failed to fetch overview')
+      return json.data as DataHubOverview
+    },
+    enabled: activeTab === 'overview',
+  })
 
-  useEffect(() => {
-    if (activeTab === 'overview') {
-      fetchOverview()
-    }
-  }, [activeTab, fetchOverview])
+  // CVR Query
+  const { data: cvrResponse, isLoading: isCvrLoading } = useQuery({
+    queryKey: ['cvr-metrics', cvrPeriod],
+    queryFn: async () => {
+      const res = await fetch('/api/cvr-hub/metrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          period: cvrPeriod,
+        }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Failed to fetch CVR metrics')
+      return json as CVRHubResponse
+    },
+    enabled: activeTab === 'cvr',
+    placeholderData: keepPreviousData,
+  })
+
+  const cvrMetrics = cvrResponse?.data?.metrics || []
+  const cvrAggregates = cvrResponse?.data?.aggregates || null
+  const cvrDateRange = cvrResponse?.data?.dateRanges?.current || null
 
   const handleTabChange = (tab: HubCategory) => {
     setActiveTab(tab)
   }
+
+  const handlePeriodChange = (
+    preset: PeriodPreset,
+    comparisonMode: ComparisonMode,
+  ) => {
+    setCvrPeriod({ preset, comparisonMode })
+  }
+
+  const overview = overviewData
 
   return (
     <main className="min-h-screen px-6 pb-24 pt-10 lg:px-12">
@@ -86,7 +121,7 @@ export default function HubPageContainer() {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
-            {isLoading ? (
+            {isOverviewLoading ? (
               <div className="flex min-h-[400px] items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                   <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-white/60" />
@@ -383,34 +418,41 @@ export default function HubPageContainer() {
         {/* Forms Tab */}
         {activeTab === 'forms' && <FormsView />}
 
-        {/* CVR Tab - Coming Soon */}
+        {/* CVR Tab */}
         {activeTab === 'cvr' && (
-          <div className="space-y-8">
-            <Alert className="border-blue-500/30 bg-blue-500/10">
-              <Info className="h-4 w-4 text-blue-400" />
-              <div className="ml-3">
-                <h3 className="font-medium text-blue-400">Coming Soon</h3>
-                <p className="mt-1 text-sm text-blue-400/80">
-                  CVR (Conversion Rate) metrics feature is under development.
-                  Real CVR data will be stored in the database soon, enabling
-                  comprehensive conversion rate analysis and historical
-                  tracking.
-                </p>
-              </div>
-            </Alert>
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <PeriodSelector
+                onPeriodChange={handlePeriodChange}
+                isLoading={isCvrLoading && !cvrMetrics.length}
+              />
 
-            <div className="flex min-h-[400px] items-center justify-center rounded-lg border border-white/10 bg-white/5">
-              <div className="text-center">
-                <TrendingUp className="mx-auto h-12 w-12 text-white/20" />
-                <h3 className="mt-4 text-lg font-medium text-white/70">
-                  CVR Metrics Coming Soon
-                </h3>
-                <p className="mt-2 text-sm text-white/50">
-                  Conversion rate tracking and analysis will be available once
-                  data storage is implemented.
-                </p>
-              </div>
+              {cvrMetrics.length > 0 && cvrAggregates && cvrDateRange && (
+                <div />
+              )}
             </div>
+
+            {isCvrLoading && !cvrMetrics.length ? (
+              <div className="flex min-h-[400px] items-center justify-center rounded-lg border border-white/10 bg-white/5">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-white/60" />
+                  <p className="text-white/60">Loading CVR metrics...</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {cvrAggregates && (
+                  <AggregateSummary
+                    aggregates={cvrAggregates}
+                    showComparison={cvrPeriod.comparisonMode !== 'none'}
+                  />
+                )}
+                <CVRMetricsTable
+                  metrics={cvrMetrics}
+                  showComparison={cvrPeriod.comparisonMode !== 'none'}
+                />
+              </>
+            )}
           </div>
         )}
       </div>

@@ -71,7 +71,7 @@ export default function CVRMetricsTable({
     return (
       <div className="flex min-h-[400px] items-center justify-center rounded-lg border border-white/10 bg-white/5 p-8">
         <p className="text-white/60">
-          No data available for the selected period
+          No CVR logs found for the selected period
         </p>
       </div>
     )
@@ -84,132 +84,59 @@ export default function CVRMetricsTable({
           <thead className="border-b border-white/10 bg-white/5">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-white/90">
-                Account
+                Brand / Store
               </th>
               <th className="px-4 py-3 text-left font-medium text-white/90">
                 Pod
               </th>
-              <th className="px-4 py-3 text-right font-medium text-white/90">
-                Impressions
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-white/90">
-                Clicks
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-white/90">
-                Purchases
+              <th className="px-4 py-3 text-left font-medium text-white/90">
+                Log Date
               </th>
               <th className="px-4 py-3 text-right font-medium text-white/90">
                 CVR %
               </th>
               {showComparison && (
                 <th className="px-4 py-3 text-right font-medium text-white/90">
-                  Change
+                  Previous CVR %
                 </th>
               )}
-              <th className="px-4 py-3 text-right font-medium text-white/90">
-                ATC Rate %
-              </th>
               {showComparison && (
                 <th className="px-4 py-3 text-right font-medium text-white/90">
                   Change
                 </th>
               )}
-              <th className="px-4 py-3 text-right font-medium text-white/90">
-                IC Rate %
-              </th>
-              {showComparison && (
-                <th className="px-4 py-3 text-right font-medium text-white/90">
-                  Change
-                </th>
-              )}
-              <th className="px-4 py-3 text-right font-medium text-white/90">
-                ROAS
-              </th>
-              {showComparison && (
-                <th className="px-4 py-3 text-right font-medium text-white/90">
-                  Change
-                </th>
-              )}
-              <th className="px-4 py-3 text-right font-medium text-white/90">
-                Ad Spend
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-white/90">
-                Revenue
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {paginatedMetrics.map((metric, index) => (
               <tr
-                key={`${metric.accountName}-${index}`}
+                key={`${metric.brand}-${index}`}
                 className="transition-colors hover:bg-white/5"
               >
                 <td className="px-4 py-3 text-white/90">
-                  {metric.accountName}
-                  {metric.isMonitored && (
-                    <span className="ml-2 rounded bg-green-500/20 px-1.5 py-0.5 text-xs text-green-400">
-                      Monitored
-                    </span>
-                  )}
+                  {metric.brand}
                 </td>
                 <td className="px-4 py-3 text-white/70">
                   {metric.pod || 'N/A'}
                 </td>
-                <td className="px-4 py-3 text-right text-white/90">
-                  {metric.impressions.toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-right text-white/90">
-                  {Math.round(metric.clicks).toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-right text-white/90">
-                  {metric.purchases.toLocaleString()}
+                <td className="px-4 py-3 text-white/70">
+                  {new Date(metric.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-4 py-3 text-right font-medium text-white/90">
-                  {metric.overallCVR.toFixed(4)}%
+                  {metric.cvrValue !== null ? `${metric.cvrValue.toFixed(4)}%` : 'N/A'}
                 </td>
                 {showComparison && (
-                  <td className="px-4 py-3 text-right">
-                    <MetricChange value={metric.changes.overallCVR} />
+                  <td className="px-4 py-3 text-right text-white/70">
+                    {metric.previous?.cvrValue !== null && metric.previous?.cvrValue !== undefined
+                      ? `${metric.previous.cvrValue.toFixed(4)}%`
+                      : 'N/A'}
                   </td>
                 )}
-                <td className="px-4 py-3 text-right text-white/90">
-                  {metric.atcRate.toFixed(4)}%
-                </td>
                 {showComparison && (
                   <td className="px-4 py-3 text-right">
-                    <MetricChange value={metric.changes.atcRate} />
+                    <MetricChange value={metric.change} />
                   </td>
                 )}
-                <td className="px-4 py-3 text-right text-white/90">
-                  {metric.icRate.toFixed(4)}%
-                </td>
-                {showComparison && (
-                  <td className="px-4 py-3 text-right">
-                    <MetricChange value={metric.changes.icRate} />
-                  </td>
-                )}
-                <td className="px-4 py-3 text-right font-medium text-white/90">
-                  {metric.roas.toFixed(2)}
-                </td>
-                {showComparison && (
-                  <td className="px-4 py-3 text-right">
-                    <MetricChange value={metric.changes.roas} />
-                  </td>
-                )}
-                <td className="px-4 py-3 text-right text-white/90">
-                  $
-                  {metric.adSpend.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </td>
-                <td className="px-4 py-3 text-right text-white/90">
-                  $
-                  {metric.revenue.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </td>
               </tr>
             ))}
           </tbody>
@@ -222,7 +149,7 @@ export default function CVRMetricsTable({
           <p className="text-sm text-white/60">
             Showing {(currentPage - 1) * pageSize + 1} -{' '}
             {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{' '}
-            accounts
+            logs
           </p>
 
           <div className="flex items-center gap-2">

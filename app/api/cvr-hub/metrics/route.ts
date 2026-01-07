@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { period, clientId, pod, accountName, isMonitored } = body
+    const { period, clientId, pod, brand } = body
 
     if (!period || !period.preset || !period.comparisonMode) {
       return NextResponse.json<CVRHubResponse>(
@@ -27,8 +27,7 @@ export async function POST(request: NextRequest) {
       period,
       clientId,
       pod,
-      accountName,
-      isMonitored,
+      brand,
     })
 
     const aggregates = calculateCVRAggregates(metrics)

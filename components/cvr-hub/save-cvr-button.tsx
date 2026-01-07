@@ -19,7 +19,7 @@ interface SaveCVRButtonProps {
 }
 
 // Feature is currently disabled - will be enabled in future release
-const FEATURE_ENABLED = false
+const FEATURE_ENABLED = true
 
 export default function SaveCVRButton({
   metrics,
