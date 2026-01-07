@@ -17,7 +17,7 @@ import {
   Info,
   Server,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import {
   AggregateSummary,
@@ -87,12 +87,12 @@ export default function HubPageContainer() {
     setActiveTab(tab)
   }
 
-  const handlePeriodChange = (
+  const handlePeriodChange = useCallback((
     preset: PeriodPreset,
     comparisonMode: ComparisonMode,
   ) => {
     setCvrPeriod({ preset, comparisonMode })
-  }
+  }, [])
 
   const overview = overviewData
 
