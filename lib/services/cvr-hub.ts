@@ -310,3 +310,43 @@ export function calculateCVRAggregates(metrics: CVRMetricsComparison[]): CVRAggr
     totalLogs: metrics.length,
   }
 }
+
+/**
+ * Gets list of unique pods from clients table
+ */
+export async function getUniquePods(): Promise<string[]> {
+  const db = createAdminClient()
+
+  const { data, error } = await db
+    .from('clients')
+    .select('pod')
+    .not('pod', 'is', null)
+    .order('pod')
+
+  if (error) return []
+
+  const uniquePods = Array.from(
+    new Set((data || []).map((d) => d.pod).filter(Boolean)),
+  )
+  return uniquePods as string[]
+}
+
+/**
+ * Gets list of unique brands (account names) from clients table
+ */
+export async function getUniqueAccountNames(): Promise<string[]> {
+  const db = createAdminClient()
+
+  const { data, error } = await db
+    .from('clients')
+    .select('brand')
+    .not('brand', 'is', null)
+    .order('brand')
+
+  if (error) return []
+
+  const uniqueBrands = Array.from(
+    new Set((data || []).map((d) => d.brand).filter(Boolean)),
+  )
+  return uniqueBrands as string[]
+}

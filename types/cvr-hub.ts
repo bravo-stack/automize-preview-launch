@@ -74,6 +74,17 @@ export interface CVRAggregates {
 }
 
 // ============================================================================
+// Google Sheets Export
+// ============================================================================
+
+export interface CVRSheetConfig {
+  spreadsheetId: string
+  sheetName: string
+  headerRow: number
+  dataStartRow: number
+}
+
+// ============================================================================
 // API Response Types
 // ============================================================================
 
@@ -94,7 +105,10 @@ export interface CVRHubResponse {
 export interface SaveCVRResponse {
   success: boolean
   data?: {
-    savedCount: number
+    savedToDatabase: boolean
+    savedToSheets: boolean
+    recordCount: number
+    sheetUrl?: string
   }
   error?: string
 }
