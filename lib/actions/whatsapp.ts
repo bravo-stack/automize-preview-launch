@@ -25,13 +25,13 @@ import twilio from 'twilio'
 // ============================================================================
 
 export interface SendWhatsAppOptions {
-  /** Include status callback URL for delivery tracking */
+  // Include status callback URL for delivery tracking
   trackDelivery?: boolean
-  /** Skip validation (use with caution) */
+  // Skip validation (use with caution)
   skipValidation?: boolean
-  /** Use a pre-approved template instead of free-form message */
+  // Use a pre-approved template instead of free-form message
   useTemplate?: boolean
-  /** Content SID for the template (required if useTemplate is true) */
+  // Content SID for the template (required if useTemplate is true)
   contentSid?: string
 }
 
