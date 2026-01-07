@@ -203,6 +203,7 @@ export async function sendDiscordNotification(
 function formatWhatsAppAlert(
   alert: WatchtowerAlert,
   rule: WatchtowerRule,
+  clientName: string = 'Unknown Client',
 ): string {
   const severityLabel: Record<Severity, string> = {
     critical: 'CRITICAL',
@@ -212,13 +213,27 @@ function formatWhatsAppAlert(
   }
 
   const severity = severityLabel[alert.severity] || 'ALERT'
-
-  // Single-line format - NO newlines, NO special characters
-  // Format: [SEVERITY] Rule Name - Message (Current: X, Field: Y)
   const currentValue = alert.current_value || 'N/A'
-  const fieldName = rule.field_name
+  
+  // Construct expected value string (e.g., "> 50", "= active")
+  const expectedValue = rule.threshold_value 
+    ? `${rule.condition} ${rule.threshold_value}`
+    : rule.condition
 
-  return `[${severity}] ${rule.name} - ${alert.message} (Current: ${currentValue}, Field: ${fieldName})`
+  // Return JSON string for Twilio template variables
+  // Template:
+  // {{1}}: Severity
+  // {{2}}: Alert Summary
+  // {{3}}: Client Name
+  // {{4}}: Current Value
+  // {{5}}: Expected Value
+  return JSON.stringify({
+    '1': severity,
+    '2': `${rule.name} - ${alert.message}`,
+    '3': clientName,
+    '4': currentValue,
+    '5': expectedValue,
+  })
 }
 
 /**
@@ -274,7 +289,6 @@ export async function sendWhatsAppNotification(
   alert: WatchtowerAlert,
   rule: WatchtowerRule,
 ): Promise<boolean> {
-  const message = formatWhatsAppAlert(alert, rule)
   const numbersToNotify: { name: string; whatsapp_number: string }[] = []
   const db = createAdminClient()
 
@@ -321,6 +335,9 @@ export async function sendWhatsAppNotification(
   // Send to all unique WhatsApp numbers using approved template
   const results = await Promise.allSettled(
     uniqueNumbers.map(async (recipient) => {
+      // Generate message with specific client name for this recipient
+      const message = formatWhatsAppAlert(alert, rule, recipient.name)
+      
       const result = await sendAndLogWhatsAppMessage(
         recipient.whatsapp_number,
         message,

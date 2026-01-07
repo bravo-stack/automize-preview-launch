@@ -104,12 +104,28 @@ export async function sendWhatsAppMessage(
         : {}),
     }
 
+    let contentVariables = JSON.stringify({ '1': message })
+    if (options.useTemplate && options.contentSid) {
+      try {
+        const parsed = JSON.parse(message)
+        if (
+          typeof parsed === 'object' &&
+          parsed !== null &&
+          !Array.isArray(parsed)
+        ) {
+          contentVariables = message
+        }
+      } catch (e) {
+        // Not a JSON object, use default wrapping
+      }
+    }
+
     const messageOptions =
       options.useTemplate && options.contentSid
         ? {
             ...baseOptions,
             contentSid: options.contentSid,
-            contentVariables: JSON.stringify({ '1': message }),
+            contentVariables,
           }
         : {
             ...baseOptions,
