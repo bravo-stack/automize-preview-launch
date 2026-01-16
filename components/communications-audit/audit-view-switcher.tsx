@@ -2,7 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CommunicationsAuditData } from '@/types/communications-audit'
-import { LayoutGrid, Table2 } from 'lucide-react'
+import { List, Table2 } from 'lucide-react'
 import { memo, useState } from 'react'
 import AuditSpreadsheet from './audit-spreadsheet'
 import ClientQueueView from './client-queue-view'
@@ -42,31 +42,27 @@ function AuditViewSwitcher({
         <TabsList className="h-12 w-full bg-zinc-900/50 p-1 sm:w-auto">
           <TabsTrigger
             value="queue"
-            className="flex-1 gap-2 px-4 py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 sm:flex-none"
+            className="flex-1 gap-2 px-4 py-2.5 data-[state=active]:bg-zinc-700 sm:flex-none"
           >
-            <LayoutGrid className="h-4 w-4" />
-            <span className="hidden sm:inline">Response Queue</span>
-            <span className="sm:hidden">Queue</span>
+            <List className="h-4 w-4" />
+            <span className="hidden sm:inline">Client List</span>
+            <span className="sm:hidden">List</span>
           </TabsTrigger>
           <TabsTrigger
             value="spreadsheet"
-            className="flex-1 gap-2 px-4 py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-zinc-600 data-[state=active]:to-zinc-500 sm:flex-none"
+            className="flex-1 gap-2 px-4 py-2.5 data-[state=active]:bg-zinc-700 sm:flex-none"
           >
             <Table2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Spreadsheet View</span>
+            <span className="hidden sm:inline">Spreadsheet</span>
             <span className="sm:hidden">Sheet</span>
           </TabsTrigger>
         </TabsList>
 
         {activeView === 'queue' && (
-          <p className="text-sm text-zinc-500">
-            Clients grouped by response priority and time slots
-          </p>
+          <p className="text-sm text-zinc-500">Clients awaiting response</p>
         )}
         {activeView === 'spreadsheet' && (
-          <p className="text-sm text-zinc-500">
-            Full audit data in spreadsheet format
-          </p>
+          <p className="text-sm text-zinc-500">Full audit data</p>
         )}
       </div>
 
