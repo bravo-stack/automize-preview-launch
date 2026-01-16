@@ -1,5 +1,7 @@
 'use client'
 
+import UpdateIxmValue from '@/app/dashboard/communications-audit/update-ixm-value'
+import RevalidateButton from '@/components/revalidate-button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { CommunicationsAuditData } from '@/types/communications-audit'
 import { List, Table2 } from 'lucide-react'
@@ -62,9 +64,24 @@ function AuditViewSwitcher({
           <p className="text-sm text-zinc-500">Clients awaiting response</p>
         )}
         {activeView === 'spreadsheet' && (
-          <p className="text-sm text-zinc-500">Full audit data</p>
+          <div className="flex w-fit items-center gap-4">
+            <p className="text-sm text-zinc-500">Full audit data</p>
+            <RevalidateButton />
+          </div>
         )}
       </div>
+
+      {activeView === 'spreadsheet' && (
+        <div className="mb-6 space-y-4">
+          <UpdateIxmValue
+            didnt_reach_out_hours={ixmDidntReachOutHours}
+            client_silent_days={clientSilentDays}
+            high_priority_days={highPriorityDays}
+            high_priority_color={highPriorityColor}
+            role={userRole}
+          />
+        </div>
+      )}
 
       <TabsContent value="queue" className="mt-0">
         <ClientQueueView

@@ -1,5 +1,4 @@
 import AuditViewSwitcher from '@/components/communications-audit/audit-view-switcher'
-import RevalidateButton from '@/components/revalidate-button'
 import { createAdminClient } from '@/lib/db/admin'
 import { createClient } from '@/lib/db/server'
 import type {
@@ -9,8 +8,7 @@ import type {
 } from '@/types/communications-audit'
 import { unstable_noStore } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { Fragment, Suspense } from 'react'
-import UpdateIxmValue from './update-ixm-value'
+import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -213,22 +211,6 @@ export default async function CommunicationsAudit({ searchParams }) {
               Monitor client communication status across all pods
             </p>
           </div>
-
-          {uniqueDates?.length > 0 &&
-          uniquePods?.length > 0 &&
-          initialReports?.length > 0 ? (
-            <Fragment>
-              <RevalidateButton />
-
-              <UpdateIxmValue
-                didnt_reach_out_hours={timeFrameDidntReactOutHours}
-                client_silent_days={timeFrameClientSilentDays}
-                high_priority_days={timeFrameHighPriorityDays}
-                high_priority_color={timeFrameHighPriorityColor}
-                role={role}
-              />
-            </Fragment>
-          ) : null}
 
           <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent"></div>
         </header>
