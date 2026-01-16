@@ -1,4 +1,4 @@
-import AuditSpreadsheet from '@/components/communications-audit/audit-spreadsheet'
+import AuditViewSwitcher from '@/components/communications-audit/audit-view-switcher'
 import RevalidateButton from '@/components/revalidate-button'
 import { createAdminClient } from '@/lib/db/admin'
 import { createClient } from '@/lib/db/server'
@@ -246,12 +246,14 @@ export default async function CommunicationsAudit({ searchParams }) {
           {uniqueDates?.length > 0 &&
           uniquePods?.length > 0 &&
           initialReports?.length > 0 ? (
-            <AuditSpreadsheet
-              ixm_didnt_reach_out_hours={timeFrameDidntReactOutHours}
-              client_silent_days={timeFrameClientSilentDays}
-              high_priority_days={timeFrameHighPriorityDays}
-              high_priority_color={timeFrameHighPriorityColor}
+            <AuditViewSwitcher
               initialData={auditData}
+              ixmDidntReachOutHours={timeFrameDidntReactOutHours}
+              clientSilentDays={timeFrameClientSilentDays}
+              highPriorityDays={timeFrameHighPriorityDays}
+              highPriorityColor={timeFrameHighPriorityColor}
+              userRole={role}
+              defaultView={role === 'exec' ? 'spreadsheet' : 'queue'}
             />
           ) : (
             <div className="flex min-h-[400px] items-center justify-center">
