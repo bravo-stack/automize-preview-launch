@@ -28,12 +28,49 @@ function AuditViewSwitcher({
   userRole,
   defaultView = 'queue',
 }: AuditViewSwitcherProps) {
-  // For pod users, default to queue view. For exec, default to spreadsheet
-  const initialView = userRole === 'exec' ? 'spreadsheet' : defaultView
+  // Only pod users can access the client list tab
+  // Easy to extend: add other roles to this check (e.g., userRole === 'pod' || userRole === 'exec')
+  const canAccessClientList = userRole === 'pod'
+
+  // For users with client list access, default to queue view. Otherwise, spreadsheet only
+  const initialView = canAccessClientList ? defaultView : 'spreadsheet'
   const [activeView, setActiveView] = useState<'queue' | 'spreadsheet'>(
     initialView,
   )
 
+  // If user doesn't have client list access, render spreadsheet-only view (no tabs)
+  if (!canAccessClientList) {
+    return (
+      <div className="w-full">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex w-fit items-center gap-4">
+            <p className="text-sm text-zinc-500">Full audit data</p>
+            <RevalidateButton />
+          </div>
+        </div>
+
+        <div className="mb-6 space-y-4">
+          <UpdateIxmValue
+            didnt_reach_out_hours={ixmDidntReachOutHours}
+            client_silent_days={clientSilentDays}
+            high_priority_days={highPriorityDays}
+            high_priority_color={highPriorityColor}
+            role={userRole}
+          />
+        </div>
+
+        <AuditSpreadsheet
+          initialData={initialData}
+          ixm_didnt_reach_out_hours={ixmDidntReachOutHours}
+          client_silent_days={clientSilentDays}
+          high_priority_days={highPriorityDays}
+          high_priority_color={highPriorityColor}
+        />
+      </div>
+    )
+  }
+
+  // Pod users (or other allowed roles) get the full tabbed interface
   return (
     <Tabs
       value={activeView}
