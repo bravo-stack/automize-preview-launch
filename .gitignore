@@ -40,3 +40,4 @@ create
 
 !.env.example
 .github
+supabase_table_schemas.json
