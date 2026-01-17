@@ -60,54 +60,6 @@ export default async function CommunicationsAudit({ searchParams }) {
   let initialReports: CommunicationReport[] = []
   let previousDayReports: CommunicationReport[] = []
 
-  // if (latestDate) {
-  //   let reportsQuery = db
-  //     .from('communication_reports')
-  //     .select('*')
-  //     .eq('report_date', latestDate)
-  //     .order('channel_name')
-
-  //   // Filter reports by pod for non-exec users
-  //   // Include reports where: (guild_id IN pod.servers) OR (pod = pod.name)
-  //   if ((role !== 'exec' && pod?.servers) || (role !== 'exec' && pod?.name)) {
-  //     const guildIdsFilter = (pod?.servers ?? [])
-  //       .map((id: string) => `guild_id.eq.${id}`)
-  //       .join(',')
-  //     const podNameFilter = `pod.eq.${pod.name?.trim()}`
-  //     reportsQuery = reportsQuery.or(`${guildIdsFilter},${podNameFilter}`)
-  //   }
-
-  //   const { data: reports } = await reportsQuery
-
-  //   initialReports = (reports as CommunicationReport[]) || []
-
-  //   // Fetch previous day's data for high-priority detection
-  //   const currentDate = new Date(latestDate)
-  //   currentDate.setDate(currentDate.getDate() - 1)
-  //   const previousDate = currentDate.toISOString().split('T')[0]
-
-  //   let prevReportsQuery = db
-  //     .from('communication_reports')
-  //     .select('*')
-  //     .eq('report_date', previousDate)
-  //     .order('channel_name')
-
-  //   // Filter previous day reports by pod for non-exec users
-  //   // Include reports where: (guild_id IN pod.servers) OR (pod = pod.name)
-  //   if ((role !== 'exec' && pod?.servers) || (role !== 'exec' && pod?.name)) {
-  //     const guildIdsFilter = (pod?.servers ?? [])
-  //       .map((id: string) => `guild_id.eq.${id}`)
-  //       .join(',')
-  //     const podNameFilter = `pod.eq.${pod.name}`
-  //     prevReportsQuery = prevReportsQuery.or(
-  //       `${guildIdsFilter},${podNameFilter}`,
-  //     )
-  //   }
-
-  //   const { data: prevReports } = await prevReportsQuery
-  //   previousDayReports = (prevReports as CommunicationReport[]) || []
-  // }
-
   if (latestDate) {
     // Muhammad (pod id: 34) with view=full gets exec-level unfiltered access
     const isMuhammadFullView = pod?.id === 34 && view === 'full'
@@ -236,6 +188,7 @@ export default async function CommunicationsAudit({ searchParams }) {
               highPriorityColor={timeFrameHighPriorityColor}
               userRole={role}
               defaultView={role === 'exec' ? 'spreadsheet' : 'queue'}
+              isMohammedFullView={pod?.id === 34 && view === 'full'}
             />
           ) : (
             <div className="flex min-h-[400px] items-center justify-center">

@@ -17,6 +17,7 @@ interface AuditViewSwitcherProps {
   highPriorityColor: string
   userRole: string
   defaultView?: 'queue' | 'spreadsheet'
+  isMohammedFullView: boolean
 }
 
 function AuditViewSwitcher({
@@ -27,10 +28,12 @@ function AuditViewSwitcher({
   highPriorityColor,
   userRole,
   defaultView = 'queue',
+  isMohammedFullView,
 }: AuditViewSwitcherProps) {
   // Only pod users can access the client list tab
   // Easy to extend: add other roles to this check (e.g., userRole === 'pod' || userRole === 'exec')
-  const canAccessClientList = userRole === 'pod'
+  const canAccessClientList =
+    userRole === 'pod' || (userRole === 'pod' && !isMohammedFullView)
 
   // For users with client list access, default to queue view. Otherwise, spreadsheet only
   const initialView = canAccessClientList ? defaultView : 'spreadsheet'
