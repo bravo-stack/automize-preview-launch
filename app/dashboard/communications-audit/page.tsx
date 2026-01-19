@@ -188,7 +188,7 @@ export default async function CommunicationsAudit({ searchParams }) {
               highPriorityColor={timeFrameHighPriorityColor}
               userRole={role}
               defaultView={role === 'exec' ? 'spreadsheet' : 'queue'}
-              isMohammedFullView={pod?.id === 34 && view === 'full'}
+              isMohammedFullView={pod?.id === 34 && `${view}` === 'full'}
             />
           ) : (
             <div className="flex min-h-[400px] items-center justify-center">
