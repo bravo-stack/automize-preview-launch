@@ -335,7 +335,7 @@ export const exec: NavSection[] = [
         url: 'communications-audit',
         svg: icons.communicationsAudit,
       },
-      { text: 'WhatsApp', url: 'media-buyer', svg: icons.whatsApp },
+      { text: 'WhatsApp', url: 'media-buyer/whatsapp', svg: icons.whatsApp },
       {
         text: 'Message Logs',
         url: 'whatsapp/logs',

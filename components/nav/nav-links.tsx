@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import type { NavItem, NavSection } from '@/content/nav'
+import { useFullPath } from '@/hooks/use-full-path'
 import { signOutUser } from '@/lib/actions'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -23,6 +24,7 @@ export default function NavLinks({
   expanded = true,
 }: NavLinksProps) {
   const path = usePathname()
+  const fullPath = useFullPath()
 
   // When collapsed, we force all items to be 'open' so icons show.
   // When expanded, we let the Accordion manage its own state.
@@ -75,7 +77,7 @@ export default function NavLinks({
                   item={item}
                   prefix={prefix}
                   expanded={expanded}
-                  path={path}
+                  path={fullPath}
                 />
               ))}
             </ul>
@@ -101,11 +103,33 @@ function NavLinkItem({
   const isExternal = url.startsWith('http')
   const fullUrl = isExternal ? url : `/${prefix}/${url}`
 
+  // Split the nav item's `url` into path + optional query (e.g. "foo/bar?view=full").
+  const [itemPathPart, itemQueryPart] = url.split('?')
+  const itemHasQuery = Boolean(itemQueryPart)
+  const itemBasePath = itemPathPart
+    ? `/${prefix}/${itemPathPart}`
+    : `/${prefix}`
+  const pathHasSearchParams = path.includes('?')
+
+  /* Matching rules (strict):
+   - External links never match here.
+   - Index item (url === '') matches only the dashboard root.
+   - If the nav item includes query params, require those to appear in the current path.
+     (we match by starting with the exact `path?query` string so additional params are allowed)
+   - If the nav item has NO query params, do NOT match when the current path has query params.
+     (prevents `/foo` matching `/foo?bar=1`)
+   - Subpaths (e.g. `/foo/bar`) still match via startsWith.
+  */
   const isActive = isExternal
     ? false
     : url === ''
       ? path === `/${prefix}` || path === `/${prefix}/`
-      : path.startsWith(`/${prefix}/${url}`)
+      : itemHasQuery
+        ? // url already contains the query (no double-?). Require the current path to start with it.
+          path.startsWith(`${itemBasePath}?${itemQueryPart}`)
+        : // item has no query → only match when current path also has no query
+          !pathHasSearchParams &&
+          (path === itemBasePath || path.startsWith(`${itemBasePath}/`))
 
   const baseClasses = expanded
     ? 'flex h-9 items-center gap-2.5 rounded-md px-2'
