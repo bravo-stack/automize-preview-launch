@@ -345,10 +345,14 @@ export async function sendWhatsAppNotification(
     uniqueNumbers.map(async (recipient) => {
       // Generate message with specific client name for this recipient
       const message = formatWhatsAppAlert(alert, rule, recipient.name)
+      const sanitizedMessage = message
+        .replace(/\n/g, ' ') // remove newlines
+        .replace(/[^\x20-\x7E]/g, '') // remove non-ASCII (emojis/special chars)
+        .substring(0, 1024) // optional max length
 
       const result = await sendAndLogWhatsAppMessage(
         recipient.whatsapp_number,
-        message,
+        sanitizedMessage,
         recipient.name,
         'watchtower_alert',
         recipient.name,
