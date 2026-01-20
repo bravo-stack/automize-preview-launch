@@ -5,17 +5,9 @@ import type {
   CommunicationReport,
   CommunicationsAuditData,
 } from '@/types/communications-audit'
-import {
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw,
-  Users,
-} from 'lucide-react'
+import { CheckCircle2, RefreshCw, Users } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import ClientListItem from './client-list-item'
-
-const ITEMS_PER_PAGE = 15
 
 // Working hours configuration (EST timezone)
 const WORK_START_HOUR = 9 // 9:00 AM EST
@@ -133,8 +125,6 @@ function getNextTimeSlot(currentSlot: TimeSlot): TimeSlot | null {
   return TIME_SLOTS[currentIndex + 1]
 }
 
-// Countdown timer removed — not required for core UI. If needed later, reintroduce a lightweight component that is isolated from main render loop.
-
 function isClientNeedsResponse(report: CommunicationReport): boolean {
   if (!report.last_client_message_at) return false
   if (!report.last_team_message_at) return true
@@ -198,19 +188,6 @@ function ClientQueueView({
       })
   }, [initialData.reports])
 
-  // Pagination calculations
-  const totalPages = Math.ceil(pendingClients.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const endIndex = startIndex + ITEMS_PER_PAGE
-  const paginatedClients = pendingClients.slice(startIndex, endIndex)
-
-  // Reset to page 1 if current page exceeds total pages
-  useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1)
-    }
-  }, [currentPage, totalPages])
-
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true)
     window.location.reload()
@@ -268,52 +245,12 @@ function ClientQueueView({
             <h2 className="text-sm font-medium text-zinc-300">
               Clients Awaiting Response — {currentSlot.displayTime}
             </h2>
-            {totalPages > 1 && (
-              <span className="text-xs text-zinc-500">
-                {startIndex + 1}-{Math.min(endIndex, pendingClients.length)} of{' '}
-                {pendingClients.length}
-              </span>
-            )}
           </div>
           <div>
-            {paginatedClients.map((client, index) => (
-              <ClientListItem
-                key={client.id}
-                report={client}
-                index={startIndex + index}
-              />
+            {pendingClients.map((client, index) => (
+              <ClientListItem key={client.id} report={client} index={index} />
             ))}
           </div>
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-zinc-800/50 bg-zinc-800/30 px-4 py-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700/50 disabled:opacity-50"
-              >
-                <ChevronLeft className="mr-1 h-4 w-4" />
-                Previous
-              </Button>
-              <span className="text-sm text-zinc-400">
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700/50 disabled:opacity-50"
-              >
-                Next
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </div>
-          )}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-lg border border-zinc-800/50 bg-zinc-900/30 py-16">

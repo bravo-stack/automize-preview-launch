@@ -142,6 +142,7 @@ function NavLinkItem({
           href={fullUrl}
           title={!expanded ? text : undefined}
           className={`group ${baseClasses} ${stateClasses} transition-all`}
+          prefetch={false}
         >
           {content}
         </Link>

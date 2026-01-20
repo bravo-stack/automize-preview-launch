@@ -41,36 +41,36 @@ function AuditViewSwitcher({
   )
 
   // If user doesn't have client list access, render spreadsheet-only view (no tabs)
-  if (!canAccessClientList) {
-    return (
-      <div className="w-full">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex w-fit items-center gap-4">
-            <p className="text-sm text-zinc-500">Full audit data</p>
-            <RevalidateButton />
-          </div>
-        </div>
+  // if (!canAccessClientList) {
+  //   return (
+  //     <div className="w-full">
+  //       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  //         <div className="flex w-fit items-center gap-4">
+  //           <p className="text-sm text-zinc-500">Full audit data</p>
+  //           <RevalidateButton />
+  //         </div>
+  //       </div>
 
-        <div className="mb-6 space-y-4">
-          <UpdateIxmValue
-            didnt_reach_out_hours={ixmDidntReachOutHours}
-            client_silent_days={clientSilentDays}
-            high_priority_days={highPriorityDays}
-            high_priority_color={highPriorityColor}
-            role={userRole}
-          />
-        </div>
+  //       <div className="mb-6 space-y-4">
+  //         <UpdateIxmValue
+  //           didnt_reach_out_hours={ixmDidntReachOutHours}
+  //           client_silent_days={clientSilentDays}
+  //           high_priority_days={highPriorityDays}
+  //           high_priority_color={highPriorityColor}
+  //           role={userRole}
+  //         />
+  //       </div>
 
-        <AuditSpreadsheet
-          initialData={initialData}
-          ixm_didnt_reach_out_hours={ixmDidntReachOutHours}
-          client_silent_days={clientSilentDays}
-          high_priority_days={highPriorityDays}
-          high_priority_color={highPriorityColor}
-        />
-      </div>
-    )
-  }
+  //       <AuditSpreadsheet
+  //         initialData={initialData}
+  //         ixm_didnt_reach_out_hours={ixmDidntReachOutHours}
+  //         client_silent_days={clientSilentDays}
+  //         high_priority_days={highPriorityDays}
+  //         high_priority_color={highPriorityColor}
+  //       />
+  //     </div>
+  //   )
+  // }
 
   // Pod users (or other allowed roles) get the full tabbed interface
   return (

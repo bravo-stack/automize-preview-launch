@@ -187,7 +187,7 @@ export default async function CommunicationsAudit({ searchParams }) {
               highPriorityDays={timeFrameHighPriorityDays}
               highPriorityColor={timeFrameHighPriorityColor}
               userRole={role}
-              defaultView={role === 'exec' ? 'spreadsheet' : 'queue'}
+              defaultView={role === 'exec' ? 'queue' : 'queue'}
               isMohammedFullView={pod?.id === 34 && `${view}` === 'full'}
             />
           ) : (

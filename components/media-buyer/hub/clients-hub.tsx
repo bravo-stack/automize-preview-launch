@@ -42,18 +42,30 @@ export function ClientsHub({
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [currentPage, setCurrentPage] = useState(1)
 
+  // Always sort A–Z by client name (brand) for consistent ordering.
+  const sortedClients = useMemo(() => {
+    return [...clients].sort((a, b) => {
+      const aName = (a.brand ?? '').trim()
+      const bName = (b.brand ?? '').trim()
+      return aName.localeCompare(bName, undefined, {
+        sensitivity: 'base',
+        numeric: true,
+      })
+    })
+  }, [clients])
+
   // Client-side filtering
   const filteredClients = useMemo(() => {
-    if (!searchQuery.trim()) return clients
+    if (!searchQuery.trim()) return sortedClients
 
     const query = searchQuery.toLowerCase()
-    return clients.filter(
+    return sortedClients.filter(
       (client) =>
         client.brand.toLowerCase().includes(query) ||
         client.full_name?.toLowerCase().includes(query) ||
         client.website?.toLowerCase().includes(query),
     )
-  }, [clients, searchQuery])
+  }, [sortedClients, searchQuery])
 
   // Pagination
   const totalPages = Math.ceil(filteredClients.length / pageSize)
