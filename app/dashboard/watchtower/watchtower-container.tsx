@@ -15,6 +15,7 @@ import type {
   CreateRuleInput,
   WatchtowerAlertWithRelations,
   WatchtowerRuleWithRelations,
+  WatchtowerStats,
 } from '@/types/watchtower'
 import { getTimeRangeDaysLabel } from '@/types/watchtower'
 import { useQuery } from '@tanstack/react-query'
@@ -32,7 +33,7 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { WatchtowerInfoTrig } from './watchtower-info-trigg'
 
@@ -48,26 +49,48 @@ interface PaginationInfo {
   hasPrevPage: boolean
 }
 
-export default function WatchtowerContainer() {
+interface WatchtowerContainerProps {
+  initialStats: WatchtowerStats | null
+  initialRecentRules: WatchtowerRuleWithRelations[]
+  initialRules: {
+    data: WatchtowerRuleWithRelations[]
+    pagination: PaginationInfo
+  }
+  initialAlerts: {
+    data: WatchtowerAlertWithRelations[]
+    pagination: PaginationInfo
+  }
+}
+
+export default function WatchtowerContainer({
+  initialStats,
+  initialRecentRules,
+  initialRules,
+  initialAlerts,
+}: WatchtowerContainerProps) {
   // STATES
   const [activeTab, setActiveTab] = useState<WatchtowerTab>('overview')
   const [rulesSubTab, setRulesSubTab] = useState<RulesSubTab>('active')
-  const [rules, setRules] = useState<WatchtowerRuleWithRelations[]>([])
+  const [rules, setRules] = useState<WatchtowerRuleWithRelations[]>(
+    initialRules.data,
+  )
   const [deletedRules, setDeletedRules] = useState<
     WatchtowerRuleWithRelations[]
   >([])
   const [recentRules, setRecentRules] = useState<WatchtowerRuleWithRelations[]>(
-    [],
+    initialRecentRules,
   )
-  const [alerts, setAlerts] = useState<WatchtowerAlertWithRelations[]>([])
+  const [alerts, setAlerts] = useState<WatchtowerAlertWithRelations[]>(
+    initialAlerts.data,
+  )
   const [rulesPagination, setRulesPagination] = useState<PaginationInfo | null>(
-    null,
+    initialRules.pagination,
   )
   const [deletedRulesPagination, setDeletedRulesPagination] =
     useState<PaginationInfo | null>(null)
   const [alertsPagination, setAlertsPagination] =
-    useState<PaginationInfo | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+    useState<PaginationInfo | null>(initialAlerts.pagination)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Rule Builder State
@@ -114,6 +137,9 @@ export default function WatchtowerContainer() {
       }
       return json.data
     },
+    initialData: initialStats
+      ? { stats: initialStats, alertsCreated: 0 }
+      : undefined,
     refetchInterval: 600_000, // 10 minutes
   })
   const stats = evaluationData?.stats
@@ -239,10 +265,26 @@ export default function WatchtowerContainer() {
       setNewAlertsCreated(true)
     }
   }, [evaluationData])
+
+  // Removed initial fetch useEffects since we have initial data
+
   useEffect(() => {
-    fetchRecentRules()
-  }, [fetchRecentRules])
+    // Only fetch if params change from initial, or if tab changes (but we have initial data for default tabs)
+    // We can keep this logic but need to be careful not to double fetch on mount.
+    // However, the dependencies include page, pageSize, sortBy.
+    // On mount, these match the initial props.
+    // So we might need a ref to track if it's the first render.
+  }, []) // We can just rely on user interaction to trigger fetches via setters, OR use a more robust way.
+
+  // Let's modify the useEffect to skip the first run if data is already present.
+  const isFirstRun = useRef(true)
+
   useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false
+      return
+    }
+
     if (activeTab === 'rules') {
       if (rulesSubTab === 'active') {
         fetchRules(rulesPage, rulesPageSize, rulesSortBy)
@@ -252,10 +294,8 @@ export default function WatchtowerContainer() {
     } else if (activeTab === 'alerts') {
       fetchAlerts(alertsPage, alertsPageSize, alertsSortBy)
     } else if (activeTab === 'overview') {
-      fetchRecentRules()
-      setIsLoading(false)
-    } else {
-      setIsLoading(false)
+       // Refresh recent rules if needed, but we have initial
+       // fetchRecentRules() 
     }
   }, [
     activeTab,
@@ -271,7 +311,7 @@ export default function WatchtowerContainer() {
     fetchRules,
     fetchDeletedRules,
     fetchAlerts,
-    fetchRecentRules,
+    // fetchRecentRules, // Remove form dependency if we don't want to re-fetch on mount
   ])
   useEffect(() => {
     if (newAlertsCreated && activeTab === 'alerts') {
