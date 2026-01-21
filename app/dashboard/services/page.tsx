@@ -8,6 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Info } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -59,47 +67,65 @@ function FailInfo({
 }: {
   failures?: Array<{ client?: string; message?: string }>
 }) {
-  const [show, setShow] = useState(false)
   if (!failures || failures.length === 0) return null
 
+  const formatError = (msg: unknown): string => {
+    if (typeof msg === 'string') {
+      try {
+        // Try parsing if it looks like JSON
+        if (msg.trim().startsWith('{') || msg.trim().startsWith('[')) {
+          const parsed = JSON.parse(msg)
+          return formatError(parsed)
+        }
+        return msg
+      } catch {
+        return msg
+      }
+    }
+    if (typeof msg === 'object' && msg !== null) {
+      // Extract common error fields
+      const anyMsg = msg as any
+      if (anyMsg.message) return anyMsg.message
+      if (anyMsg.error) return typeof anyMsg.error === 'string' ? anyMsg.error : formatError(anyMsg.error)
+      // Fallback to a cleaner JSON string or generic message
+      return JSON.stringify(msg, null, 2)
+    }
+    return String(msg)
+  }
+
   return (
-    <div className="relative inline-flex items-center">
-      <button
-        type="button"
-        onMouseEnter={() => setShow(true)}
-        onMouseLeave={() => setShow(false)}
-        aria-label={`${failures.length} failure(s); hover for details`}
-        title={`${failures.length} failure(s)`}
-        className="-mt-0.5 ml-2 text-red-400 hover:text-red-300"
-      >
-        <Info className="h-4 w-4" />
-      </button>
-
-      {show && (
-        <div className="absolute bottom-full left-1/2 z-10 mb-2 w-72 -translate-x-1/2 rounded-lg border border-red-500/30 bg-zinc-950 p-3 text-sm shadow-lg">
-          <div className="space-y-2 text-red-200">
-            {failures.slice(0, 4).map((f, i) => (
-              <div key={i} className="truncate">
-                <div className="font-medium text-red-300">
-                  {f.client ? `${f.client}: ` : ''}
-                  {f.message || (typeof f === 'string' ? f : JSON.stringify(f))}
-                </div>
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${failures.length} failure(s); click for details`}
+          title={`${failures.length} failure(s)`}
+          className="-mt-0.5 ml-2 text-red-400 hover:text-red-300"
+        >
+          <Info className="h-4 w-4" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Sync Failures</DialogTitle>
+          <DialogDescription>
+            The following clients encountered issues during the sync process.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {failures.map((f, i) => (
+            <div key={i} className="rounded-md border border-red-500/20 bg-red-500/10 p-3 text-sm">
+              <div className="mb-1 font-semibold text-red-200">
+                {f.client || 'Unknown Client'}
               </div>
-            ))}
-
-            {failures.length > 4 && (
-              <div className="text-xs text-red-300/80">
-                +{failures.length - 4} more
+              <div className="text-red-200/80 whitespace-pre-wrap break-words">
+                {formatError(f.message || f)}
               </div>
-            )}
-
-            <div className="mt-2 text-xs text-red-300/70">
-              Hover to dismiss — failures come from the batch API
             </div>
-          </div>
+          ))}
         </div>
-      )}
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
