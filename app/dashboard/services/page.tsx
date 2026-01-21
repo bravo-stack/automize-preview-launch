@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Info } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 type SyncStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -18,6 +19,8 @@ interface SyncResult {
   processedClients?: number
   successCount?: number
   failCount?: number
+  // failures from batch APIs (kept minimal for UI display)
+  failures?: Array<{ client?: string; message?: string }>
   total?: number
   saved?: number
   snapshotId?: string
@@ -50,6 +53,55 @@ const OMNISEND_ENDPOINTS: { key: OmnisendEndpoint; label: string }[] = [
   { key: 'automations', label: 'Automations' },
   { key: 'campaigns', label: 'Campaigns' },
 ]
+
+function FailInfo({
+  failures,
+}: {
+  failures?: Array<{ client?: string; message?: string }>
+}) {
+  const [show, setShow] = useState(false)
+  if (!failures || failures.length === 0) return null
+
+  return (
+    <div className="relative inline-flex items-center">
+      <button
+        type="button"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        aria-label={`${failures.length} failure(s); hover for details`}
+        title={`${failures.length} failure(s)`}
+        className="-mt-0.5 ml-2 text-red-400 hover:text-red-300"
+      >
+        <Info className="h-4 w-4" />
+      </button>
+
+      {show && (
+        <div className="absolute bottom-full left-1/2 z-10 mb-2 w-72 -translate-x-1/2 rounded-lg border border-red-500/30 bg-zinc-950 p-3 text-sm shadow-lg">
+          <div className="space-y-2 text-red-200">
+            {failures.slice(0, 4).map((f, i) => (
+              <div key={i} className="truncate">
+                <div className="font-medium text-red-300">
+                  {f.client ? `${f.client}: ` : ''}
+                  {f.message || (typeof f === 'string' ? f : JSON.stringify(f))}
+                </div>
+              </div>
+            ))}
+
+            {failures.length > 4 && (
+              <div className="text-xs text-red-300/80">
+                +{failures.length - 4} more
+              </div>
+            )}
+
+            <div className="mt-2 text-xs text-red-300/70">
+              Hover to dismiss — failures come from the batch API
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function ServicesPage() {
   // STATES
@@ -104,6 +156,10 @@ export default function ServicesPage() {
             processedClients: data.summary.totalProcessed,
             successCount: data.summary.successCount,
             failCount: data.summary.failCount,
+            failures:
+              data.failures || data.failures === null
+                ? data.failures
+                : undefined,
           },
         }))
       } else {
@@ -313,20 +369,28 @@ export default function ServicesPage() {
 
                         {/* --- START CHANGES: Display Batch Stats --- */}
                         {state.processedClients !== undefined ? (
-                          <div className="flex gap-2 text-white/60">
+                          <div className="flex items-center gap-2 text-white/60">
                             <span className="text-green-400">
                               {state.successCount} Success
                             </span>
                             <span>•</span>
-                            <span
-                              className={
-                                state.failCount && state.failCount > 0
-                                  ? 'text-red-400'
-                                  : ''
-                              }
-                            >
-                              {state.failCount} Failed
-                            </span>
+
+                            <div className="flex items-center">
+                              <span
+                                className={
+                                  state.failCount && state.failCount > 0
+                                    ? 'text-red-400'
+                                    : ''
+                                }
+                              >
+                                {state.failCount ?? 0} Failed
+                              </span>
+
+                              {/* show hoverable details when failures are present */}
+                              {state.failCount && state.failCount > 0 && (
+                                <FailInfo failures={state.failures} />
+                              )}
+                            </div>
                           </div>
                         ) : (
                           /* Fallback for legacy display */
