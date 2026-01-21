@@ -6,6 +6,7 @@ import {
   syncAllPendingMessages,
   syncSingleMessageStatus,
 } from '@/lib/actions/whatsapp'
+import { WHATSAPP_TEMPLATES } from '@/lib/utils/whatsapp-formatters'
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import { usePagination } from './pagination'
 
@@ -281,7 +282,11 @@ export default function PendingMessagesSection({
                     <button
                       type="button"
                       onClick={() => handleSyncSingle(msg.twilio_message_sid)}
-                      disabled={syncingIds.has(msg.twilio_message_sid)}
+                      disabled={
+                        msg?.source_feature !==
+                          WHATSAPP_TEMPLATES.WATCHTOWER_NOTIFICATION.name ||
+                        syncingIds.has(msg.twilio_message_sid)
+                      }
                       className="inline-flex items-center gap-1.5 rounded-md border border-amber-800/50 bg-amber-900/30 px-2.5 py-1 text-xs font-medium text-amber-200 transition-colors hover:bg-amber-900/50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {syncingIds.has(msg.twilio_message_sid) ? (

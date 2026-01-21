@@ -1,5 +1,4 @@
 import { sendDiscordMessage } from '@/lib/actions/discord'
-import { sendAndLogWhatsAppMessage } from '@/lib/actions/whatsapp'
 import { createAdminClient } from '@/lib/db/admin'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -136,22 +135,22 @@ export async function GET(req: NextRequest) {
       })
 
       // WhatsApp message (plain text, no markdown)
-      if (whatsapp_number) {
-        const whatsappMessage = [
-          `📊 DAILY LOW ROAS CHECK\n`,
-          ...accounts.map(
-            (acc) =>
-              `${acc.name}:\n• ROAS: ${acc.roas}\n• SPEND: ${acc.spend}\n• CPA: ${acc.cpa}`,
-          ),
-        ].join('\n')
+      // if (whatsapp_number) {
+      //   const whatsappMessage = [
+      //     `📊 DAILY LOW ROAS CHECK\n`,
+      //     ...accounts.map(
+      //       (acc) =>
+      //         `${acc.name}:\n• ROAS: ${acc.roas}\n• SPEND: ${acc.spend}\n• CPA: ${acc.cpa}`,
+      //     ),
+      //   ].join('\n')
 
-        await sendAndLogWhatsAppMessage(
-          whatsapp_number,
-          whatsappMessage,
-          pod,
-          'daily_summary',
-        )
-      }
+      //   await sendAndLogWhatsAppMessage(
+      //     whatsapp_number,
+      //     whatsappMessage,
+      //     pod,
+      //     'daily_summary',
+      //   )
+      // }
     }
 
     return NextResponse.json({

@@ -837,6 +837,7 @@ export interface PendingMessageSummary {
   delivery_status: WhatsAppDeliveryStatus
   sent_at: string
   age_minutes: number
+  source_feature: string
 }
 
 /**
@@ -859,7 +860,7 @@ export async function getPendingMessages(
   const { data, error } = await db
     .from('whatsapp_message_logs')
     .select(
-      'id, twilio_message_sid, pod_name, recipient_name, recipient_phone_number, delivery_status, sent_at',
+      'id, source_feature, twilio_message_sid, pod_name, recipient_name, recipient_phone_number, delivery_status, sent_at',
     )
     .in('delivery_status', ['queued', 'accepted', 'sending', 'sent'])
     .not('twilio_message_sid', 'is', null)
