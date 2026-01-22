@@ -198,11 +198,15 @@ export default async function WhatsAppSettingsPage({ params }) {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              WhatsApp Settings
+              WhatsApp Settings for{' '}
+              <span className="capitalize">
+                {pod?.name || 'The Media Buyer'}
+              </span>
             </h1>
             <p className="text-zinc-400">
-              Configure WhatsApp notifications for{' '}
-              <span className="font-medium text-zinc-300">{pod.name}</span>
+              Configure{' '}
+              <span className="font-medium capitalize text-zinc-300">{`${pod?.name || 'The Media Buyer'}'s`}</span>{' '}
+              WhatsApp notifications
             </p>
           </div>
         </div>
