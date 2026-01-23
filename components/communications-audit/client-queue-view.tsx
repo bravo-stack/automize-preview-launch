@@ -247,9 +247,15 @@ function ClientQueueView({
             </h2>
           </div>
           <div>
-            {pendingClients.map((client, index) => (
-              <ClientListItem key={client.id} report={client} index={index} />
-            ))}
+            {pendingClients
+              .sort(
+                (a, b) =>
+                  (b.days_since_client_message || 0) -
+                  (a.days_since_client_message || 0),
+              )
+              .map((client, index) => (
+                <ClientListItem key={client.id} report={client} index={index} />
+              ))}
           </div>
         </div>
       ) : (
