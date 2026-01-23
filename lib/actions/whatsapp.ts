@@ -862,7 +862,7 @@ export async function getPendingMessages(
     .select(
       'id, source_feature, twilio_message_sid, pod_name, recipient_name, recipient_phone_number, delivery_status, sent_at',
     )
-    .in('delivery_status', ['queued', 'accepted', 'sending', 'sent'])
+    .in('delivery_status', ['queued', 'accepted', 'sending'])
     .not('twilio_message_sid', 'is', null)
     .lt('sent_at', thresholdDate.toISOString())
     .order('sent_at', { ascending: false })

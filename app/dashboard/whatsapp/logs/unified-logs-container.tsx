@@ -76,7 +76,7 @@ function WhatsAppLogsView() {
       setError(null)
 
       const params = new URLSearchParams()
-      params.append('limit', '500')
+      params.append('limit', '100000')
 
       const response = await fetch(`/api/whatsapp/logs?${params.toString()}`)
 
