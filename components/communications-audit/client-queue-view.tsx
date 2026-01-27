@@ -182,9 +182,12 @@ function ClientQueueView({
         return isClientNeedsResponse(report)
       })
       .sort((a, b) => {
-        const aDays = a.days_since_client_message ?? 0
-        const bDays = b.days_since_client_message ?? 0
-        return bDays - aDays
+        // Parse dates to timestamps
+        const dateA = new Date(a.last_client_message_at ?? '').getTime()
+        const dateB = new Date(b.last_client_message_at ?? '').getTime()
+
+        // Sort ASCENDING (Smallest timestamp is the oldest message)
+        return dateA - dateB
       })
   }, [initialData.reports])
 
@@ -247,15 +250,9 @@ function ClientQueueView({
             </h2>
           </div>
           <div>
-            {pendingClients
-              .sort(
-                (a, b) =>
-                  (b.days_since_client_message || 0) -
-                  (a.days_since_client_message || 0),
-              )
-              .map((client, index) => (
-                <ClientListItem key={client.id} report={client} index={index} />
-              ))}
+            {pendingClients.map((client, index) => (
+              <ClientListItem key={client.id} report={client} index={index} />
+            ))}
           </div>
         </div>
       ) : (
